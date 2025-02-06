@@ -7,7 +7,7 @@ import { ChatMessage } from "./ChatMessage";
 
 export function ChatHistory() {
   const { chats, currentChatId } = useChatStore();
-  const { isLoading, error, sendMessage } = useAIChat();
+  const { isLoading, error, sendStreamMessage } = useAIChat();
   const currentChat = chats.find((chat) => chat.id === currentChatId);
 
   if (!currentChat) {
@@ -22,23 +22,21 @@ export function ChatHistory() {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4">
         <div className="space-y-6 max-w-2xl mx-auto">
-          {currentChat.messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
           {isLoading && (
             <div className="text-sm text-muted-foreground">AI 正在思考...</div>
           )}
-          {error && (
-            <div className="text-sm text-destructive">{error}</div>
-          )}
+          {currentChat.messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
       </div>
-      
+
       <div className="border-t border-border p-4">
         <div className="max-w-2xl mx-auto">
           <ChatInput
             onSend={(content) => {
-              sendMessage(currentChat.id, content, currentChat.messages);
+              sendStreamMessage(currentChat.id, content, currentChat.messages);
             }}
             disabled={isLoading}
           />
@@ -46,4 +44,4 @@ export function ChatHistory() {
       </div>
     </div>
   );
-} 
+}
