@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { useEventSource } from "./useEventSource";
-import type { Message } from "@/types/chat";
 import { baseURL } from "@/lib/api";
 
 export function useStreamChat() {
@@ -10,7 +9,7 @@ export function useStreamChat() {
   const streamChat = useCallback(
     (
       message: string,
-      history: Message[] = [],
+      sessionId: string,
       onStream?: (content: string) => void
     ) => {
       setIsStreaming(true);
@@ -19,12 +18,7 @@ export function useStreamChat() {
       // 构建查询参数
       const params = new URLSearchParams({
         message,
-        history: JSON.stringify(
-          history.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          }))
-        ),
+        sessionId,
       });
 
       // 连接 SSE

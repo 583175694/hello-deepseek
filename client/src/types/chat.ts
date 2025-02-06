@@ -1,8 +1,8 @@
 export interface Message {
   id: string;
-  content: string;
   role: 'user' | 'assistant';
-  createdAt: Date;
+  content: string;
+  createdAt: string;
 }
 
 export interface Chat {
@@ -12,3 +12,12 @@ export interface Chat {
   createdAt: Date;
   updatedAt: Date;
 } 
+
+export interface Session {
+  sessionId: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessage: string;
+  messageCount: number;
+}
+  

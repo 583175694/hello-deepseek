@@ -1,87 +1,60 @@
-import { useState } from "react";
-import { useChatStore } from "@/store/chat";
-import { chatService } from "@/lib/api";
-import type { Message } from "@/types/chat";
+import { useState, useCallback } from "react";
 import { useStreamChat } from "./useStreamChat";
+import type { Message } from "@/types/chat";
+import { nanoid } from "nanoid";
 
 export function useAIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addMessage, updateMessage } = useChatStore();
+  const [messages, setMessages] = useState<Message[]>([]);
   const { streamChat, stopStreaming, isStreaming } = useStreamChat();
 
-  // 普通对话方法
-  const sendMessage = async (
-    chatId: string,
-    content: string,
-    messages: Message[]
-  ) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  // 添加消息
+  const addMessage = useCallback(
+    (message: Omit<Message, "id" | "createdAt">) => {
+      const newMessage: Message = {
+        id: nanoid(),
+        createdAt: new Date().toISOString(),
+        ...message,
+      };
+      setMessages((prev) => [...prev, newMessage]);
+      return newMessage.id;
+    },
+    []
+  );
 
-      // 添加用户消息
-      addMessage(chatId, {
-        content,
-        role: "user",
-      });
-
-      // 准备历史记录
-      const history = messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
-      // 发送请求
-      const response = await chatService.chat({
-        message: content,
-        history,
-      });
-
-      // 添加 AI 回复
-      addMessage(chatId, {
-        content: response.content,
-        role: "assistant",
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "发送消息失败");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // 更新消息
+  const updateMessage = useCallback((messageId: string, content: string) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, content } : msg))
+    );
+  }, []);
 
   // 流式对话方法
-  const sendStreamMessage = async (
-    chatId: string,
-    content: string,
-    messages: Message[]
-  ) => {
+  const sendStreamMessage = async (content: string, sessionId: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
       // 添加用户消息
-      addMessage(chatId, {
+      addMessage({
         content,
         role: "user",
       });
 
       // 添加一个空的 AI 消息
-      const aiMessageId = addMessage(chatId, {
+      const aiMessageId = addMessage({
         content: "AI正在思考中...",
         role: "assistant",
       });
 
       // 开始流式对话
-      streamChat(content, messages, (streamContent) => {
+      streamChat(content, sessionId, (streamContent) => {
         if (streamContent && isLoading) {
           setIsLoading(false);
         }
         // 更新 AI 消息内容
-        updateMessage(chatId, aiMessageId, {
-          content: streamContent,
-          role: "assistant",
-        });
+        updateMessage(aiMessageId, streamContent);
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "发送消息失败");
@@ -91,12 +64,18 @@ export function useAIChat() {
     }
   };
 
+  // 设置消息列表
+  const setMessageList = useCallback((newMessages: Message[]) => {
+    setMessages(newMessages);
+  }, []);
+
   return {
+    messages,
     isLoading,
     error,
     isStreaming,
-    sendMessage,
     sendStreamMessage,
     stopStreaming,
+    setMessageList,
   };
 }

@@ -1,66 +1,59 @@
+// 导入所需的NestJS装饰器和类型
 import {
   Controller,
   Post,
-  Body,
   HttpException,
   HttpStatus,
   Sse,
   MessageEvent,
   Query,
+  Get,
+  Param,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { Observable } from 'rxjs';
 
-interface ChatRequest {
-  message: string;
-  history?: { role: string; content: string }[];
-}
-
+// 定义聊天控制器
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  @Post()
-  async chat(@Body() body: ChatRequest) {
+  // 创建新会话的接口
+  @Post('session')
+  async createSession() {
     try {
-      if (!body.message) {
-        throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
-      }
-
-      const content = await this.chatService.chat(body.message, body.history);
-      return { content };
+      const session = await this.chatService.createSession();
+      return {
+        id: session.id,
+        sessionId: session.sessionId,
+        createdAt: session.createdAt,
+      };
     } catch (error) {
       throw new HttpException(
-        error.message || 'Internal server error',
+        error.message || 'Failed to create session',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
+  // 处理流式聊天请求
   @Sse('stream')
   async streamChat(
     @Query('message') message: string,
-    @Query('history') historyStr?: string,
+    @Query('sessionId') sessionId?: string,
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
     }
 
-    let history: { role: string; content: string }[] = [];
-    if (historyStr) {
-      try {
-        history = JSON.parse(historyStr);
-      } catch (e) {
-        throw new HttpException(
-          'Invalid history format',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (!sessionId) {
+      const session = await this.chatService.createSession();
+      sessionId = session.sessionId;
     }
 
     return new Observable<MessageEvent>((subscriber) => {
       this.chatService
-        .streamChat(message, history, (token: string) => {
+        .streamChat(message, sessionId, (token: string) => {
           subscriber.next({ data: token });
         })
         .then(() => {
@@ -71,5 +64,45 @@ export class ChatController {
           subscriber.error(error);
         });
     });
+  }
+
+  // 获取所有会话列表的接口
+  @Get('sessions')
+  async getSessions() {
+    try {
+      const sessions = await this.chatService.getSessions();
+      return { sessions };
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to get sessions',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 获取指定会话的历史消息
+  @Get('sessions/:sessionId/messages')
+  async getSessionMessages(@Param('sessionId') sessionId: string) {
+    try {
+      return await this.chatService.getSessionMessages(sessionId);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to get session messages',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 删除指定会话
+  @Post('sessions/:sessionId/delete')
+  async deleteSession(@Param('sessionId') sessionId: string) {
+    try {
+      return await this.chatService.deleteSession(sessionId);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to delete session',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
