@@ -1,0 +1,123 @@
+// 导入必要的依赖
+import { Injectable, Logger } from '@nestjs/common';
+import { ChatDeepSeek } from '@langchain/deepseek';
+import { ExaRetriever } from '@langchain/exa';
+import Exa from 'exa-js';
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from '@langchain/core/prompts';
+import { MessageService } from './message.service';
+import { SessionService } from './session.service';
+
+// AI聊天服务类
+@Injectable()
+export class AIChatService {
+  private readonly logger = new Logger(AIChatService.name);
+  private model: ChatDeepSeek; // DeepSeek聊天模型实例
+  private prompt: ChatPromptTemplate; // 聊天提示模板
+  private retriever: ExaRetriever; // Exa检索器实例
+  private exa: Exa; // Exa客户端实例
+
+  constructor(
+    private messageService: MessageService,
+    private sessionService: SessionService,
+  ) {
+    this.initializeServices();
+  }
+
+  // 初始化各项服务
+  private initializeServices() {
+    // 初始化DeepSeek模型
+    this.model = new ChatDeepSeek({
+      modelName: 'ep-20250210103851-zjdln',
+      temperature: 0.7,
+      streaming: true,
+      configuration: {
+        baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+        apiKey: process.env.DEEPSEEK_API_KEY,
+      },
+    });
+
+    // 初始化Exa客户端和检索器
+    this.exa = new Exa(process.env.EXA_API_KEY);
+    this.retriever = new ExaRetriever({
+      client: this.exa,
+    });
+
+    // 设置聊天提示模板
+    this.prompt = ChatPromptTemplate.fromMessages([
+      [
+        'system',
+        '请你扮演一个内向话少的女孩。以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
+      ],
+      new MessagesPlaceholder('history'),
+      ['human', '{input}'],
+    ]);
+  }
+
+  // 执行Exa搜索
+  private async performExaSearch(query: string): Promise<string> {
+    try {
+      const searchResults = await this.retriever.getRelevantDocuments(query);
+      return searchResults
+        .map((doc) => `来源: ${doc.metadata.url}\n内容: ${doc.pageContent}`)
+        .join('\n\n');
+    } catch (error) {
+      this.logger.error('Exa search error:', error);
+      return '';
+    }
+  }
+
+  // 流式聊天处理
+  async streamChat(
+    message: string,
+    sessionId: string,
+    onToken: (token: string) => void,
+  ) {
+    try {
+      // 创建会话并加载历史记录
+      const session = await this.sessionService.createSession();
+      const memory = await this.messageService.loadMemoryFromDatabase(
+        session.sessionId,
+      );
+      const memoryVariables = await memory.loadMemoryVariables({});
+      const searchContext = await this.performExaSearch(message);
+
+      // 保存用户消息
+      await this.messageService.saveMessage('user', message, sessionId);
+
+      // 创建并执行聊天链
+      const chain = this.prompt.pipe(this.model);
+      const stream = await chain.stream({
+        history: memoryVariables.history || [],
+        input: message,
+        searchContext: searchContext || '没有找到相关的搜索结果',
+      });
+
+      // 处理流式响应
+      let fullResponse = '';
+      for await (const chunk of stream) {
+        let token = '';
+        if (chunk.content) {
+          token = chunk.content.toString();
+          fullResponse += token;
+        }
+        if (chunk.additional_kwargs.reasoning_content) {
+          token = chunk.additional_kwargs.reasoning_content.toString();
+        }
+        onToken(token);
+      }
+
+      // 保存AI助手的回复
+      await this.messageService.saveMessage(
+        'assistant',
+        fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
+        sessionId,
+      );
+    } catch (error) {
+      this.logger.error('Stream chat error:', error);
+      throw error;
+    }
+  }
+}
