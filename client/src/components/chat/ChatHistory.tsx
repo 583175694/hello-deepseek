@@ -9,19 +9,14 @@ import { chatService } from "@/lib/api";
 
 export function ChatHistory() {
   const { currentSessionId } = useSessionManager();
-  const { 
-    messages, 
-    isLoading, 
-    error, 
-    sendStreamMessage, 
-    setMessageList 
-  } = useAIChat();
+  const { messages, isLoading, error, sendStreamMessage, setMessageList } =
+    useAIChat();
 
   // 加载会话消息历史
   useEffect(() => {
     const loadMessages = async () => {
       if (!currentSessionId) return;
-      
+
       try {
         const data = await chatService.getSessionMessages(currentSessionId);
         setMessageList(data.messages);
@@ -58,8 +53,11 @@ export function ChatHistory() {
       <div className="border-t border-border p-4">
         <div className="max-w-2xl mx-auto">
           <ChatInput
-            onSend={(content) => {
-              sendStreamMessage(content, currentSessionId);
+            onSend={(content, { useWebSearch, useVectorSearch }) => {
+              sendStreamMessage(content, currentSessionId, {
+                useWebSearch,
+                useVectorSearch,
+              });
             }}
             disabled={isLoading}
           />

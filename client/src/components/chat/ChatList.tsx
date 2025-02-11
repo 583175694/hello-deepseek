@@ -6,7 +6,13 @@ import { Plus, Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
 
 export function ChatList() {
-  const { sessions, currentSessionId, setCurrentSessionId, createNewSession, deleteSession } = useSessionManager();
+  const {
+    sessions,
+    currentSessionId,
+    setCurrentSessionId,
+    createNewSession,
+    deleteSession,
+  } = useSessionManager();
 
   const handleNewChat = async () => {
     try {
@@ -16,7 +22,10 @@ export function ChatList() {
     }
   };
 
-  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+  const handleDeleteSession = async (
+    e: React.MouseEvent,
+    sessionId: string
+  ) => {
     e.stopPropagation();
     try {
       await deleteSession(sessionId);
@@ -33,7 +42,7 @@ export function ChatList() {
           新对话
         </Button>
       </div>
-      
+
       <div className="flex-1 overflow-auto">
         {sessions.map((session) => (
           <div
@@ -47,7 +56,9 @@ export function ChatList() {
               <span className="text-xs text-muted-foreground">
                 {format(new Date(session.createdAt), "MM/dd HH:mm")}
               </span>
-              <span className="font-medium truncate">{session.lastMessage}</span>
+              <span className="font-medium truncate">
+                {session.lastMessage || "New Message"}
+              </span>
             </div>
             <Button
               variant="ghost"
@@ -62,4 +73,4 @@ export function ChatList() {
       </div>
     </div>
   );
-} 
+}

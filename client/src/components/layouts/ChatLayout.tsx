@@ -12,7 +12,7 @@ export function ChatLayout() {
 
   return (
     <div className="flex h-screen">
-      <div className="w-64 border-r border-border bg-muted/10">
+      <div className="w-[320px] border-r border-border bg-muted/10">
         <div className="p-4 border-b border-border">
           <div className="flex gap-2">
             <Button

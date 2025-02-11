@@ -9,6 +9,7 @@ import {
 } from '@langchain/core/prompts';
 import { MessageService } from './message.service';
 import { SessionService } from './session.service';
+import { DocumentService } from './document.service';
 
 // AI聊天服务类
 @Injectable()
@@ -22,6 +23,7 @@ export class AIChatService {
   constructor(
     private messageService: MessageService,
     private sessionService: SessionService,
+    private documentService: DocumentService,
   ) {
     this.initializeServices();
   }
@@ -73,6 +75,8 @@ export class AIChatService {
   async streamChat(
     message: string,
     sessionId: string,
+    useWebSearch: boolean = false,
+    useVectorSearch: boolean = false,
     onToken: (token: string) => void,
   ) {
     try {
@@ -82,7 +86,36 @@ export class AIChatService {
         session.sessionId,
       );
       const memoryVariables = await memory.loadMemoryVariables({});
-      const searchContext = await this.performExaSearch(message);
+
+      // 构建搜索上下文
+      let searchContext = '';
+
+      // 执行网络搜索
+      if (useWebSearch) {
+        this.logger.log('Performing web search...');
+        const webSearchResults = await this.performExaSearch(message);
+        if (webSearchResults) {
+          searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
+        }
+      }
+
+      // 执行向量数据库搜索
+      if (useVectorSearch) {
+        this.logger.log('Performing vector database search...');
+        const vectorSearchResults =
+          await this.documentService.searchSimilarDocuments(message, 3);
+        if (vectorSearchResults && vectorSearchResults.length > 0) {
+          searchContext +=
+            '本地文档搜索结果：\n' +
+            vectorSearchResults
+              .map(
+                (doc) =>
+                  `来源: ${doc.metadata.filename}\n内容: ${doc.pageContent}`,
+              )
+              .join('\n\n') +
+            '\n\n';
+        }
+      }
 
       // 保存用户消息
       await this.messageService.saveMessage('user', message, sessionId);

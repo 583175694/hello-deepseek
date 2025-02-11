@@ -44,6 +44,8 @@ export class ChatController {
   async streamChat(
     @Query('message') message: string,
     @Query('sessionId') sessionId?: string,
+    @Query('useWebSearch') useWebSearch?: string,
+    @Query('useVectorSearch') useVectorSearch?: string,
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
@@ -54,11 +56,27 @@ export class ChatController {
       sessionId = session.sessionId;
     }
 
+    // 将字符串参数转换为布尔值，默认都为 false
+    const shouldUseWebSearch =
+      useWebSearch === undefined
+        ? false
+        : useWebSearch.toLowerCase() === 'true';
+    const shouldUseVectorSearch =
+      useVectorSearch === undefined
+        ? false
+        : useVectorSearch.toLowerCase() === 'true';
+
     return new Observable<MessageEvent>((subscriber) => {
       this.aiChatService
-        .streamChat(message, sessionId, (token: string) => {
-          subscriber.next({ data: token });
-        })
+        .streamChat(
+          message,
+          sessionId,
+          shouldUseWebSearch,
+          shouldUseVectorSearch,
+          (token: string) => {
+            subscriber.next({ data: token });
+          },
+        )
         .then(() => {
           subscriber.next({ data: '[DONE]' });
           subscriber.complete();

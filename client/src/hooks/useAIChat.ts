@@ -31,7 +31,14 @@ export function useAIChat() {
   }, []);
 
   // 流式对话方法
-  const sendStreamMessage = async (content: string, sessionId: string) => {
+  const sendStreamMessage = async (
+    content: string,
+    sessionId: string,
+    options?: {
+      useWebSearch?: boolean;
+      useVectorSearch?: boolean;
+    }
+  ) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -49,7 +56,7 @@ export function useAIChat() {
       });
 
       // 开始流式对话
-      streamChat(content, sessionId, (streamContent) => {
+      streamChat(content, sessionId, options, (streamContent) => {
         if (streamContent && isLoading) {
           setIsLoading(false);
         }

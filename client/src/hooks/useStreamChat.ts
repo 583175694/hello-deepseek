@@ -10,6 +10,10 @@ export function useStreamChat() {
     (
       message: string,
       sessionId: string,
+      options?: {
+        useWebSearch?: boolean;
+        useVectorSearch?: boolean;
+      },
       onStream?: (content: string) => void
     ) => {
       setIsStreaming(true);
@@ -20,6 +24,13 @@ export function useStreamChat() {
         message,
         sessionId,
       });
+
+      if (options?.useWebSearch) {
+        params.append("useWebSearch", "true");
+      }
+      if (options?.useVectorSearch) {
+        params.append("useVectorSearch", "true");
+      }
 
       // 连接 SSE
       connect(`${baseURL}/chat/stream?${params.toString()}`, {
