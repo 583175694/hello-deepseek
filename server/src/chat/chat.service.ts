@@ -1,6 +1,5 @@
 // 导入所需的依赖
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { ChatOpenAI } from '@langchain/openai';
 import {
   ChatPromptTemplate,
   MessagesPlaceholder,
@@ -13,20 +12,20 @@ import { v4 as uuidv4 } from 'uuid';
 import { AIMessageChunk } from '@langchain/core/messages';
 import { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import { BufferWindowMemory } from 'langchain/memory';
-
-// 定义 DeepSeek AI 响应块的接口
-interface DeepSeekReasonerChunk extends AIMessageChunk {
-  reasoning_content?: string;
-}
+import { ExaRetriever } from '@langchain/exa';
+import Exa from 'exa-js';
+import { ChatDeepSeek } from '@langchain/deepseek';
 
 // 聊天服务类
 @Injectable()
 export class ChatService {
   // 声明私有成员变量
-  private model: ChatOpenAI;
+  private model: ChatDeepSeek;
   private prompt: ChatPromptTemplate;
   private memory: BufferWindowMemory;
+  private retriever: ExaRetriever;
   private readonly logger = new Logger(ChatService.name);
+  private exa: Exa;
 
   // 构造函数，注入依赖
   constructor(
@@ -36,7 +35,7 @@ export class ChatService {
     private messageRepository: Repository<Message>,
   ) {
     // 初始化 ChatOpenAI 模型
-    this.model = new ChatOpenAI({
+    this.model = new ChatDeepSeek({
       modelName: 'ep-20250210103851-zjdln',
       temperature: 0.7,
       streaming: true,
@@ -55,9 +54,20 @@ export class ChatService {
       outputKey: 'output',
     });
 
+    // 初始化 Exa 客户端
+    this.exa = new Exa(process.env.EXA_API_KEY);
+
+    // 初始化 Exa 检索器
+    this.retriever = new ExaRetriever({
+      client: this.exa,
+    });
+
     // 设置对话模板
     this.prompt = ChatPromptTemplate.fromMessages([
-      ['system', '请你扮演一个内向话少的女孩。'],
+      [
+        'system',
+        '请你扮演一个内向话少的女孩。以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
+      ],
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
@@ -104,6 +114,18 @@ export class ChatService {
     }
   }
 
+  private async performExaSearch(query: string): Promise<string> {
+    try {
+      const searchResults = await this.retriever.getRelevantDocuments(query);
+      return searchResults
+        .map((doc) => `来源: ${doc.metadata.url}\n内容: ${doc.pageContent}`)
+        .join('\n\n');
+    } catch (error) {
+      this.logger.error('Exa search error:', error);
+      return ''; // 如果搜索失败，返回空字符串
+    }
+  }
+
   // 处理流式聊天请求
   async streamChat(
     message: string,
@@ -111,6 +133,9 @@ export class ChatService {
     onToken: (token: string) => void,
   ) {
     try {
+      // const docs = await this.retriever.getRelevantDocuments('hello');
+      // console.log(docs);
+
       // 查找或创建会话
       let session = await this.sessionRepository.findOne({
         where: { sessionId },
@@ -125,13 +150,19 @@ export class ChatService {
       // 获取 memory 中的消息
       const memoryVariables = await this.memory.loadMemoryVariables({});
 
+      // 执行 Exa 搜索
+      const searchContext = await this.performExaSearch(message);
+      console.log('searchContext', searchContext);
+
       // 创建对话链并获取响应流
       const chain = this.prompt.pipe(this.model);
-      const stream: IterableReadableStream<DeepSeekReasonerChunk> =
-        await chain.stream({
+      const stream: IterableReadableStream<AIMessageChunk> = await chain.stream(
+        {
           history: memoryVariables.history || [],
           input: message,
-        });
+          searchContext: searchContext || '没有找到相关的搜索结果',
+        },
+      );
 
       // 保存用户消息
       const userMessage = this.messageRepository.create({
@@ -149,8 +180,8 @@ export class ChatService {
         if (chunk.content) {
           token = chunk.content.toString();
         }
-        if (chunk.reasoning_content) {
-          token = chunk.reasoning_content.toString();
+        if (chunk.additional_kwargs.reasoning_content) {
+          token = chunk.additional_kwargs.reasoning_content.toString();
         }
 
         fullResponse += token;
