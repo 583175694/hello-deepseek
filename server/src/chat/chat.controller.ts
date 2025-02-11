@@ -10,12 +10,18 @@ import {
   Get,
   Param,
   Body,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Document } from '@langchain/core/documents';
 import { SessionService } from './services/session.service';
 import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
+import { FileService, FileInfo } from './services/file.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -24,6 +30,7 @@ export class ChatController {
     private readonly sessionService: SessionService,
     private readonly documentService: DocumentService,
     private readonly aiChatService: AIChatService,
+    private readonly fileService: FileService,
   ) {}
 
   // 创建新会话的接口
@@ -98,5 +105,30 @@ export class ChatController {
     @Query('limit') limit?: number,
   ) {
     return await this.documentService.searchSimilarDocuments(query, limit);
+  }
+
+  // 上传文件端点
+  @Post('files/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('chunkSize') chunkSize?: number,
+  ) {
+    await this.fileService.uploadAndProcessFile(file, chunkSize);
+    return { message: 'File uploaded and processed successfully' };
+  }
+
+  // 获取文件列表端点
+  @Get('files')
+  async listFiles(): Promise<{ files: FileInfo[] }> {
+    const files = await this.fileService.listFiles();
+    return { files };
+  }
+
+  // 删除文件端点
+  @Delete('files/:filename')
+  async deleteFile(@Param('filename') filename: string) {
+    await this.fileService.deleteFile(filename);
+    return { message: 'File deleted successfully' };
   }
 }

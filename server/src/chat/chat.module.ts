@@ -7,10 +7,17 @@ import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
+import { FileService } from './services/file.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Session, Message])],
   controllers: [ChatController],
-  providers: [SessionService, MessageService, DocumentService, AIChatService],
+  providers: [
+    SessionService,
+    MessageService,
+    DocumentService,
+    AIChatService,
+    FileService,
+  ],
 })
 export class ChatModule {}
