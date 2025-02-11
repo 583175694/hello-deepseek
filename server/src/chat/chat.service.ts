@@ -15,6 +15,11 @@ import { BufferWindowMemory } from 'langchain/memory';
 import { ExaRetriever } from '@langchain/exa';
 import Exa from 'exa-js';
 import { ChatDeepSeek } from '@langchain/deepseek';
+import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/bytedance_doubao';
+import { Document } from '@langchain/core/documents';
+import { FaissStore } from '@langchain/community/vectorstores/faiss';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // 聊天服务类
 @Injectable()
@@ -26,6 +31,14 @@ export class ChatService {
   private retriever: ExaRetriever;
   private readonly logger = new Logger(ChatService.name);
   private exa: Exa;
+  private embeddings: ByteDanceDoubaoEmbeddings;
+  private vectorStore: FaissStore;
+  private readonly vectorStorePath = path.join(process.cwd(), 'vector_store');
+  private readonly indexPath = path.join(this.vectorStorePath, 'faiss.index');
+  private readonly docStorePath = path.join(
+    this.vectorStorePath,
+    'docstore.json',
+  );
 
   // 构造函数，注入依赖
   constructor(
@@ -71,6 +84,110 @@ export class ChatService {
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
+
+    // 初始化 Cohere Embeddings
+    this.embeddings = new ByteDanceDoubaoEmbeddings({
+      apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+      model: 'ep-20250211181607-xhts2',
+      verbose: true,
+    });
+
+    // 确保向量存储目录存在
+    if (!fs.existsSync(this.vectorStorePath)) {
+      fs.mkdirSync(this.vectorStorePath, { recursive: true });
+    }
+
+    // 初始化或加载向量存储
+    this.initVectorStore();
+  }
+
+  private async initVectorStore() {
+    try {
+      // 确保目录存在
+      if (!fs.existsSync(this.vectorStorePath)) {
+        fs.mkdirSync(this.vectorStorePath, { recursive: true });
+      }
+
+      if (fs.existsSync(this.indexPath) && fs.existsSync(this.docStorePath)) {
+        this.logger.log('Loading existing vector store...');
+        this.vectorStore = await FaissStore.load(
+          this.vectorStorePath,
+          this.embeddings,
+        );
+        this.logger.log('Vector store loaded successfully');
+      } else {
+        this.logger.log('Creating new vector store...');
+        // 创建一个初始文档，以便初始化向量存储
+        const initialDocument = new Document({
+          pageContent: 'Initial document to initialize vector store',
+          metadata: { source: 'initialization' },
+        });
+
+        // 使用 fromDocuments 初始化
+        this.vectorStore = await FaissStore.fromDocuments(
+          [initialDocument], // 使用一个初始文档而不是空数组
+          this.embeddings,
+        );
+
+        // 保存到指定路径
+        await this.vectorStore.save(this.vectorStorePath);
+        this.logger.log('New vector store created successfully');
+      }
+    } catch (error) {
+      this.logger.error('Failed to initialize vector store:', error);
+      throw new HttpException(
+        `Failed to initialize vector store: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 修改添加文档的方法
+  async addDocuments(documents: Document[]): Promise<void> {
+    try {
+      if (!this.vectorStore) {
+        this.logger.error('Vector store not initialized');
+        throw new Error('Vector store not initialized');
+      }
+
+      this.logger.log(
+        `Adding ${documents.length} documents to vector store...`,
+      );
+
+      // 直接使用 addDocuments 方法
+      await this.vectorStore.addDocuments(documents);
+
+      // 保存到磁盘
+      await this.vectorStore.save(this.vectorStorePath);
+
+      this.logger.log('Documents added and saved successfully');
+    } catch (error) {
+      this.logger.error('Failed to add documents:', error);
+      throw new HttpException(
+        `Failed to add documents: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 相似度搜索
+  async searchSimilarDocuments(
+    query: string,
+    limit: number = 5,
+  ): Promise<Document[]> {
+    try {
+      const results = await this.vectorStore.similaritySearch(query, limit);
+      this.logger.log(
+        `Found ${results.length} similar documents for query: ${query}`,
+      );
+      return results;
+    } catch (error) {
+      this.logger.error('Failed to search documents:', error);
+      throw new HttpException(
+        'Failed to search similar documents',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   // 创建新的会话
@@ -133,9 +250,6 @@ export class ChatService {
     onToken: (token: string) => void,
   ) {
     try {
-      // const docs = await this.retriever.getRelevantDocuments('hello');
-      // console.log(docs);
-
       // 查找或创建会话
       let session = await this.sessionRepository.findOne({
         where: { sessionId },
@@ -179,12 +293,12 @@ export class ChatService {
         let token = '';
         if (chunk.content) {
           token = chunk.content.toString();
+          fullResponse += token;
         }
         if (chunk.additional_kwargs.reasoning_content) {
           token = chunk.additional_kwargs.reasoning_content.toString();
         }
 
-        fullResponse += token;
         onToken(token);
       }
 

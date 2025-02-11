@@ -9,9 +9,11 @@ import {
   Query,
   Get,
   Param,
+  Body,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { Observable } from 'rxjs';
+import { Document } from '@langchain/core/documents';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -101,6 +103,40 @@ export class ChatController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to delete session',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 上传文档的接口
+  @Post('documents')
+  async uploadDocument(@Body() data: { content: string; metadata?: any }) {
+    try {
+      const document = new Document({
+        pageContent: data.content,
+        metadata: data.metadata || {},
+      });
+      await this.chatService.addDocuments([document]);
+      return { message: 'Document added successfully' };
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to process document',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 搜索文档的接口
+  @Get('documents/search')
+  async searchDocuments(
+    @Query('query') query: string,
+    @Query('limit') limit?: number,
+  ) {
+    try {
+      return await this.chatService.searchSimilarDocuments(query, limit);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to search documents',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
