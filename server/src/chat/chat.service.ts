@@ -1,34 +1,69 @@
+// 导入所需的依赖
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ChatOpenAI } from '@langchain/openai';
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from '@langchain/core/prompts';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
 import { Message } from './entities/message.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { AIMessageChunk } from '@langchain/core/messages';
+import { IterableReadableStream } from '@langchain/core/dist/utils/stream';
+import { BufferWindowMemory } from 'langchain/memory';
 
+// 定义 DeepSeek AI 响应块的接口
+interface DeepSeekReasonerChunk extends AIMessageChunk {
+  reasoning_content?: string;
+}
+
+// 聊天服务类
 @Injectable()
 export class ChatService {
+  // 声明私有成员变量
   private model: ChatOpenAI;
+  private prompt: ChatPromptTemplate;
+  private memory: BufferWindowMemory;
   private readonly logger = new Logger(ChatService.name);
 
+  // 构造函数，注入依赖
   constructor(
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
     @InjectRepository(Message)
     private messageRepository: Repository<Message>,
   ) {
+    // 初始化 ChatOpenAI 模型
     this.model = new ChatOpenAI({
-      modelName: 'deepseek-chat',
+      modelName: 'ep-20250210103851-zjdln',
       temperature: 0.7,
       streaming: true,
       configuration: {
-        baseURL: 'https://api.deepseek.com',
+        baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
         apiKey: process.env.DEEPSEEK_API_KEY,
       },
     });
+
+    // 初始化记忆缓存
+    this.memory = new BufferWindowMemory({
+      k: 2, // 保留最近2轮对话
+      returnMessages: true,
+      memoryKey: 'history',
+      inputKey: 'input',
+      outputKey: 'output',
+    });
+
+    // 设置对话模板
+    this.prompt = ChatPromptTemplate.fromMessages([
+      ['system', '请你扮演一个内向话少的女孩。'],
+      new MessagesPlaceholder('history'),
+      ['human', '{input}'],
+    ]);
   }
 
+  // 创建新的会话
   async createSession(): Promise<Session> {
     const session = this.sessionRepository.create({
       sessionId: uuidv4(),
@@ -36,6 +71,7 @@ export class ChatService {
     return await this.sessionRepository.save(session);
   }
 
+  // 获取会话历史记录
   private async getSessionHistory(
     sessionId: string,
   ): Promise<{ role: string; content: string }[]> {
@@ -49,12 +85,33 @@ export class ChatService {
     }));
   }
 
+  // 从数据库加载历史记录到内存
+  private async loadMemoryFromDatabase(sessionId: string) {
+    const messages = await this.getSessionHistory(sessionId);
+    // 清空当前 memory
+    await this.memory.clear();
+
+    // 将数据库中的消息加载到 memory 中
+    for (let i = 0; i < messages.length; i += 2) {
+      const userMsg = messages[i];
+      const aiMsg = messages[i + 1];
+      if (userMsg && aiMsg) {
+        await this.memory.saveContext(
+          { input: userMsg.content },
+          { output: aiMsg.content },
+        );
+      }
+    }
+  }
+
+  // 处理流式聊天请求
   async streamChat(
     message: string,
     sessionId: string,
     onToken: (token: string) => void,
   ) {
     try {
+      // 查找或创建会话
       let session = await this.sessionRepository.findOne({
         where: { sessionId },
       });
@@ -62,16 +119,21 @@ export class ChatService {
         session = await this.createSession();
       }
 
-      const history = await this.getSessionHistory(session.sessionId);
-      const messages = history.map((msg) =>
-        msg.role === 'user'
-          ? new HumanMessage(msg.content)
-          : new AIMessage(msg.content),
-      );
+      // 从数据库加载历史记录到 memory
+      await this.loadMemoryFromDatabase(session.sessionId);
 
-      messages.push(new HumanMessage(message));
+      // 获取 memory 中的消息
+      const memoryVariables = await this.memory.loadMemoryVariables({});
 
-      // 创建用户消息
+      // 创建对话链并获取响应流
+      const chain = this.prompt.pipe(this.model);
+      const stream: IterableReadableStream<DeepSeekReasonerChunk> =
+        await chain.stream({
+          history: memoryVariables.history || [],
+          input: message,
+        });
+
+      // 保存用户消息
       const userMessage = this.messageRepository.create({
         role: 'user',
         content: message.toString(),
@@ -79,23 +141,31 @@ export class ChatService {
       });
       await this.messageRepository.save(userMessage);
 
-      const stream = await this.model.stream(messages);
       let fullResponse = '';
 
+      // 处理响应流
       for await (const chunk of stream) {
+        let token = '';
         if (chunk.content) {
-          const token = chunk.content.toString();
-          fullResponse += token;
-          onToken(token);
+          token = chunk.content.toString();
         }
+        if (chunk.reasoning_content) {
+          token = chunk.reasoning_content.toString();
+        }
+
+        fullResponse += token;
+        onToken(token);
       }
 
-      // 创建 AI 响应消息
+      // 保存 AI 响应消息
       const aiMessage = this.messageRepository.create({
         role: 'assistant',
-        content: fullResponse.toString(),
+        content: fullResponse.startsWith('\n\n')
+          ? fullResponse.slice(2)
+          : fullResponse,
         sessionId: session.sessionId,
       });
+
       await this.messageRepository.save(aiMessage);
     } catch (error) {
       this.logger.error('Stream chat error:', error);
@@ -114,6 +184,7 @@ export class ChatService {
         select: ['id', 'sessionId', 'createdAt', 'updatedAt'],
       });
 
+      // 格式化返回数据
       return sessions.map((session) => ({
         id: session.id,
         sessionId: session.sessionId,
@@ -134,6 +205,7 @@ export class ChatService {
   // 获取指定会话的历史消息
   async getSessionMessages(sessionId: string) {
     try {
+      // 查找会话
       const session = await this.sessionRepository.findOne({
         where: { sessionId },
       });
@@ -142,12 +214,14 @@ export class ChatService {
         throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
       }
 
+      // 获取会话消息
       const messages = await this.messageRepository.find({
         where: { sessionId },
         order: { createdAt: 'ASC' },
         select: ['id', 'role', 'content', 'createdAt'],
       });
 
+      // 返回会话和消息信息
       return {
         session: {
           id: session.id,
@@ -175,10 +249,10 @@ export class ChatService {
         throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
       }
 
-      // 直接使用 sessionId 删除相关消息
+      // 删除会话相关的所有消息
       await this.messageRepository.delete({ sessionId });
 
-      // 删除会话
+      // 删除会话本身
       await this.sessionRepository.delete({ sessionId });
 
       return { message: 'Session deleted successfully' };
