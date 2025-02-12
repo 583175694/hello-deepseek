@@ -2,6 +2,11 @@ import { useState, useCallback } from "react";
 import { useEventSource } from "./useEventSource";
 import { baseURL } from "@/lib/api";
 
+interface StreamResponse {
+  content: string;
+  type: "content" | "reasoning" | "sources";
+}
+
 export function useStreamChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const { connect, close } = useEventSource();
@@ -14,13 +19,9 @@ export function useStreamChat() {
         useWebSearch?: boolean;
         useVectorSearch?: boolean;
       },
-      onStream?: (
-        content: string,
-        type: "content" | "reasoning" | "sources"
-      ) => void
+      onStream?: (response: StreamResponse) => void
     ) => {
       setIsStreaming(true);
-      let streamContent = "";
 
       // 构建查询参数
       const params = new URLSearchParams({
@@ -39,8 +40,7 @@ export function useStreamChat() {
       connect(`${baseURL}/chat/stream?${params.toString()}`, {
         onMessage: (token) => {
           const res = JSON.parse(token);
-          streamContent += res.content;
-          onStream?.(streamContent, res.type);
+          onStream?.(res);
         },
         onError: (error) => {
           console.error("Stream chat error:", error);

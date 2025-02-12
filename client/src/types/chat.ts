@@ -2,6 +2,8 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  reasoning?: string;
+  sources?: string;
   createdAt: string;
   type: "content" | "reasoning" | "sources";
 }
@@ -19,6 +21,7 @@ export interface Session {
   sessionId: string;
   createdAt: string;
   updatedAt: string;
+  firstMessage: string;
   lastMessage: string;
   messageCount: number;
 }

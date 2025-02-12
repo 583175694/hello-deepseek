@@ -8,9 +8,18 @@ import { ChatMessage } from "./ChatMessage";
 import { chatService } from "@/lib/api";
 
 export function ChatHistory() {
+  // 从会话管理器获取当前会话ID
   const { currentSessionId } = useSessionManager();
-  const { messages, isLoading, error, sendStreamMessage, setMessageList } =
-    useAIChat();
+
+  // 从 AI 聊天 hook 获取状态和方法
+  const {
+    messages, // 消息列表
+    isLoading, // 是否正在加载
+    error, // 错误信息
+    isStreaming, // 是否正在流式传输
+    sendStreamMessage, // 发送流式消息的方法
+    setMessageList, // 设置消息列表的方法
+  } = useAIChat();
 
   // 加载会话消息历史
   useEffect(() => {
@@ -28,6 +37,7 @@ export function ChatHistory() {
     loadMessages();
   }, [currentSessionId, setMessageList]);
 
+  // 如果没有选中的会话，显示提示信息
   if (!currentSessionId) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -38,22 +48,39 @@ export function ChatHistory() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* 消息列表区域 */}
       <div className="flex-1 overflow-auto p-4">
-        <div className="space-y-6 max-w-2xl mx-auto">
-          {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message}
-              type={message.type}
-            />
-          ))}
-          {isLoading && (
+        <div className="space-y-6 max-w-3xl mx-auto">
+          {messages.length === 0 ? (
+            // 空消息提示
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-12">
+              <h2 className="text-lg font-medium mb-2">开始一个新的对话</h2>
+              <p className="text-sm text-center max-w-md">
+                你可以问我任何问题，我会尽力帮助你。如果需要参考知识库中的内容，可以开启知识库搜索。
+              </p>
+            </div>
+          ) : (
+            // 渲染消息列表
+            messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                isStreaming={
+                  isStreaming && message.id === messages[messages.length - 1].id
+                }
+              />
+            ))
+          )}
+          {/* 加载状态提示 */}
+          {isLoading && !isStreaming && (
             <div className="text-sm text-muted-foreground">AI 正在思考...</div>
           )}
+          {/* 错误提示 */}
           {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
       </div>
 
+      {/* 输入框区域 */}
       <div className="border-t border-border p-4">
         <div className="max-w-2xl mx-auto">
           <ChatInput

@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { FileText, Upload, Trash2, Loader2 } from "lucide-react";
 import { fileService } from "@/lib/api";
 import type { FileInfo } from "@/types/file";
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 
 export function KnowledgeBase() {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -55,22 +53,6 @@ export function KnowledgeBase() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return "未知时间";
-      }
-      return formatDistanceToNow(date, {
-        addSuffix: true,
-        locale: zhCN,
-      });
-    } catch (error) {
-      console.error("日期格式化错误:", error);
-      return "未知时间";
-    }
-  };
-
   useEffect(() => {
     loadFiles();
   }, []);
@@ -106,45 +88,49 @@ export function KnowledgeBase() {
         )}
 
         <div className="flex flex-row flex-wrap gap-4">
-          {files.map((file) => (
-            <div
-              key={file.filename}
-              className="w-[200px] group rounded-lg border border-border hover:border-foreground/20 cursor-pointer transition-colors"
-            >
-              <div className="p-4 flex flex-col h-full">
-                <div className="flex items-start justify-between">
-                  <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="opacity-0 group-hover:opacity-100 -mr-2 -mt-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteFile(file.filename);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+          {files.length === 0 ? (
+            <div className="w-full flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <FileText className="w-12 h-12 mb-4" />
+              <p className="text-lg mb-2">知识库还是空的</p>
+              <p className="text-sm">点击上方的上传按钮添加文件</p>
+            </div>
+          ) : (
+            files.map((file) => (
+              <div
+                key={file.filename}
+                className="w-[200px] group rounded-lg border border-border hover:border-foreground/20 cursor-pointer transition-colors"
+              >
+                <div className="p-4 flex flex-col h-full">
+                  <div className="flex items-start justify-between">
+                    <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 -mr-2 -mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFile(file.filename);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
 
-                <div className="mt-4 flex-1">
-                  <h3 className="font-medium text-base line-clamp-2 mb-1">
-                    {file.filename}
-                  </h3>
-                  <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span>大小：</span>
-                      <span>{(file.size / 1024).toFixed(2)} KB</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span>上传于：</span>
-                      <span>{formatDate(file.uploadedAt)}</span>
-                    </span>
+                  <div className="mt-4 flex-1">
+                    <h3 className="font-medium text-base line-clamp-2 mb-1">
+                      {file.filename}
+                    </h3>
+                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <span>大小：</span>
+                        <span>{(file.size / 1024).toFixed(2)} KB</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

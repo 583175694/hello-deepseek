@@ -1,88 +1,159 @@
+// 导入必要的依赖
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/chat";
-import { Bot, Copy, RotateCcw, Share2, User } from "lucide-react";
+import { Bot, Copy, User, Database, Search, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-interface ChatMessageProps {
-  message: Message;
-  type: "content" | "reasoning" | "sources";
-  isStreaming?: boolean;
-  onRetry?: () => void;
-  onShare?: () => void;
+// 定义消息来源的接口
+interface Source {
+  type: string;
+  url: string;
 }
 
-export function ChatMessage({
-  message,
-  type,
-  isStreaming,
-  onRetry,
-  onShare,
-}: ChatMessageProps) {
+// 定义组件的 Props 接口
+interface ChatMessageProps {
+  message: Message;
+  isStreaming?: boolean; // 是否正在流式传输消息
+}
+
+export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+  // 判断消息是否来自 AI
   const isAI = message.role === "assistant";
-  const [content, setContent] = useState("");
-  const [reasoning, setReasoning] = useState("");
-  const [sources, setSources] = useState<string[]>([]);
+  // 复制状态管理
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    // 根据type更新对应的状态，但不清空其他状态
-    if (type === "content") {
-      setContent(message.content);
-    } else if (type === "reasoning") {
-      setReasoning(message.content);
-    } else if (type === "sources") {
-      setSources(message.content.split("\n").filter(Boolean));
+  // 处理复制消息内容
+  const handleCopy = async () => {
+    // 构建要复制的文本
+    let textToCopy = "";
+
+    if (isAI) {
+      // 如果是 AI 消息，包含思考过程（如果有）
+      if (message.reasoning) {
+        textToCopy += "思考过程：\n" + message.reasoning + "\n\n";
+      }
+      textToCopy += message.content;
+    } else {
+      textToCopy = message.content;
     }
-  }, [message.content, type]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      // 1.5秒后重置复制状态
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("复制失败:", err);
+    }
   };
 
+  // 渲染消息内容
   const renderMessageContent = () => {
+    if (!isAI) {
+      // 用户消息直接显示，保留换行
+      return <div className="whitespace-pre-wrap">{message.content}</div>;
+    }
+
+    // AI 消息使用 Markdown 渲染
     return (
-      <div className="flex flex-col gap-2">
-        {reasoning && (
-          <div className="border-l-4 border-primary/30 pl-4 italic text-muted-foreground">
+      <div className="flex flex-col space-y-2">
+        {message.reasoning && (
+          // 渲染思考过程，使用左边框突出显示
+          <div className="border-l-4 border-primary/30 pl-4 text-muted-foreground">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {reasoning + (isStreaming && type === "reasoning" ? "▊" : "")}
+              {message.reasoning + (isStreaming ? "▊" : "")}
             </ReactMarkdown>
           </div>
         )}
-        {content && (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content + (isStreaming && type === "content" ? "▊" : "")}
-          </ReactMarkdown>
-        )}
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {message.content + (isStreaming ? "▊" : "")}
+        </ReactMarkdown>
       </div>
     );
   };
 
+  // 渲染消息来源
+  const renderSources = () => {
+    if (!message.sources) return null;
+
+    try {
+      // 解析消息来源
+      const sources: Source[] = JSON.parse(message.sources);
+
+      // 使用 Set 进行去重，以 url 为唯一标识
+      const uniqueSources = Array.from(
+        new Set(sources.map((source) => source.url))
+      ).map((url) => sources.find((source) => source.url === url)!);
+
+      return (
+        <div className="flex flex-wrap gap-2 ml-11">
+          {uniqueSources.map((source) => {
+            // 渲染本地知识库来源
+            if (source.type === "vector") {
+              return (
+                <span
+                  key={source.url}
+                  className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-xs flex items-center gap-1"
+                >
+                  <Database className="w-3 h-3" />
+                  {source.url}
+                </span>
+              );
+            }
+
+            // 渲染网络链接来源
+            return (
+              <a
+                key={source.url}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-3 py-1 rounded-full text-xs transition-colors flex items-center gap-1"
+              >
+                <Search className="w-3 h-3" />
+                {new URL(source.url).hostname.replace(/^www\./, "")}
+              </a>
+            );
+          })}
+        </div>
+      );
+    } catch (error) {
+      console.error("Failed to parse sources:", error);
+      return null;
+    }
+  };
+
+  // 渲染整个消息组件
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col space-y-2">
+      {/* 消息主体部分 */}
       <div className={cn("flex gap-3", isAI ? "justify-start" : "justify-end")}>
+        {/* AI 头像 */}
         {isAI && (
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Bot className="w-5 h-5" />
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col">
+          {/* 消息内容 */}
           <div
             className={cn(
-              "max-w-[100%] rounded-2xl px-4 py-2.5",
+              "rounded-2xl px-4 prose-sm py-2.5",
               isAI
-                ? "bg-muted prose dark:prose-invert prose-sm max-w-none"
-                : "bg-primary text-primary-foreground prose-sm max-w-none"
+                ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0"
+                : "bg-primary text-primary-foreground"
             )}
           >
-            {isAI ? renderMessageContent() : message.content}
+            {renderMessageContent()}
           </div>
 
+          {/* 复制按钮 */}
           {isAI && (
-            <div className="flex gap-1">
+            <div className="flex gap-1 mt-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -90,30 +161,17 @@ export function ChatMessage({
                 onClick={handleCopy}
                 disabled={isStreaming}
               >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={onRetry}
-                disabled={isStreaming}
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={onShare}
-                disabled={isStreaming}
-              >
-                <Share2 className="h-4 w-4" />
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           )}
         </div>
 
+        {/* 用户头像 */}
         {!isAI && (
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
             <User className="w-5 h-5" />
@@ -121,18 +179,8 @@ export function ChatMessage({
         )}
       </div>
 
-      {sources.length > 0 && (
-        <div className="flex flex-wrap gap-2 ml-11">
-          {sources.map((source, index) => (
-            <div
-              key={index}
-              className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-xs"
-            >
-              {source}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* 渲染消息来源 */}
+      {renderSources()}
     </div>
   );
 }

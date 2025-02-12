@@ -39,6 +39,8 @@ export class SessionService {
         sessionId: session.sessionId,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
+        firstMessage:
+          session.messages.length > 0 ? session.messages[0].content : null,
         lastMessage:
           session.messages.length > 0
             ? session.messages[session.messages.length - 1].content

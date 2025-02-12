@@ -3,6 +3,12 @@ import { useStreamChat } from "./useStreamChat";
 import type { Message } from "@/types/chat";
 import { nanoid } from "nanoid";
 
+interface StreamContent {
+  content: string;
+  reasoning: string;
+  sources: string;
+}
+
 export function useAIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +31,19 @@ export function useAIChat() {
 
   // 更新消息
   const updateMessage = useCallback(
-    (
-      messageId: string,
-      content: string,
-      type: "content" | "reasoning" | "sources"
-    ) => {
+    (messageId: string, streamContent: StreamContent) => {
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId ? { ...msg, content, type } : msg
-        )
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            return {
+              ...msg,
+              content: streamContent.content,
+              reasoning: streamContent.reasoning,
+              sources: streamContent.sources,
+            };
+          }
+          return msg;
+        })
       );
     },
     []
@@ -59,24 +69,39 @@ export function useAIChat() {
         type: "content",
       });
 
-      // 添加一个空的 AI 消息
+      // 添加AI消息
       const aiMessageId = addMessage({
-        content: "AI正在思考中...",
+        content: "",
+        reasoning: "",
+        sources: "",
         role: "assistant",
         type: "content",
       });
 
+      // 用于累积不同类型的内容
+      const streamContent: StreamContent = {
+        content: "",
+        reasoning: "",
+        sources: "",
+      };
+
       // 开始流式对话
-      streamChat(content, sessionId, options, (streamContent, type) => {
-        if (streamContent && isLoading) {
+      streamChat(content, sessionId, options, (res) => {
+        if (isLoading) {
           setIsLoading(false);
         }
-        // 更新 AI 消息内容
-        updateMessage(
-          aiMessageId,
-          streamContent,
-          type as "content" | "reasoning" | "sources"
-        );
+
+        // 根据类型累积内容
+        if (res.type === "content") {
+          streamContent.content += res.content;
+        } else if (res.type === "reasoning") {
+          streamContent.reasoning += res.content;
+        } else if (res.type === "sources") {
+          streamContent.sources += res.content;
+        }
+
+        // 更新消息
+        updateMessage(aiMessageId, streamContent);
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "发送消息失败");
