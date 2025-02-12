@@ -20,6 +20,7 @@ export interface FileInfo {
 export class FileService {
   private readonly logger = new Logger(FileService.name);
   private readonly uploadDir = path.join(process.cwd(), 'uploads');
+  private init = false;
 
   constructor(private documentService: DocumentService) {
     // 确保上传目录存在
@@ -28,7 +29,9 @@ export class FileService {
     }
 
     // 初始化时处理已有文件
-    this.processExistingFiles();
+    if (this.init) {
+      this.processExistingFiles();
+    }
   }
 
   // 处理已有文件的方法
