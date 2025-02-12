@@ -1,8 +1,9 @@
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   createdAt: string;
+  type: "content" | "reasoning" | "sources";
 }
 
 export interface Chat {
@@ -11,7 +12,8 @@ export interface Chat {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
-} 
+  type: "content" | "reasoning" | "sources";
+}
 
 export interface Session {
   sessionId: string;
@@ -20,4 +22,3 @@ export interface Session {
   lastMessage: string;
   messageCount: number;
 }
-  

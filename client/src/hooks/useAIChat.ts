@@ -24,11 +24,20 @@ export function useAIChat() {
   );
 
   // 更新消息
-  const updateMessage = useCallback((messageId: string, content: string) => {
-    setMessages((prev) =>
-      prev.map((msg) => (msg.id === messageId ? { ...msg, content } : msg))
-    );
-  }, []);
+  const updateMessage = useCallback(
+    (
+      messageId: string,
+      content: string,
+      type: "content" | "reasoning" | "sources"
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, content, type } : msg
+        )
+      );
+    },
+    []
+  );
 
   // 流式对话方法
   const sendStreamMessage = async (
@@ -47,21 +56,27 @@ export function useAIChat() {
       addMessage({
         content,
         role: "user",
+        type: "content",
       });
 
       // 添加一个空的 AI 消息
       const aiMessageId = addMessage({
         content: "AI正在思考中...",
         role: "assistant",
+        type: "content",
       });
 
       // 开始流式对话
-      streamChat(content, sessionId, options, (streamContent) => {
+      streamChat(content, sessionId, options, (streamContent, type) => {
         if (streamContent && isLoading) {
           setIsLoading(false);
         }
         // 更新 AI 消息内容
-        updateMessage(aiMessageId, streamContent);
+        updateMessage(
+          aiMessageId,
+          streamContent,
+          type as "content" | "reasoning" | "sources"
+        );
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "发送消息失败");

@@ -73,8 +73,11 @@ export class ChatController {
           sessionId,
           shouldUseWebSearch,
           shouldUseVectorSearch,
-          (token: string) => {
-            subscriber.next({ data: token });
+          (response: {
+            type: 'content' | 'reasoning' | 'sources';
+            content: string;
+          }) => {
+            subscriber.next({ data: response });
           },
         )
         .then(() => {

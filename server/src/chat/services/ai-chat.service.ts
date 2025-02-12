@@ -83,13 +83,12 @@ export class AIChatService {
   // 执行Exa搜索
   private async performExaSearch(query: string): Promise<string> {
     try {
-      // 优化搜索查询
-      const optimizedQuery = await this.optimizeSearchQuery(query);
-      this.logger.log(`Original query: ${query}`);
-      this.logger.log(`Optimized query: ${optimizedQuery}`);
+      // 优化搜索查询（暂时不使用）
+      // const optimizedQuery = await this.optimizeSearchQuery(query);
+      // this.logger.log(`Original query: ${query}`);
+      // this.logger.log(`Optimized query: ${optimizedQuery}`);
 
-      const searchResults =
-        await this.retriever.getRelevantDocuments(optimizedQuery);
+      const searchResults = await this.retriever.getRelevantDocuments(query);
       return searchResults
         .map((doc) => `来源: ${doc.metadata.url}\n内容: ${doc.pageContent}`)
         .join('\n\n');
@@ -105,7 +104,10 @@ export class AIChatService {
     sessionId: string,
     useWebSearch: boolean = false,
     useVectorSearch: boolean = false,
-    onToken: (token: string) => void,
+    onToken: (response: {
+      type: 'content' | 'reasoning' | 'sources';
+      content: string;
+    }) => void,
   ) {
     try {
       // 创建会话并加载历史记录
@@ -117,12 +119,21 @@ export class AIChatService {
 
       // 构建搜索上下文
       let searchContext = '';
+      const sources: Array<{ type: 'web' | 'vector'; url: string }> = [];
 
       // 执行网络搜索
       if (useWebSearch) {
         this.logger.log('Performing web search...');
         const webSearchResults = await this.performExaSearch(message);
         if (webSearchResults) {
+          // 提取URL并存储
+          const urls =
+            webSearchResults
+              .match(/来源: (.*?)\n/g)
+              ?.map((match) => match.replace('来源: ', '').trim()) || [];
+          urls.forEach((url) => {
+            sources.push({ type: 'web', url });
+          });
           searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
         }
       }
@@ -133,6 +144,13 @@ export class AIChatService {
         const vectorSearchResults =
           await this.documentService.searchSimilarDocuments(message, 3);
         if (vectorSearchResults && vectorSearchResults.length > 0) {
+          // 存储文档来源
+          vectorSearchResults.forEach((doc) => {
+            sources.push({
+              type: 'vector',
+              url: doc.metadata.filename,
+            });
+          });
           searchContext +=
             '本地文档搜索结果：\n' +
             vectorSearchResults
@@ -159,15 +177,31 @@ export class AIChatService {
       // 处理流式响应
       let fullResponse = '';
       for await (const chunk of stream) {
-        let token = '';
         if (chunk.content) {
-          token = chunk.content.toString();
-          fullResponse += token;
+          const content = chunk.content.toString();
+          fullResponse += content;
+          onToken({
+            type: 'content',
+            content,
+          });
         }
+
         if (chunk.additional_kwargs.reasoning_content) {
-          token = chunk.additional_kwargs.reasoning_content.toString();
+          const reasoning =
+            chunk.additional_kwargs.reasoning_content.toString();
+          onToken({
+            type: 'reasoning',
+            content: reasoning,
+          });
         }
-        onToken(token);
+      }
+
+      // 在所有内容传输完成后，发送来源信息
+      if (sources.length > 0) {
+        onToken({
+          type: 'sources',
+          content: JSON.stringify(sources),
+        });
       }
 
       // 保存AI助手的回复

@@ -14,7 +14,10 @@ export function useStreamChat() {
         useWebSearch?: boolean;
         useVectorSearch?: boolean;
       },
-      onStream?: (content: string) => void
+      onStream?: (
+        content: string,
+        type: "content" | "reasoning" | "sources"
+      ) => void
     ) => {
       setIsStreaming(true);
       let streamContent = "";
@@ -35,8 +38,9 @@ export function useStreamChat() {
       // 连接 SSE
       connect(`${baseURL}/chat/stream?${params.toString()}`, {
         onMessage: (token) => {
-          streamContent += token;
-          onStream?.(streamContent);
+          const res = JSON.parse(token);
+          streamContent += res.content;
+          onStream?.(streamContent, res.type);
         },
         onError: (error) => {
           console.error("Stream chat error:", error);
