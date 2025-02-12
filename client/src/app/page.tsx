@@ -1,5 +1,5 @@
-import { ChatLayout } from "@/components/layouts/ChatLayout";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <ChatLayout />;
+  redirect("/chat");
 }

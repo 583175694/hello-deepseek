@@ -58,10 +58,38 @@ export class AIChatService {
     ]);
   }
 
+  // 优化搜索查询
+  private async optimizeSearchQuery(query: string): Promise<string> {
+    try {
+      const chain = ChatPromptTemplate.fromMessages([
+        [
+          'system',
+          '你是一个搜索优化专家。你的任务是将用户的问题重新组织成更适合搜索的形式。保持核心含义不变，但要使其更加清晰、准确和易于检索。只返回优化后的问题，不要有任何解释。',
+        ],
+        ['human', '{input}'],
+      ]).pipe(this.model);
+
+      const response = await chain.invoke({
+        input: query,
+      });
+
+      return response.content.toString();
+    } catch (error) {
+      this.logger.error('Query optimization error:', error);
+      return query; // 如果优化失败，返回原始查询
+    }
+  }
+
   // 执行Exa搜索
   private async performExaSearch(query: string): Promise<string> {
     try {
-      const searchResults = await this.retriever.getRelevantDocuments(query);
+      // 优化搜索查询
+      const optimizedQuery = await this.optimizeSearchQuery(query);
+      this.logger.log(`Original query: ${query}`);
+      this.logger.log(`Optimized query: ${optimizedQuery}`);
+
+      const searchResults =
+        await this.retriever.getRelevantDocuments(optimizedQuery);
       return searchResults
         .map((doc) => `来源: ${doc.metadata.url}\n内容: ${doc.pageContent}`)
         .join('\n\n');

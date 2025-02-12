@@ -1,6 +1,6 @@
 export interface ChatRequest {
   message: string;
-  history: { role: 'user' | 'assistant'; content: string }[];
+  history: { role: "user" | "assistant"; content: string }[];
 }
 
 export interface ChatResponse {
@@ -10,4 +10,4 @@ export interface ChatResponse {
 export interface APIError {
   message: string;
   code?: string;
-} 
+}
