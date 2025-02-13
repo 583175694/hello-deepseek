@@ -79,12 +79,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             variant="ghost"
             className={cn(
               "h-7 px-2 gap-1",
-              useWebSearch && "bg-muted text-accent-foreground"
+              useWebSearch &&
+                "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
             onClick={() => setUseWebSearch(!useWebSearch)}
             disabled={disabled}
           >
-            <Search className="w-4 h-4" />
+            <Search className={cn("w-4 h-4", useWebSearch && "text-primary")} />
             搜索
           </Button>
 
@@ -95,12 +96,15 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             variant="ghost"
             className={cn(
               "h-7 px-2 gap-1",
-              useVectorSearch && "bg-muted text-accent-foreground"
+              useVectorSearch &&
+                "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
             onClick={() => setUseVectorSearch(!useVectorSearch)}
             disabled={disabled}
           >
-            <Database className="w-4 h-4" />
+            <Database
+              className={cn("w-4 h-4", useVectorSearch && "text-primary")}
+            />
             知识库
           </Button>
         </div>

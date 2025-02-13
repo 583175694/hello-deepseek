@@ -1,7 +1,18 @@
 // 导入必要的依赖
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/chat";
-import { Bot, Copy, User, Database, Search, Check } from "lucide-react";
+import {
+  Bot,
+  Copy,
+  User,
+  Database,
+  Search,
+  Check,
+  RefreshCw,
+  Share2,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,6 +35,8 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const isAI = message.role === "assistant";
   // 复制状态管理
   const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [disliked, setDisliked] = useState(false);
 
   // 处理复制消息内容
   const handleCopy = async () => {
@@ -48,6 +61,35 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     } catch (err) {
       console.error("复制失败:", err);
     }
+  };
+
+  // 处理刷新
+  const handleRefresh = () => {
+    console.log("刷新回答");
+  };
+
+  // 处理分享
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: "AI 对话分享",
+        text: message.content,
+      });
+    } catch {
+      await navigator.clipboard.writeText(message.content);
+      alert("已复制到剪贴板");
+    }
+  };
+
+  // 处理点赞和点踩
+  const handleLike = () => {
+    if (disliked) setDisliked(false);
+    setLiked(!liked);
+  };
+
+  const handleDislike = () => {
+    if (liked) setLiked(false);
+    setDisliked(!disliked);
   };
 
   // 渲染消息内容
@@ -151,7 +193,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             {renderMessageContent()}
           </div>
 
-          {/* 复制按钮 */}
+          {/* 交互按钮组 */}
           {isAI && (
             <div className="flex gap-1 mt-1">
               <Button
@@ -166,6 +208,46 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleRefresh}
+                disabled={isStreaming}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleShare}
+                disabled={isStreaming}
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7", liked && "text-green-500")}
+                onClick={handleLike}
+                disabled={isStreaming}
+              >
+                <ThumbsUp className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7", disliked && "text-red-500")}
+                onClick={handleDislike}
+                disabled={isStreaming}
+              >
+                <ThumbsDown className="h-4 w-4" />
               </Button>
             </div>
           )}

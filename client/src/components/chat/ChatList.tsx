@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Plus, Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
-import { useAIChat } from "@/hooks/useAIChat";
 
 export function ChatList() {
   const {
@@ -14,13 +13,9 @@ export function ChatList() {
     createNewSession,
     deleteSession,
   } = useSessionManager();
-  const { messages } = useAIChat();
 
   const handleNewChat = async () => {
     try {
-      if (currentSessionId && messages.length === 0) {
-        return;
-      }
       await createNewSession();
     } catch (error) {
       console.error("创建新对话失败:", error);

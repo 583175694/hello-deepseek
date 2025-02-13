@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
@@ -8,7 +8,8 @@ import { ChatMessage } from "./ChatMessage";
 import { chatService } from "@/lib/api";
 
 export function ChatHistory() {
-  // 从会话管理器获取当前会话ID
+  // 添加消息容器的引用
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { currentSessionId } = useSessionManager();
 
   // 从 AI 聊天 hook 获取状态和方法
@@ -20,6 +21,16 @@ export function ChatHistory() {
     sendStreamMessage, // 发送流式消息的方法
     setMessageList, // 设置消息列表的方法
   } = useAIChat();
+
+  // 添加滚动到底部的函数
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // 在消息列表变化时滚动到底部
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, currentSessionId]);
 
   // 加载会话消息历史
   useEffect(() => {
@@ -60,16 +71,19 @@ export function ChatHistory() {
               </p>
             </div>
           ) : (
-            // 渲染消息列表
-            messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                isStreaming={
-                  isStreaming && message.id === messages[messages.length - 1].id
-                }
-              />
-            ))
+            <>
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  isStreaming={
+                    isStreaming &&
+                    message.id === messages[messages.length - 1].id
+                  }
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </>
           )}
           {/* 加载状态提示 */}
           {isLoading && !isStreaming && (

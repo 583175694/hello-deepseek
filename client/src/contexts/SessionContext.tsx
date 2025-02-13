@@ -38,6 +38,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const createNewSession = useCallback(async () => {
     try {
+      console.log("创建新会话");
       const session = await chatService.createSession();
       setSessions((prev) => [session, ...prev]);
       setCurrentSessionId(session.sessionId);
@@ -48,18 +49,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const deleteSession = useCallback(async (sessionId: string) => {
-    try {
-      await chatService.deleteSession(sessionId);
-      setSessions((prev) => prev.filter(session => session.sessionId !== sessionId));
-      if (currentSessionId === sessionId) {
-        setCurrentSessionId(null);
+  const deleteSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        await chatService.deleteSession(sessionId);
+        setSessions((prev) =>
+          prev.filter((session) => session.sessionId !== sessionId)
+        );
+        if (currentSessionId === sessionId) {
+          setCurrentSessionId(null);
+        }
+      } catch (error) {
+        console.error("删除会话失败:", error);
+        throw error;
       }
-    } catch (error) {
-      console.error("删除会话失败:", error);
-      throw error;
-    }
-  }, [currentSessionId]);
+    },
+    [currentSessionId]
+  );
 
   useEffect(() => {
     loadSessions();

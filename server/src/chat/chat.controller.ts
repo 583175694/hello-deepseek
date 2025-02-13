@@ -51,11 +51,6 @@ export class ChatController {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
     }
 
-    if (!sessionId) {
-      const session = await this.sessionService.createSession();
-      sessionId = session.sessionId;
-    }
-
     // 将字符串参数转换为布尔值，默认都为 false
     const shouldUseWebSearch =
       useWebSearch === undefined
