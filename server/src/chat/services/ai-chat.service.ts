@@ -40,9 +40,10 @@ export class AIChatService {
       streaming: true,
       configuration: {
         baseURL: models.bytedance.baseURL,
-        apiKey: models.bytedance.apiKey,
+        apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
       },
     });
+    this.logger.log('DeepSeek model initialized successfully');
 
     this.logger.log('Initializing Exa client and retriever...');
     // 初始化Exa客户端和检索器
@@ -50,6 +51,7 @@ export class AIChatService {
     this.retriever = new ExaRetriever({
       client: this.exa,
     });
+    this.logger.log('Exa client and retriever initialized successfully');
 
     this.logger.log('Setting up chat prompt template...');
     // 设置聊天提示模板
@@ -61,6 +63,7 @@ export class AIChatService {
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
+    this.logger.log('Chat prompt template setup completed');
     this.logger.log('Service initialization completed');
   }
 
@@ -128,12 +131,14 @@ export class AIChatService {
         this.logger.log('No sessionId provided, creating new session...');
         session = await this.sessionService.createSession();
         sessionId = session.sessionId;
+        this.logger.log(`New session created with ID: ${sessionId}`);
       }
 
       this.logger.log('Loading chat history...');
       const memory =
         await this.messageService.loadMemoryFromDatabase(sessionId);
       const memoryVariables = await memory.loadMemoryVariables({});
+      this.logger.log('Chat history loaded successfully');
 
       // 构建搜索上下文
       let searchContext = '';
@@ -154,6 +159,7 @@ export class AIChatService {
             sources.push({ type: 'web', url });
           });
           searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
+          this.logger.log('Web search results added to context');
         }
       }
 
@@ -168,6 +174,7 @@ export class AIChatService {
           );
           // 存储文档来源
           vectorSearchResults.forEach((doc) => {
+            console.log(doc);
             sources.push({
               type: 'vector',
               url: doc.metadata.filename,
@@ -182,12 +189,14 @@ export class AIChatService {
               )
               .join('\n\n') +
             '\n\n';
+          this.logger.log('Vector search results added to context');
         }
       }
 
       // 保存用户消息
       this.logger.log('Saving user message...');
       await this.messageService.saveMessage('user', message, sessionId);
+      this.logger.log('User message saved successfully');
 
       // 创建并执行聊天链
       this.logger.log('Creating chat chain and starting stream...');
@@ -197,6 +206,7 @@ export class AIChatService {
         input: message,
         searchContext: searchContext || '没有找到相关的搜索结果',
       });
+      this.logger.log('Chat stream created successfully');
 
       // 处理流式响应
       let fullResponse = '';
@@ -220,6 +230,7 @@ export class AIChatService {
           });
         }
       }
+      this.logger.log('Stream response processing completed');
 
       // 在所有内容传输完成后，发送来源信息
       if (sources.length > 0) {
@@ -228,6 +239,7 @@ export class AIChatService {
           type: 'sources',
           content: JSON.stringify(sources),
         });
+        this.logger.log('Sources sent successfully');
       }
 
       // 保存AI助手的回复
@@ -237,6 +249,7 @@ export class AIChatService {
         fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
         sessionId,
       );
+      this.logger.log('Assistant response saved successfully');
       this.logger.log('Stream chat completed successfully');
     } catch (error) {
       this.logger.error('Stream chat error:', error);

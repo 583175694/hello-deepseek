@@ -3,14 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatController } from './chat.controller';
 import { Session } from './entities/session.entity';
 import { Message } from './entities/message.entity';
+import { SessionFile } from './entities/session-file.entity';
 import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
 import { FileService } from './services/file.service';
+import { SessionFileService } from './services/session-file.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Session, Message])],
+  imports: [TypeOrmModule.forFeature([Session, Message, SessionFile])],
   controllers: [ChatController],
   providers: [
     SessionService,
@@ -18,6 +20,7 @@ import { FileService } from './services/file.service';
     DocumentService,
     AIChatService,
     FileService,
+    SessionFileService,
   ],
 })
 export class ChatModule {}

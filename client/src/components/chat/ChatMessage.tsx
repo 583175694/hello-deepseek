@@ -21,7 +21,7 @@ import { useState } from "react";
 // 定义消息来源的接口
 interface Source {
   type: string;
-  url: string;
+  url?: string;
 }
 
 // 定义组件的 Props 接口
@@ -135,7 +135,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           {uniqueSources.map((source) => {
             // 渲染本地知识库来源
             if (source.type === "vector") {
-              return (
+              return source.url ? (
                 <span
                   key={source.url}
                   className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-xs flex items-center gap-1"
@@ -143,7 +143,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                   <Database className="w-3 h-3" />
                   {source.url}
                 </span>
-              );
+              ) : null;
             }
 
             // 渲染网络链接来源
@@ -156,7 +156,9 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-3 py-1 rounded-full text-xs transition-colors flex items-center gap-1"
               >
                 <Search className="w-3 h-3" />
-                {new URL(source.url).hostname.replace(/^www\./, "")}
+                {source.url
+                  ? new URL(source.url).hostname.replace(/^www\./, "")
+                  : "未知来源"}
               </a>
             );
           })}

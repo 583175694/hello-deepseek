@@ -20,6 +20,7 @@ import { SessionService } from './services/session.service';
 import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
 import { FileService, FileInfo } from './services/file.service';
+import { SessionFileService } from './services/session-file.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 
@@ -31,6 +32,7 @@ export class ChatController {
     private readonly documentService: DocumentService,
     private readonly aiChatService: AIChatService,
     private readonly fileService: FileService,
+    private readonly sessionFileService: SessionFileService,
   ) {}
 
   // 创建新会话的接口
@@ -145,6 +147,37 @@ export class ChatController {
   @Delete('files/:filename')
   async deleteFile(@Param('filename') filename: string) {
     await this.fileService.deleteFile(filename);
+    return { message: 'File deleted successfully' };
+  }
+
+  // 上传会话文件端点
+  @Post('sessions/:sessionId/files')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadSessionFile(
+    @Param('sessionId') sessionId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const sessionFile = await this.sessionFileService.uploadFile(
+      file,
+      sessionId,
+    );
+    return { message: 'File uploaded successfully', file: sessionFile };
+  }
+
+  // 获取会话文件列表端点
+  @Get('sessions/:sessionId/files')
+  async getSessionFiles(@Param('sessionId') sessionId: string) {
+    const files = await this.sessionFileService.getSessionFiles(sessionId);
+    return { files };
+  }
+
+  // 删除会话文件端点
+  @Delete('sessions/:sessionId/files/:fileId')
+  async deleteSessionFile(
+    @Param('sessionId') sessionId: string,
+    @Param('fileId') fileId: string,
+  ) {
+    await this.sessionFileService.deleteFile(parseInt(fileId), sessionId);
     return { message: 'File deleted successfully' };
   }
 }
