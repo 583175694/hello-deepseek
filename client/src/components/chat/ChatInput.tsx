@@ -12,9 +12,16 @@ interface ChatInputProps {
     options: { useWebSearch?: boolean; useVectorSearch?: boolean }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
+  isLoading?: boolean; // AI是否正在回复
+  onAbort?: () => void; // 中断回复的回调函数
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  disabled,
+  isLoading,
+  onAbort,
+}: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
   const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
@@ -33,7 +40,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   // 处理消息发送
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || disabled) return;
+    if (!input.trim() || disabled || isLoading) return;
 
     // 发送消息，包含搜索选项
     onSend(input, { useWebSearch, useVectorSearch });
@@ -59,14 +66,29 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px]"
-            placeholder="发送消息... (Shift + Enter 换行)"
-            disabled={disabled}
+            placeholder={
+              isLoading
+                ? "AI 正在回复中..."
+                : "发送消息... (Shift + Enter 换行)"
+            }
+            disabled={disabled || isLoading}
             rows={1}
           />
         </div>
-        <Button type="submit" size="icon" disabled={disabled}>
-          <Send className="w-4 h-4" />
-        </Button>
+        {isLoading ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            onClick={onAbort}
+          >
+            <span className="w-4 h-4">×</span>
+          </Button>
+        ) : (
+          <Button type="submit" size="icon" disabled={disabled || isLoading}>
+            <Send className="w-4 h-4" />
+          </Button>
+        )}
       </form>
 
       {/* 功能按钮区域 */}
@@ -83,10 +105,10 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                 "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
             onClick={() => setUseWebSearch(!useWebSearch)}
-            disabled={disabled}
+            disabled={disabled || isLoading}
           >
             <Search className={cn("w-4 h-4", useWebSearch && "text-primary")} />
-            搜索
+            {useWebSearch && isLoading ? "搜索中..." : "搜索"}
           </Button>
 
           {/* 知识库搜索切换按钮 */}
@@ -100,17 +122,22 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                 "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
             onClick={() => setUseVectorSearch(!useVectorSearch)}
-            disabled={disabled}
+            disabled={disabled || isLoading}
           >
             <Database
               className={cn("w-4 h-4", useVectorSearch && "text-primary")}
             />
-            知识库
+            {useVectorSearch && isLoading ? "搜索中..." : "知识库"}
           </Button>
         </div>
 
         {/* 设置按钮 */}
-        <Button variant="ghost" size="sm" className="h-7" disabled={disabled}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7"
+          disabled={disabled || isLoading}
+        >
           <Settings className="w-4 h-4" />
         </Button>
       </div>

@@ -14,12 +14,12 @@ export function ChatHistory() {
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
-    messages, // 消息列表
-    isLoading, // 是否正在加载
-    error, // 错误信息
-    isStreaming, // 是否正在流式传输
-    sendStreamMessage, // 发送流式消息的方法
-    setMessageList, // 设置消息列表的方法
+    messages,
+    error,
+    isStreaming,
+    sendStreamMessage,
+    setMessageList,
+    abortStream,
   } = useAIChat();
 
   // 添加滚动到底部的函数
@@ -86,7 +86,7 @@ export function ChatHistory() {
             </>
           )}
           {/* 加载状态提示 */}
-          {isLoading && !isStreaming && (
+          {isStreaming && (
             <div className="text-sm text-muted-foreground">AI 正在思考...</div>
           )}
           {/* 错误提示 */}
@@ -104,7 +104,9 @@ export function ChatHistory() {
                 useVectorSearch,
               });
             }}
-            disabled={isLoading}
+            disabled={!currentSessionId}
+            isLoading={isStreaming}
+            onAbort={abortStream}
           />
         </div>
       </div>
