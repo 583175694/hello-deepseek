@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Search, Send, Settings, Database } from "lucide-react";
+import { Send, Settings, Database, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // 定义组件的 Props 接口
@@ -107,8 +107,8 @@ export function ChatInput({
             onClick={() => setUseWebSearch(!useWebSearch)}
             disabled={disabled || isLoading}
           >
-            <Search className={cn("w-4 h-4", useWebSearch && "text-primary")} />
-            {useWebSearch && isLoading ? "搜索中..." : "搜索"}
+            <Globe className={cn("w-4 h-4", useWebSearch && "text-primary")} />
+            {useWebSearch && isLoading ? "搜索中..." : "联网搜索"}
           </Button>
 
           {/* 知识库搜索切换按钮 */}

@@ -15,26 +15,26 @@ export function ChatLayout() {
   return (
     <div className="flex h-screen">
       {/* 左侧导航栏 */}
-      <div className="w-[72px] border-r flex flex-col items-center py-4 gap-2">
+      <div className="w-[144px] border-r flex flex-col items-center py-4 gap-2">
         <Button
           variant="ghost"
-          size="icon"
-          className={`w-12 h-12 rounded-xl ${
+          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
             isChat ? "bg-accent" : "hover:bg-accent/50"
           }`}
           onClick={() => router.push("/chat")}
         >
           <MessageSquare className="w-5 h-5" />
+          <span>对话</span>
         </Button>
         <Button
           variant="ghost"
-          size="icon"
-          className={`w-12 h-12 rounded-xl ${
+          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
             !isChat ? "bg-accent" : "hover:bg-accent/50"
           }`}
           onClick={() => router.push("/knowledge")}
         >
           <Database className="w-5 h-5" />
+          <span>知识库</span>
         </Button>
       </div>
 

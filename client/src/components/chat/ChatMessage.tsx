@@ -6,7 +6,7 @@ import {
   Copy,
   User,
   Database,
-  Search,
+  Globe,
   Check,
   RefreshCw,
   Share2,
@@ -155,7 +155,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 rel="noopener noreferrer"
                 className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-3 py-1 rounded-full text-xs transition-colors flex items-center gap-1"
               >
-                <Search className="w-3 h-3" />
+                <Globe className="w-3 h-3" />
                 {source.url
                   ? new URL(source.url).hostname.replace(/^www\./, "")
                   : "未知来源"}
