@@ -20,7 +20,7 @@ export class DocumentService {
   constructor() {
     this.embeddings = new ByteDanceDoubaoEmbeddings({
       apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
-      model: 'ep-20250211181607-xhts2',
+      model: 'ep-20250215013011-6nd8j',
       verbose: true,
     });
 
