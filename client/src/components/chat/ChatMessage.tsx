@@ -12,6 +12,7 @@ import {
   Share2,
   ThumbsUp,
   ThumbsDown,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -90,6 +91,45 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const handleDislike = () => {
     if (liked) setLiked(false);
     setDisliked(!disliked);
+  };
+
+  // 处理下载为Word文档
+  const handleDownload = () => {
+    // 构建要下载的内容
+    let content = "";
+    if (message.reasoning) {
+      content += "思考过程：\n" + message.reasoning + "\n\n";
+    }
+    content += message.content;
+
+    // 生成时间戳
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}_${now
+      .getHours()
+      .toString()
+      .padStart(2, "0")}${now.getMinutes().toString().padStart(2, "0")}${now
+      .getSeconds()
+      .toString()
+      .padStart(2, "0")}`;
+
+    // 创建Blob对象
+    const blob = new Blob([content], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ai-response_${timestamp}.docx`;
+    document.body.appendChild(a);
+    a.click();
+
+    // 清理
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   // 渲染消息内容
@@ -250,6 +290,16 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 disabled={isStreaming}
               >
                 <ThumbsDown className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleDownload}
+                disabled={isStreaming}
+              >
+                <Download className="h-4 w-4" />
               </Button>
             </div>
           )}
