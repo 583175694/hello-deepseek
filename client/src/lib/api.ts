@@ -1,7 +1,9 @@
 import axios from "axios";
 import type { ChatRequest, ChatResponse } from "@/types/api";
+import { API_BASE_URL } from "@/config";
 
-export const baseURL = "http://localhost:3030/api";
+// 将baseURL改为从配置中导入
+export const baseURL = API_BASE_URL;
 
 // 创建 axios 实例
 const api = axios.create({

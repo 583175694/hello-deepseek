@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 5173",
+    "dev:prod": "NODE_ENV=production next start -p 5173",
     "build": "next build",
     "start": "next start -p 5173",
+    "deploy": "next build && NODE_ENV=production next start -p 5173",
     "lint": "next lint"
   },
   "dependencies": {
