@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 // 定义消息来源的接口
 interface Source {
@@ -150,7 +152,28 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             </ReactMarkdown>
           </div>
         )}
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code(props) {
+              const { children, className, ...rest } = props;
+              const match = /language-(\w+)/.exec(className || "");
+              return match ? (
+                <SyntaxHighlighter
+                  language={match[1]}
+                  style={oneDark}
+                  PreTag="div"
+                >
+                  {String(children).replace(/\n$/, "")}
+                </SyntaxHighlighter>
+              ) : (
+                <code {...rest} className={className}>
+                  {children}
+                </code>
+              );
+            },
+          }}
+        >
           {message.content + (isStreaming ? "▊" : "")}
         </ReactMarkdown>
       </div>
