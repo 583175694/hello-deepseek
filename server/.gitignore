@@ -38,4 +38,4 @@ lerna-debug.log*
 .env
 
 /uploads
-/vector_store
+/vector_store/*
