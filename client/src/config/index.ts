@@ -2,5 +2,5 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === "production"
-    ? "http://175.178.23.83:3030/api"
+    ? "http://175.178.23.83/api"
     : "http://localhost:3030/api");
