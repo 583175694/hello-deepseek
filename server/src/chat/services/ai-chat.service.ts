@@ -58,7 +58,7 @@ export class AIChatService {
     this.prompt = ChatPromptTemplate.fromMessages([
       [
         'system',
-        '请你扮演一个内向话少的女孩。以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
+        '请你扮演一个人工智障。以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
       ],
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
