@@ -17,6 +17,14 @@ interface ChatInputProps {
   onFileUpload?: (file: File) => void; // 添加文件上传处理函数
 }
 
+// 在 ChatInputProps 接口下方添加新的类型定义
+interface FeatureButton {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+}
+
 export function ChatInput({
   onSend,
   disabled,
@@ -29,6 +37,34 @@ export function ChatInput({
   const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
   const [useVectorSearch, setUseVectorSearch] = useState(false); // 是否启用知识库搜索
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
+
+  // 在其他 state 下方添加特性按钮数据
+  const featureButtons: FeatureButton[] = [
+    {
+      id: "ai-writing",
+      label: "AI写作",
+      icon: <span className="text-lg">✍️</span>,
+      onClick: () => console.log("AI写作"),
+    },
+    {
+      id: "ocr",
+      label: "智能OCR",
+      icon: <span className="text-lg">📷</span>,
+      onClick: () => console.log("智能OCR"),
+    },
+    {
+      id: "doc-reading",
+      label: "AI 阅读",
+      icon: <span className="text-lg">📚</span>,
+      onClick: () => console.log("文档精读"),
+    },
+    {
+      id: "gen-ppt",
+      label: "AI PPT创作",
+      icon: <span className="text-lg">📊</span>,
+      onClick: () => console.log("生成PPT"),
+    },
+  ];
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -67,6 +103,21 @@ export function ChatInput({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 添加特性导航栏 */}
+      <div className="flex gap-2 px-1 pb-2 overflow-x-auto">
+        {featureButtons.map((button) => (
+          <button
+            key={button.id}
+            onClick={button.onClick}
+            disabled={disabled || isLoading}
+            className="flex items-center gap-1 px-3 py-1.5 bg-secondary/50 hover:bg-secondary/80 rounded-full text-sm font-medium transition-colors"
+          >
+            {button.icon}
+            <span>{button.label}</span>
+          </button>
+        ))}
+      </div>
+
       {/* 输入框表单 */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="flex-1 relative">
