@@ -21,6 +21,46 @@ import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
+// 添加代码块组件
+function CodeBlock({
+  children,
+  language,
+}: {
+  children: string;
+  language: string;
+}) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyCode = async () => {
+    const code = String(children).replace(/\n$/, "");
+    try {
+      await navigator.clipboard.writeText(code);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+    }
+  };
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={handleCopyCode}
+        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
+      >
+        {isCopied ? (
+          <Check className="w-4 h-4" />
+        ) : (
+          <Copy className="w-4 h-4" />
+        )}
+      </button>
+      <SyntaxHighlighter language={language} style={oneDark} PreTag="div">
+        {String(children).replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
 // 定义消息来源的接口
 interface Source {
   type: string;
@@ -159,13 +199,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
               const { children, className, ...rest } = props;
               const match = /language-(\w+)/.exec(className || "");
               return match ? (
-                <SyntaxHighlighter
-                  language={match[1]}
-                  style={oneDark}
-                  PreTag="div"
-                >
-                  {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
+                <CodeBlock language={match[1]}>{String(children)}</CodeBlock>
               ) : (
                 <code {...rest} className={className}>
                   {children}
