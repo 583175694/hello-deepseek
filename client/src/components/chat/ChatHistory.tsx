@@ -85,10 +85,6 @@ export function ChatHistory() {
               <div ref={messagesEndRef} />
             </>
           )}
-          {/* 加载状态提示 */}
-          {isStreaming && (
-            <div className="text-sm text-muted-foreground">AI 正在思考...</div>
-          )}
           {/* 错误提示 */}
           {error && <div className="text-sm text-destructive">{error}</div>}
         </div>

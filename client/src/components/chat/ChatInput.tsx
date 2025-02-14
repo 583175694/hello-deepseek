@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Send, Settings, Database, Globe } from "lucide-react";
+import { Send, Settings, Database, Globe, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // 定义组件的 Props 接口
@@ -14,6 +14,7 @@ interface ChatInputProps {
   disabled?: boolean; // 是否禁用输入框
   isLoading?: boolean; // AI是否正在回复
   onAbort?: () => void; // 中断回复的回调函数
+  onFileUpload?: (file: File) => void; // 添加文件上传处理函数
 }
 
 export function ChatInput({
@@ -21,6 +22,7 @@ export function ChatInput({
   disabled,
   isLoading,
   onAbort,
+  onFileUpload,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
@@ -55,6 +57,14 @@ export function ChatInput({
     }
   };
 
+  // 处理文件上传
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onFileUpload) {
+      onFileUpload(file);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3">
       {/* 输入框表单 */}
@@ -75,6 +85,27 @@ export function ChatInput({
             rows={1}
           />
         </div>
+
+        {/* 添加文件上传按钮 */}
+        <input
+          type="file"
+          id="file-upload"
+          className="hidden"
+          onChange={handleFileUpload}
+          accept=".pdf,.doc,.docx,.txt,.md"
+          disabled={disabled || isLoading}
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={() => document.getElementById("file-upload")?.click()}
+          disabled={disabled || isLoading}
+          title="上传文档"
+        >
+          <Paperclip className="w-4 h-4" />
+        </Button>
+
         {isLoading ? (
           <Button
             type="button"
@@ -127,7 +158,7 @@ export function ChatInput({
             <Database
               className={cn("w-4 h-4", useVectorSearch && "text-primary")}
             />
-            {useVectorSearch && isLoading ? "搜索中..." : "知识库"}
+            {useVectorSearch && isLoading ? "搜索中..." : "我的知识库"}
           </Button>
         </div>
 

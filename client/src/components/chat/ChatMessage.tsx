@@ -219,46 +219,50 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     if (!message.sources) return null;
 
     try {
-      // 解析消息来源
       const sources: Source[] = JSON.parse(message.sources);
-
-      // 使用 Set 进行去重，以 url 为唯一标识
       const uniqueSources = Array.from(
         new Set(sources.map((source) => source.url))
       ).map((url) => sources.find((source) => source.url === url)!);
 
       return (
-        <div className="flex flex-wrap gap-2 ml-11">
-          {uniqueSources.map((source) => {
-            // 渲染本地知识库来源
-            if (source.type === "vector") {
-              return source.url ? (
-                <span
-                  key={source.url}
-                  className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-xs flex items-center gap-1"
-                >
-                  <Database className="w-3 h-3" />
-                  {source.url}
-                </span>
-              ) : null;
-            }
+        <div className="flex flex-col gap-2 ml-11 mt-2">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-grow bg-muted-foreground/20"></div>
+            <span className="text-xs font-medium text-muted-foreground/60">
+              引用来源
+            </span>
+            <div className="h-px flex-grow bg-muted-foreground/20"></div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {uniqueSources.map((source) => {
+              if (source.type === "vector") {
+                return source.url ? (
+                  <span
+                    key={source.url}
+                    className="bg-secondary/50 hover:bg-secondary/70 text-secondary-foreground px-3 py-1 rounded-md text-xs flex items-center gap-1.5 transition-colors"
+                  >
+                    <Database className="w-3 h-3" />
+                    {source.url}
+                  </span>
+                ) : null;
+              }
 
-            // 渲染网络链接来源
-            return (
-              <a
-                key={source.url}
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-3 py-1 rounded-full text-xs transition-colors flex items-center gap-1"
-              >
-                <Globe className="w-3 h-3" />
-                {source.url
-                  ? new URL(source.url).hostname.replace(/^www\./, "")
-                  : "未知来源"}
-              </a>
-            );
-          })}
+              return (
+                <a
+                  key={source.url}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-secondary/50 hover:bg-secondary/70 text-secondary-foreground px-3 py-1 rounded-md text-xs flex items-center gap-1.5 transition-colors"
+                >
+                  <Globe className="w-3 h-3" />
+                  {source.url
+                    ? new URL(source.url).hostname.replace(/^www\./, "")
+                    : "未知来源"}
+                </a>
+              );
+            })}
+          </div>
         </div>
       );
     } catch (error) {
