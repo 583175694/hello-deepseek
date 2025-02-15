@@ -24,6 +24,7 @@ import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
+import { demoMessage } from '../configs/demo';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -50,9 +51,13 @@ export class ChatController {
     @Query('sessionId') sessionId?: string,
     @Query('useWebSearch') useWebSearch?: string,
     @Query('useVectorSearch') useVectorSearch?: string,
+    @Query('tag') tag?: string,
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
+    }
+    if (tag === 'demo') {
+      message = demoMessage;
     }
 
     // 将字符串参数转换为布尔值，默认都为 false

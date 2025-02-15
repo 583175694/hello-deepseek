@@ -212,9 +212,8 @@ function AgentGrid({ agents }: { agents: Agent[] }) {
       type: "agent",
       agentId: agent.id,
     });
-
     // 跳转到新会话
-    router.push(`/chat`);
+    router.push(`/chat?agentId=${agent.id}`);
   };
 
   return (

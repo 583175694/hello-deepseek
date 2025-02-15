@@ -21,6 +21,25 @@ import remarkGfm from "remark-gfm";
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Lexend_Peta } from "next/font/google";
+
+function getURLParameters(url: string): { [key: string]: string } {
+  // 创建一个 URL 对象
+  const urlObj = new URL(url);
+
+  // 获取搜索参数（查询字符串）
+  const searchParams = new URLSearchParams(urlObj.search);
+
+  // 创建一个对象来存储参数
+  const params: { [key: string]: string } = {};
+
+  // 遍历所有参数并添加到对象中
+  for (const [key, value] of searchParams.entries()) {
+    params[key] = value;
+  }
+
+  return params;
+}
 
 interface Source {
   type: "vector" | "temp" | "web";
@@ -42,7 +61,7 @@ function CodeBlock({
     try {
       await navigator.clipboard.writeText(code);
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 1500);
+      setTimeout(() => setIsCopied(false), 1000);
     } catch (err) {
       console.error("Failed to copy code:", err);
     }
@@ -69,10 +88,10 @@ function CodeBlock({
 
 // 添加搜索状态接口
 interface SearchState {
-  qichacha: string | null;
-  collection: string | null;
-  knowledge: string | null;
-  web: string | null;
+  qichacha: string[] | null;
+  collection: string[] | null;
+  knowledge: string[] | null;
+  web: string[] | null;
 }
 
 // 定义组件的 Props 接口
@@ -189,8 +208,15 @@ export function ChatMessage({
 
   // 渲染搜索进度
   const renderSearchProgress = () => {
+    const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>(
+      {}
+    );
+    // 临时逻辑
+    let urlparams = getURLParameters(window.location.href);
+    if (urlparams.agentId !== "case-analysis") {
+      return null;
+    }
     if (!searchState) return null;
-
     const steps = [
       {
         id: "qichacha",
@@ -214,6 +240,14 @@ export function ChatMessage({
       },
     ];
 
+    // 切换 result 的显示/隐藏
+    const toggleStep = (id: string) => {
+      setExpandedSteps((prev) => ({
+        ...prev,
+        [id]: !prev[id], // 切换当前步骤的展开状态
+      }));
+    };
+
     return (
       <div className="flex flex-col space-y-2 mb-3 bg-muted/50 backdrop-blur supports-[backdrop-filter]:bg-muted/50 rounded-lg p-3">
         {steps.map((step) => (
@@ -233,12 +267,22 @@ export function ChatMessage({
 
             {/* 标题和结果 */}
             <div className="flex flex-col gap-1 min-w-0">
-              <span className="text-sm font-medium text-foreground">
+              <span
+                className="text-sm font-medium text-foreground"
+                onClick={() => toggleStep(step.id)}
+              >
                 {step.title}
               </span>
-              {step.result && (
+              {step.result && expandedSteps[step.id] && (
+                // <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md break-words">
+                //   {step.result}
+                // </span>
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md break-words">
-                  {step.result}
+                  {step.result.map((item: string, index: number) => (
+                    <span key={index} className="block">
+                      {item}
+                    </span>
+                  ))}
                 </span>
               )}
             </div>
@@ -296,9 +340,29 @@ export function ChatMessage({
 
     try {
       const sources: Source[] = JSON.parse(message.sources || "[]");
-      const uniqueSources = Array.from(
+      let uniqueSources = Array.from(
         new Set(sources.map((source) => source.url))
       ).map((url) => sources.find((source) => source.url === url)!);
+      // 临时逻辑
+      let urlparams = getURLParameters(window.location.href);
+      if (urlparams.agentId === "case-analysis") {
+        uniqueSources = [
+          {
+            url: "https://www.163.com/dy/article/J3TOG8S005198SOQ.html",
+            type: "vector",
+          },
+          {
+            url: "https://www.chinabgao.com/freereport/96772.html",
+            type: "vector",
+          },
+          {
+            url: "https://www.163.com/dy/article/JGSFNBU505198SOQ.html",
+            type: "vector",
+          },
+          { url: "https://xueqiu.com/8457709645/308276662", type: "vector" },
+          { url: "https://zhuanlan.zhihu.com/p/659838413", type: "vector" },
+        ];
+      }
 
       return (
         <div className="flex flex-col gap-2 ml-11 mt-2">

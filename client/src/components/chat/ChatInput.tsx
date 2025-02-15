@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { Send, Settings, Database, Globe, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { message } from "./demo.js";
 
 // 定义临时文件类型
 interface TempFile {
@@ -49,7 +50,7 @@ export function ChatInput({
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
-  const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
+  const [useWebSearch, setUseWebSearch] = useState(true); // 是否启用网络搜索
   const [useVectorSearch, setUseVectorSearch] = useState(false); // 是否启用知识库搜索
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFile, setTempFile] = useState<TempFile | null>(null); // 添加临时文件状态
@@ -107,8 +108,7 @@ export function ChatInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || disabled || isLoading) return;
-
-    const trimmedInput = input.trim();
+    let trimmedInput = input.trim();
     setInput(""); // 清空输入框
 
     // 如果启用了网络搜索，先模拟搜索过程
@@ -118,10 +118,10 @@ export function ChatInput({
 
         // 模拟搜索步骤
         const steps = [
-          { duration: 2000 }, // 启信宝
-          { duration: 1500 }, // 催收系统
-          { duration: 2500 }, // 知识库
-          { duration: 3000 }, // 外网
+          { duration: 500 }, // 启信宝
+          { duration: 500 }, // 催收系统
+          { duration: 500 }, // 知识库
+          { duration: 500 }, // 外网
         ];
 
         for (let i = 0; i < steps.length; i++) {
@@ -134,7 +134,6 @@ export function ChatInput({
         onSearchProgressEnd?.();
       }, 0);
     }
-
     // 发送实际消息
     onSend(trimmedInput, { useWebSearch, useVectorSearch });
   };

@@ -45,7 +45,7 @@ export function ChatLayout() {
             height={32}
             priority
           />
-          <span className="font-semibold text-lg">Webank</span>
+          <span className="font-semibold text-sm">CIB智能应用平台</span>
         </div>
 
         {/* 导航按钮 */}

@@ -1,7 +1,25 @@
 import { useState, useCallback } from "react";
 import { useEventSource } from "./useEventSource";
 import { baseURL } from "@/lib/api";
+import { demoMessage } from "@/config/demo.js";
 
+function getURLParameters(url: string): { [key: string]: string } {
+  // 创建一个 URL 对象
+  const urlObj = new URL(url);
+
+  // 获取搜索参数（查询字符串）
+  const searchParams = new URLSearchParams(urlObj.search);
+
+  // 创建一个对象来存储参数
+  const params: { [key: string]: string } = {};
+
+  // 遍历所有参数并添加到对象中
+  for (const [key, value] of searchParams.entries()) {
+    params[key] = value;
+  }
+
+  return params;
+}
 interface StreamResponse {
   content: string;
   type: "content" | "reasoning" | "sources";
@@ -24,7 +42,7 @@ export function useStreamChat() {
       setIsStreaming(true);
 
       // 构建查询参数
-      const params = new URLSearchParams({
+      let params = new URLSearchParams({
         message,
         sessionId,
       });
@@ -34,6 +52,11 @@ export function useStreamChat() {
       }
       if (options?.useVectorSearch) {
         params.append("useVectorSearch", "true");
+      }
+      // 临时逻辑
+      let urlparams = getURLParameters(window.location.href);
+      if (urlparams.agentId === "case-analysis") {
+        params.append("tag", "demo");
       }
 
       // 连接 SSE
