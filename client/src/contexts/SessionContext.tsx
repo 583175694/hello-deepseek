@@ -18,6 +18,11 @@ type SessionContextType = {
   setCurrentSessionId: (id: string | null) => void;
   loadSessions: () => Promise<void>;
   createNewSession: () => Promise<Session>;
+  createSession: (params: {
+    name: string;
+    type: string;
+    agentId: string;
+  }) => Promise<string>;
   deleteSession: (sessionId: string) => Promise<void>;
 };
 
@@ -48,6 +53,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }, []);
+
+  const createSession = useCallback(
+    async (params: { name: string; type: string; agentId: string }) => {
+      try {
+        console.log("创建新会话", params);
+        const session = await chatService.createSession(params);
+        setSessions((prev) => [session, ...prev]);
+        setCurrentSessionId(session.sessionId);
+        return session.sessionId;
+      } catch (error) {
+        console.error("创建会话失败:", error);
+        throw error;
+      }
+    },
+    []
+  );
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
@@ -80,6 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setCurrentSessionId,
         loadSessions,
         createNewSession,
+        createSession,
         deleteSession,
       }}
     >

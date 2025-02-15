@@ -13,6 +13,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Download,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -20,6 +21,11 @@ import remarkGfm from "remark-gfm";
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+interface Source {
+  type: "vector" | "temp" | "web";
+  url: string;
+}
 
 // 添加代码块组件
 function CodeBlock({
@@ -61,19 +67,26 @@ function CodeBlock({
   );
 }
 
-// 定义消息来源的接口
-interface Source {
-  type: string;
-  url?: string;
+// 添加搜索状态接口
+interface SearchState {
+  qichacha: string | null;
+  collection: string | null;
+  knowledge: string | null;
+  web: string | null;
 }
 
 // 定义组件的 Props 接口
 interface ChatMessageProps {
   message: Message;
-  isStreaming?: boolean; // 是否正在流式传输消息
+  isStreaming?: boolean;
+  searchState?: SearchState;
 }
 
-export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  isStreaming,
+  searchState,
+}: ChatMessageProps) {
   // 判断消息是否来自 AI
   const isAI = message.role === "assistant";
   // 复制状态管理
@@ -174,6 +187,67 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     document.body.removeChild(a);
   };
 
+  // 渲染搜索进度
+  const renderSearchProgress = () => {
+    if (!searchState) return null;
+
+    const steps = [
+      {
+        id: "qichacha",
+        title: "查询启信宝中...",
+        result: searchState.qichacha,
+      },
+      {
+        id: "collection",
+        title: "查询催收管理系统中...",
+        result: searchState.collection,
+      },
+      {
+        id: "knowledge",
+        title: "查询催收知识库中...",
+        result: searchState.knowledge,
+      },
+      {
+        id: "web",
+        title: "查询外网信息中...",
+        result: searchState.web,
+      },
+    ];
+
+    return (
+      <div className="flex flex-col space-y-2 mb-3 bg-muted/50 backdrop-blur supports-[backdrop-filter]:bg-muted/50 rounded-lg p-3">
+        {steps.map((step) => (
+          <div
+            key={step.id}
+            className={cn(
+              "flex items-center gap-3 transition-opacity duration-200",
+              step.result ? "opacity-100" : "opacity-60"
+            )}
+          >
+            {/* 状态图标 */}
+            {step.result ? (
+              <Check className="w-4 h-4 text-green-500 shrink-0" />
+            ) : (
+              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+            )}
+
+            {/* 标题和结果 */}
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-sm font-medium text-foreground">
+                {step.title}
+              </span>
+              {step.result && (
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md break-words">
+                  {step.result}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // 渲染消息内容
   const renderMessageContent = () => {
     if (!isAI) {
@@ -208,7 +282,9 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             },
           }}
         >
-          {message.content + (isStreaming ? "▊" : "")}
+          {message.content
+            ? message.content + (isStreaming ? "▊" : "")
+            : "思考中..."}
         </ReactMarkdown>
       </div>
     );
@@ -284,6 +360,9 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
         )}
 
         <div className="flex flex-col">
+          {/* 搜索进度 */}
+          {isAI && renderSearchProgress()}
+
           {/* 消息内容 */}
           <div
             className={cn(

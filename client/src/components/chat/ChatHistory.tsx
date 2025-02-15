@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
@@ -21,6 +21,19 @@ export function ChatHistory() {
     setMessageList,
     abortStream,
   } = useAIChat();
+
+  // 添加搜索状态
+  const [searchState, setSearchState] = useState<{
+    qichacha: string | null;
+    collection: string | null;
+    knowledge: string | null;
+    web: string | null;
+  }>({
+    qichacha: null,
+    collection: null,
+    knowledge: null,
+    web: null,
+  });
 
   // 添加滚动到底部的函数
   const scrollToBottom = () => {
@@ -72,6 +85,38 @@ export function ChatHistory() {
     }
   };
 
+  // 处理搜索进度更新
+  const handleSearchProgress = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 短暂延迟，等待消息框渲染
+
+    // 启信宝查询
+    setSearchState((prev) => ({
+      ...prev,
+      qichacha: "注册资本500万，成立3年，经营状态正常",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // 催收系统查询
+    setSearchState((prev) => ({
+      ...prev,
+      collection: "当前待还金额30万，近3个月有2次逾期记录",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // 知识库查询
+    setSearchState((prev) => ({
+      ...prev,
+      knowledge: "符合A类纾困方案，可申请延期还款",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // 外网查询
+    setSearchState((prev) => ({
+      ...prev,
+      web: "2024年LED显示屏市场规模预计增长15%，国内需求稳定增长",
+    }));
+  };
+
   // 如果没有选中的会话，显示提示信息
   if (!currentSessionId) {
     return (
@@ -104,6 +149,9 @@ export function ChatHistory() {
                     isStreaming &&
                     message.id === messages[messages.length - 1].id
                   }
+                  searchState={
+                    message.role === "assistant" ? searchState : undefined
+                  }
                 />
               ))}
               <div ref={messagesEndRef} />
@@ -118,11 +166,25 @@ export function ChatHistory() {
       <div className="border-t border-border p-4">
         <div className="max-w-2xl mx-auto">
           <ChatInput
-            onSend={(content, { useWebSearch, useVectorSearch }) => {
+            onSend={async (content, { useWebSearch, useVectorSearch }) => {
+              // 发送实际消息，这会立即显示用户消息
               sendStreamMessage(content, currentSessionId, {
                 useWebSearch,
                 useVectorSearch,
               });
+
+              if (useWebSearch) {
+                // 重置搜索状态
+                setSearchState({
+                  qichacha: null,
+                  collection: null,
+                  knowledge: null,
+                  web: null,
+                });
+
+                // 开始搜索进度更新
+                handleSearchProgress();
+              }
             }}
             disabled={!currentSessionId}
             isLoading={isStreaming}

@@ -43,9 +43,17 @@ export const chatService = {
   },
 
   // 创建新会话
-  async createSession() {
+  async createSession(params?: {
+    name: string;
+    type: string;
+    agentId: string;
+  }) {
     const response = await request.fetch("/chat/session", {
       method: "POST",
+      body: params ? JSON.stringify(params) : undefined,
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
     return response.json();
   },

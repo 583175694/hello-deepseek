@@ -20,6 +20,8 @@ import {
   Database,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRouter } from "next/navigation";
+import { useSessionManager } from "@/contexts/SessionContext";
 
 const categories = [
   "办公通用",
@@ -200,12 +202,31 @@ const agents: Agent[] = [
 ];
 
 function AgentGrid({ agents }: { agents: Agent[] }) {
+  const router = useRouter();
+  const { createSession } = useSessionManager();
+
+  const handleAgentClick = async (agent: Agent) => {
+    // 创建新会话并获取会话ID
+    await createSession({
+      name: agent.name,
+      type: "agent",
+      agentId: agent.id,
+    });
+
+    // 跳转到新会话
+    router.push(`/chat`);
+  };
+
   return (
     <div className="grid grid-cols-4 gap-6">
       {agents.map((agent) => {
         const Icon = agent.icon;
         return (
-          <div key={agent.id} className="rounded-xl border bg-card p-6">
+          <div
+            key={agent.id}
+            className="rounded-xl border bg-card p-6 cursor-pointer hover:border-primary/50 hover:bg-accent transition-colors"
+            onClick={() => handleAgentClick(agent)}
+          >
             <div className="flex flex-col items-center text-center gap-4">
               <div className="p-3 rounded-2xl bg-primary/10">
                 <Icon className="w-6 h-6 text-primary" />

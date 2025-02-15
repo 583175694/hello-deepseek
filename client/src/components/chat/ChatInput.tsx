@@ -23,6 +23,9 @@ interface ChatInputProps {
   onFileUpload?: (file: File) => Promise<TempFile>; // 修改为返回 Promise<TempFile>
   onFileRemove?: () => Promise<void>; // 添加文件删除回调
   sessionId?: string; // 添加会话ID
+  onSearchProgressUpdate?: (step: number) => void; // 添加搜索进度更新回调
+  onSearchProgressStart?: () => void; // 添加搜索开始回调
+  onSearchProgressEnd?: () => void; // 添加搜索结束回调
 }
 
 // 在 ChatInputProps 接口下方添加新的类型定义
@@ -40,6 +43,9 @@ export function ChatInput({
   onAbort,
   onFileUpload,
   onFileRemove,
+  onSearchProgressUpdate,
+  onSearchProgressStart,
+  onSearchProgressEnd,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
@@ -74,6 +80,18 @@ export function ChatInput({
       icon: <span className="text-lg">📊</span>,
       onClick: () => console.log("生成PPT"),
     },
+    {
+      id: "voice-understanding",
+      label: "语音理解",
+      icon: <span className="text-lg">🎤</span>,
+      onClick: () => console.log("语音理解"),
+    },
+    {
+      id: "video-understanding",
+      label: "视频理解",
+      icon: <span className="text-lg">🎥</span>,
+      onClick: () => console.log("视频理解"),
+    },
   ];
 
   // 监听输入内容变化，自动调整文本框高度
@@ -86,13 +104,39 @@ export function ChatInput({
   }, [input]);
 
   // 处理消息发送
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || disabled || isLoading) return;
 
-    // 发送消息，包含搜索选项
-    onSend(input, { useWebSearch, useVectorSearch });
+    const trimmedInput = input.trim();
     setInput(""); // 清空输入框
+
+    // 如果启用了网络搜索，先模拟搜索过程
+    if (useWebSearch) {
+      setTimeout(async () => {
+        onSearchProgressStart?.();
+
+        // 模拟搜索步骤
+        const steps = [
+          { duration: 2000 }, // 启信宝
+          { duration: 1500 }, // 催收系统
+          { duration: 2500 }, // 知识库
+          { duration: 3000 }, // 外网
+        ];
+
+        for (let i = 0; i < steps.length; i++) {
+          onSearchProgressUpdate?.(i);
+          await new Promise((resolve) =>
+            setTimeout(resolve, steps[i].duration)
+          );
+        }
+
+        onSearchProgressEnd?.();
+      }, 0);
+    }
+
+    // 发送实际消息
+    onSend(trimmedInput, { useWebSearch, useVectorSearch });
   };
 
   // 处理快捷键：Enter 发送，Shift + Enter 换行
