@@ -114,4 +114,31 @@ export const fileService = {
     });
     return response.json();
   },
+
+  // 上传临时文件
+  async uploadTempFile(sessionId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await request.fetch(
+      `/chat/sessions/${sessionId}/temp-files`,
+      {
+        method: "POST",
+        body: formData,
+        headers: {},
+      }
+    );
+    return response.json();
+  },
+
+  // 清理临时文件
+  async cleanupTempFiles(sessionId: string) {
+    const response = await request.fetch(
+      `/chat/sessions/${sessionId}/temp-files`,
+      {
+        method: "DELETE",
+      }
+    );
+    return response.json();
+  },
 };

@@ -2,8 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Send, Settings, Database, Globe, Paperclip } from "lucide-react";
+import { Send, Settings, Database, Globe, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// 定义临时文件类型
+interface TempFile {
+  name: string;
+  path: string;
+}
 
 // 定义组件的 Props 接口
 interface ChatInputProps {
@@ -14,7 +20,9 @@ interface ChatInputProps {
   disabled?: boolean; // 是否禁用输入框
   isLoading?: boolean; // AI是否正在回复
   onAbort?: () => void; // 中断回复的回调函数
-  onFileUpload?: (file: File) => void; // 添加文件上传处理函数
+  onFileUpload?: (file: File) => Promise<TempFile>; // 修改为返回 Promise<TempFile>
+  onFileRemove?: () => Promise<void>; // 添加文件删除回调
+  sessionId?: string; // 添加会话ID
 }
 
 export function ChatInput({
@@ -23,12 +31,14 @@ export function ChatInput({
   isLoading,
   onAbort,
   onFileUpload,
+  onFileRemove,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
   const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
   const [useVectorSearch, setUseVectorSearch] = useState(false); // 是否启用知识库搜索
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
+  const [tempFile, setTempFile] = useState<TempFile | null>(null); // 添加临时文件状态
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -58,15 +68,60 @@ export function ChatInput({
   };
 
   // 处理文件上传
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onFileUpload) {
-      onFileUpload(file);
+      try {
+        const uploadedFile = await onFileUpload(file);
+        setTempFile(uploadedFile);
+      } catch (error) {
+        console.error("文件上传失败:", error);
+        // 这里可以添加错误提示
+      }
+    }
+    // 重置文件输入框的值
+    e.target.value = "";
+  };
+
+  // 处理文件删除
+  const handleFileRemove = async () => {
+    if (onFileRemove) {
+      try {
+        await onFileRemove();
+        setTempFile(null);
+        // 重置文件输入框的值
+        const fileInput = document.getElementById(
+          "file-upload"
+        ) as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = "";
+        }
+      } catch (error) {
+        console.error("文件删除失败:", error);
+        // 这里可以添加错误提示
+      }
     }
   };
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 显示临时文件 */}
+      {tempFile && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
+          <Paperclip className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm flex-1 truncate">{tempFile.name}</span>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-4 w-4"
+            onClick={handleFileRemove}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      )}
+
       {/* 输入框表单 */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="flex-1 relative">
