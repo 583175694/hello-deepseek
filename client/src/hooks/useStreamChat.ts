@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { useEventSource } from "./useEventSource";
 import { baseURL } from "@/lib/api";
-import { demoMessage } from "@/config/demo.js";
 
 function getURLParameters(url: string): { [key: string]: string } {
   // 创建一个 URL 对象
@@ -42,7 +41,7 @@ export function useStreamChat() {
       setIsStreaming(true);
 
       // 构建查询参数
-      let params = new URLSearchParams({
+      const params = new URLSearchParams({
         message,
         sessionId,
       });
@@ -54,7 +53,7 @@ export function useStreamChat() {
         params.append("useVectorSearch", "true");
       }
       // 临时逻辑
-      let urlparams = getURLParameters(window.location.href);
+      const urlparams = getURLParameters(window.location.href);
       if (urlparams.agentId === "case-analysis") {
         params.append("tag", "demo");
       }

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { Send, Settings, Database, Globe, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { message } from "./demo.js";
 
 // 定义临时文件类型
 interface TempFile {
@@ -108,7 +107,7 @@ export function ChatInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || disabled || isLoading) return;
-    let trimmedInput = input.trim();
+    const trimmedInput = input.trim();
     setInput(""); // 清空输入框
 
     // 如果启用了网络搜索，先模拟搜索过程

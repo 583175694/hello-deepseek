@@ -21,7 +21,6 @@ import remarkGfm from "remark-gfm";
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Lexend_Peta } from "next/font/google";
 
 function getURLParameters(url: string): { [key: string]: string } {
   // 创建一个 URL 对象
@@ -207,12 +206,12 @@ export function ChatMessage({
   };
 
   // 渲染搜索进度
-  const renderSearchProgress = () => {
+  const useRenderSearchProgress = () => {
     const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>(
       {}
     );
     // 临时逻辑
-    let urlparams = getURLParameters(window.location.href);
+    const urlparams = getURLParameters(window.location.href);
     if (urlparams.agentId !== "case-analysis") {
       return null;
     }
@@ -344,7 +343,7 @@ export function ChatMessage({
         new Set(sources.map((source) => source.url))
       ).map((url) => sources.find((source) => source.url === url)!);
       // 临时逻辑
-      let urlparams = getURLParameters(window.location.href);
+      const urlparams = getURLParameters(window.location.href);
       if (urlparams.agentId === "case-analysis") {
         uniqueSources = [
           {
@@ -425,7 +424,7 @@ export function ChatMessage({
 
         <div className="flex flex-col">
           {/* 搜索进度 */}
-          {isAI && renderSearchProgress()}
+          {useRenderSearchProgress()}
 
           {/* 消息内容 */}
           <div
