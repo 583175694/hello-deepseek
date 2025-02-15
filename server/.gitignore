@@ -39,3 +39,4 @@ lerna-debug.log*
 
 /uploads
 /vector_store/*
+/temp

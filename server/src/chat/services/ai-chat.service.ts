@@ -10,6 +10,7 @@ import {
 import { MessageService } from './message.service';
 import { SessionService } from './session.service';
 import { DocumentService } from './document.service';
+import { TempDocumentService } from './temp-document.service';
 import { models } from 'src/configs/models';
 
 // AI聊天服务类
@@ -25,6 +26,7 @@ export class AIChatService {
     private messageService: MessageService,
     private sessionService: SessionService,
     private documentService: DocumentService,
+    private tempDocumentService: TempDocumentService,
   ) {
     this.logger.log('Initializing AIChatService...');
     this.initializeServices();
@@ -112,6 +114,30 @@ export class AIChatService {
     }
   }
 
+  // 执行临时文档搜索
+  private async performTempDocumentSearch(
+    message: string,
+    sessionId: string,
+  ): Promise<string> {
+    this.logger.log(`Performing temp document search for session ${sessionId}`);
+    try {
+      const tempResults = await this.tempDocumentService.searchSimilarDocuments(
+        message,
+        sessionId,
+      );
+      if (tempResults.length > 0) {
+        return (
+          '会话临时文档搜索结果：\n' +
+          tempResults.map((doc) => doc.pageContent).join('\n')
+        );
+      }
+      return '';
+    } catch (error) {
+      this.logger.error('Temp document search error:', error);
+      return '';
+    }
+  }
+
   // 流式聊天处理
   async streamChat(
     message: string,
@@ -142,7 +168,26 @@ export class AIChatService {
 
       // 构建搜索上下文
       let searchContext = '';
-      const sources: Array<{ type: 'web' | 'vector'; url: string }> = [];
+      const sources: Array<{ type: 'web' | 'vector' | 'temp'; url: string }> =
+        [];
+
+      // 如果有会话ID，执行临时文档搜索
+      if (sessionId) {
+        this.logger.log('Performing temp document search...');
+        const tempSearchResults = await this.performTempDocumentSearch(
+          message,
+          sessionId,
+        );
+        if (tempSearchResults) {
+          searchContext += tempSearchResults + '\n\n';
+          // 将临时文档的来源添加到 sources 数组
+          sources.push({
+            type: 'temp',
+            url: 'session_document',
+          });
+          this.logger.log('Temp document search results added to context');
+        }
+      }
 
       // 执行网络搜索
       if (useWebSearch) {

@@ -10,6 +10,7 @@ import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
 import { FileService } from './services/file.service';
 import { SessionFileService } from './services/session-file.service';
+import { TempDocumentService } from './services/temp-document.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Session, Message, SessionFile])],
@@ -21,6 +22,7 @@ import { SessionFileService } from './services/session-file.service';
     AIChatService,
     FileService,
     SessionFileService,
+    TempDocumentService,
   ],
 })
 export class ChatModule {}
