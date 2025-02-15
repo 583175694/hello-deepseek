@@ -5,7 +5,7 @@ import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage } from "./ChatMessage";
-import { chatService } from "@/lib/api";
+import { chatService, fileService } from "@/lib/api";
 
 export function ChatHistory() {
   // 添加消息容器的引用
@@ -47,6 +47,30 @@ export function ChatHistory() {
 
     loadMessages();
   }, [currentSessionId, setMessageList]);
+
+  // 处理文件上传
+  const handleFileUpload = async (file: File) => {
+    if (!currentSessionId) {
+      throw new Error("No active session");
+    }
+
+    const result = await fileService.uploadTempFile(currentSessionId, file);
+    return {
+      name: file.name,
+      path: result.filePath,
+    };
+  };
+
+  // 处理文件删除
+  const handleFileRemove = async () => {
+    if (!currentSessionId) return;
+    try {
+      await fileService.cleanupTempFiles(currentSessionId);
+    } catch (error) {
+      console.error("文件删除失败:", error);
+      throw error;
+    }
+  };
 
   // 如果没有选中的会话，显示提示信息
   if (!currentSessionId) {
@@ -103,6 +127,9 @@ export function ChatHistory() {
             disabled={!currentSessionId}
             isLoading={isStreaming}
             onAbort={abortStream}
+            onFileUpload={handleFileUpload}
+            onFileRemove={handleFileRemove}
+            sessionId={currentSessionId}
           />
         </div>
       </div>

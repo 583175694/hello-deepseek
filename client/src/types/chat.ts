@@ -5,7 +5,7 @@ export interface Message {
   reasoning?: string;
   sources?: string;
   createdAt: string;
-  type: "content" | "reasoning" | "sources";
+  type: "content" | "reasoning" | "sources" | "temp";
 }
 
 export interface Chat {

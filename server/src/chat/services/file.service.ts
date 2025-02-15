@@ -234,8 +234,16 @@ export class FileService {
         throw new Error('File not found');
       }
 
-      fs.unlinkSync(filePath);
-      this.logger.log(`Successfully deleted file ${filename}`);
+      const stats = fs.statSync(filePath);
+      if (stats.isDirectory()) {
+        // 如果是目录，使用 rmSync 递归删除
+        fs.rmSync(filePath, { recursive: true, force: true });
+        this.logger.log(`Successfully deleted directory ${filename}`);
+      } else {
+        // 如果是文件，使用 unlinkSync 删除
+        fs.unlinkSync(filePath);
+        this.logger.log(`Successfully deleted file ${filename}`);
+      }
     } catch (error) {
       this.logger.error(`Error deleting file ${filename}:`, error);
       throw error;

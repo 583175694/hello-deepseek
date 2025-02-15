@@ -219,7 +219,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     if (!message.sources) return null;
 
     try {
-      const sources: Source[] = JSON.parse(message.sources);
+      const sources: Source[] = JSON.parse(message.sources || "[]");
       const uniqueSources = Array.from(
         new Set(sources.map((source) => source.url))
       ).map((url) => sources.find((source) => source.url === url)!);
@@ -235,7 +235,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           </div>
           <div className="flex flex-wrap gap-2">
             {uniqueSources.map((source) => {
-              if (source.type === "vector") {
+              if (source.type === "vector" || source.type === "temp") {
                 return source.url ? (
                   <span
                     key={source.url}

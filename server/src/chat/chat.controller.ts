@@ -21,6 +21,7 @@ import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
 import { FileService, FileInfo } from './services/file.service';
 import { SessionFileService } from './services/session-file.service';
+import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 
@@ -33,6 +34,7 @@ export class ChatController {
     private readonly aiChatService: AIChatService,
     private readonly fileService: FileService,
     private readonly sessionFileService: SessionFileService,
+    private readonly tempDocumentService: TempDocumentService,
   ) {}
 
   // 创建新会话的接口
@@ -70,7 +72,7 @@ export class ChatController {
           sessionId,
           shouldUseWebSearch,
           shouldUseVectorSearch,
-          (response: {
+          async (response: {
             type: 'content' | 'reasoning' | 'sources';
             content: string;
           }) => {
@@ -179,5 +181,40 @@ export class ChatController {
   ) {
     await this.sessionFileService.deleteFile(parseInt(fileId), sessionId);
     return { message: 'File deleted successfully' };
+  }
+
+  // 上传临时文件端点
+  @Post('sessions/:sessionId/temp-files')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadTempFile(
+    @Param('sessionId') sessionId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const filePath = await this.tempDocumentService.saveUploadedFile(
+      file,
+      sessionId,
+    );
+    const documents = [
+      new Document({
+        pageContent: file.buffer.toString(),
+        metadata: {
+          filename: file.originalname,
+          mimeType: file.mimetype,
+          sessionId: sessionId,
+        },
+      }),
+    ];
+    await this.tempDocumentService.addDocuments(documents, sessionId);
+    return {
+      message: 'Temporary file uploaded and processed successfully',
+      filePath,
+    };
+  }
+
+  // 清理会话临时文件端点
+  @Delete('sessions/:sessionId/temp-files')
+  async cleanupTempFiles(@Param('sessionId') sessionId: string) {
+    await this.tempDocumentService.cleanupSession(sessionId);
+    return { message: 'Temporary files cleaned up successfully' };
   }
 }
