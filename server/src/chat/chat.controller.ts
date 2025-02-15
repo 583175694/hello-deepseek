@@ -24,7 +24,7 @@ import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
-import { demoMessage } from '../configs/demo';
+import { demoMessage, demoMessage2 } from '../configs/demo';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -58,6 +58,10 @@ export class ChatController {
     }
     if (tag === 'demo') {
       message = demoMessage;
+    }
+
+    if (message === '比亚迪的供应商在未来一年内经营风险主要有哪些') {
+      message = demoMessage2;
     }
 
     // 将字符串参数转换为布尔值，默认都为 false
