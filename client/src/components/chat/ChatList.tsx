@@ -2,25 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
 
 export function ChatList() {
-  const {
-    sessions,
-    currentSessionId,
-    setCurrentSessionId,
-    createNewSession,
-    deleteSession,
-  } = useSessionManager();
-
-  const handleNewChat = async () => {
-    try {
-      await createNewSession();
-    } catch (error) {
-      console.error("创建新对话失败:", error);
-    }
-  };
+  const { sessions, currentSessionId, setCurrentSessionId, deleteSession } =
+    useSessionManager();
 
   const handleDeleteSession = async (
     e: React.MouseEvent,
@@ -36,13 +23,6 @@ export function ChatList() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4">
-        <Button className="w-full" onClick={handleNewChat}>
-          <Plus className="w-4 h-4 mr-2" />
-          新对话
-        </Button>
-      </div>
-
       <div className="flex-1 overflow-auto">
         {sessions.map((session) => (
           <div
@@ -57,7 +37,7 @@ export function ChatList() {
                 {format(new Date(session.createdAt), "MM/dd HH:mm")}
               </span>
               <span className="font-medium truncate">
-                {session.firstMessage || "New Message"}
+                {session.roleName || "⭐️ 默认助手"}
               </span>
             </div>
             <Button

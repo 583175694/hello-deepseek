@@ -162,12 +162,7 @@ export function ChatInput({
         </Button>
 
         {isLoading ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="destructive"
-            onClick={onAbort}
-          >
+          <Button type="button" size="icon" variant="outline" onClick={onAbort}>
             <span className="w-4 h-4">×</span>
           </Button>
         ) : (

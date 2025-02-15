@@ -36,6 +36,11 @@ const request = {
   },
 };
 
+interface CreateSessionParams {
+  roleName?: string;
+  systemPrompt?: string;
+}
+
 export const chatService = {
   chat: async (data: ChatRequest) => {
     const response = await api.post<ChatResponse>("/chat", data);
@@ -43,9 +48,13 @@ export const chatService = {
   },
 
   // 创建新会话
-  async createSession() {
+  async createSession(params?: CreateSessionParams) {
     const response = await request.fetch("/chat/session", {
       method: "POST",
+      body: params ? JSON.stringify(params) : undefined,
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
     return response.json();
   },

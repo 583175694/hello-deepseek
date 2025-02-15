@@ -17,7 +17,10 @@ type SessionContextType = {
   currentSessionId: string | null;
   setCurrentSessionId: (id: string | null) => void;
   loadSessions: () => Promise<void>;
-  createNewSession: () => Promise<Session>;
+  createNewSession: (params?: {
+    roleName: string;
+    systemPrompt: string;
+  }) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
 };
 
@@ -36,18 +39,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createNewSession = useCallback(async () => {
-    try {
-      console.log("创建新会话");
-      const session = await chatService.createSession();
-      setSessions((prev) => [session, ...prev]);
-      setCurrentSessionId(session.sessionId);
-      return session;
-    } catch (error) {
-      console.error("创建会话失败:", error);
-      throw error;
-    }
-  }, []);
+  const createNewSession = useCallback(
+    async (params?: { roleName: string; systemPrompt: string }) => {
+      try {
+        console.log("创建新会话", params);
+        const session = await chatService.createSession(params);
+        setSessions((prev) => [session, ...prev]);
+        setCurrentSessionId(session.sessionId);
+        return session;
+      } catch (error) {
+        console.error("创建会话失败:", error);
+        throw error;
+      }
+    },
+    []
+  );
 
   const deleteSession = useCallback(
     async (sessionId: string) => {

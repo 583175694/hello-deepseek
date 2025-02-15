@@ -16,6 +16,12 @@ export class Session {
   @Column({ unique: true })
   sessionId: string;
 
+  @Column({ nullable: true })
+  roleName: string;
+
+  @Column({ nullable: true, type: 'text' })
+  systemPrompt: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

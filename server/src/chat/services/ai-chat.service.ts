@@ -21,6 +21,8 @@ export class AIChatService {
   private prompt: ChatPromptTemplate; // 聊天提示模板
   private retriever: ExaRetriever; // Exa检索器实例
   private exa: Exa; // Exa客户端实例
+  private readonly DEFAULT_SYSTEM_PROMPT =
+    '你是一个智能AI助手，可以帮助用户解决各种问题。';
 
   constructor(
     private messageService: MessageService,
@@ -60,7 +62,7 @@ export class AIChatService {
     this.prompt = ChatPromptTemplate.fromMessages([
       [
         'system',
-        '请你扮演一个人工智障。以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
+        '{systemPrompt}\n\n以下是一些相关的搜索结果，可以参考：\n\n{searchContext}\n\n',
       ],
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
@@ -158,6 +160,9 @@ export class AIChatService {
         session = await this.sessionService.createSession();
         sessionId = session.sessionId;
         this.logger.log(`New session created with ID: ${sessionId}`);
+      } else {
+        session = await this.sessionService.getSessionMessages(sessionId);
+        session = session.session;
       }
 
       this.logger.log('Loading chat history...');
@@ -250,6 +255,7 @@ export class AIChatService {
         history: memoryVariables.history || [],
         input: message,
         searchContext: searchContext || '没有找到相关的搜索结果',
+        systemPrompt: session.systemPrompt || this.DEFAULT_SYSTEM_PROMPT,
       });
       this.logger.log('Chat stream created successfully');
 

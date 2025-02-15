@@ -26,10 +26,15 @@ export class SessionService {
     private tempDocumentService: TempDocumentService,
   ) {}
 
-  async createSession(): Promise<Session> {
+  async createSession(
+    roleName?: string,
+    systemPrompt?: string,
+  ): Promise<Session> {
     this.logger.log('Creating new session');
     const session = this.sessionRepository.create({
       sessionId: uuidv4(),
+      roleName,
+      systemPrompt,
     });
     const savedSession = await this.sessionRepository.save(session);
     this.logger.log(`Session created with ID: ${savedSession.sessionId}`);
@@ -44,7 +49,14 @@ export class SessionService {
           createdAt: 'DESC',
         },
         relations: ['messages'],
-        select: ['id', 'sessionId', 'createdAt', 'updatedAt'],
+        select: [
+          'id',
+          'sessionId',
+          'createdAt',
+          'updatedAt',
+          'roleName',
+          'systemPrompt',
+        ],
       });
 
       this.logger.log(`Found ${sessions.length} sessions`);
@@ -53,6 +65,8 @@ export class SessionService {
         sessionId: session.sessionId,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
+        roleName: session.roleName,
+        systemPrompt: session.systemPrompt,
         firstMessage:
           session.messages.length > 0 ? session.messages[0].content : null,
         lastMessage:
@@ -94,6 +108,8 @@ export class SessionService {
           sessionId: session.sessionId,
           createdAt: session.createdAt,
           updatedAt: session.updatedAt,
+          roleName: session.roleName,
+          systemPrompt: session.systemPrompt,
         },
         messages: messages,
       };

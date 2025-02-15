@@ -1,16 +1,20 @@
 "use client";
 
-import { ChatList } from "@/components/chat/ChatList";
 import { ChatHistory } from "@/components/chat/ChatHistory";
 import { KnowledgeBase } from "@/components/knowledge/KnowledgeBase";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Database } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import { useSessionManager } from "@/contexts/SessionContext";
+import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 
 export function ChatLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const isChat = pathname === "/" || pathname === "/chat";
+  const { createNewSession } = useSessionManager();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
     <div className="flex h-screen">
@@ -38,20 +42,16 @@ export function ChatLayout() {
         </Button>
       </div>
 
-      {/* 左侧列表区域 - 仅在聊天页面显示 */}
-      {isChat && (
-        <div className="w-[280px] border-r border-border h-[calc(100vh-72px)]">
-          <div className="p-4 border-b border-border">
-            <h2 className="text-lg font-semibold">对话</h2>
-          </div>
-          <ChatList />
-        </div>
-      )}
-
       {/* 右侧内容区域 */}
       <div className="flex-1">
         {isChat ? <ChatHistory /> : <KnowledgeBase />}
       </div>
+
+      <CreateSessionDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreateSession={createNewSession}
+      />
     </div>
   );
 }

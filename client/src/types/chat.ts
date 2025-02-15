@@ -24,4 +24,6 @@ export interface Session {
   firstMessage: string;
   lastMessage: string;
   messageCount: number;
+  roleName?: string;
+  systemPrompt?: string;
 }

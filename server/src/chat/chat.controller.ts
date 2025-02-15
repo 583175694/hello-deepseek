@@ -39,8 +39,13 @@ export class ChatController {
 
   // 创建新会话的接口
   @Post('session')
-  async createSession() {
-    return await this.sessionService.createSession();
+  async createSession(
+    @Body() data: { roleName?: string; systemPrompt?: string },
+  ) {
+    return await this.sessionService.createSession(
+      data.roleName,
+      data.systemPrompt,
+    );
   }
 
   // 处理流式聊天请求
