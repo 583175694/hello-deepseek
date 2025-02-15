@@ -4,6 +4,7 @@ import { ChatController } from './chat.controller';
 import { Session } from './entities/session.entity';
 import { Message } from './entities/message.entity';
 import { SessionFile } from './entities/session-file.entity';
+import { SessionDocument } from './entities/session-document.entity';
 import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
@@ -13,7 +14,9 @@ import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Session, Message, SessionFile])],
+  imports: [
+    TypeOrmModule.forFeature([Session, Message, SessionFile, SessionDocument]),
+  ],
   controllers: [ChatController],
   providers: [
     SessionService,

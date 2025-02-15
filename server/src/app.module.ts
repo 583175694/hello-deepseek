@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { ChatModule } from './chat/chat.module';
 import { Session } from './chat/entities/session.entity';
 import { Message } from './chat/entities/message.entity';
+import { SessionFile } from './chat/entities/session-file.entity';
+import { SessionDocument } from './chat/entities/session-document.entity';
 
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { Message } from './chat/entities/message.entity';
       username: process.env.DB_USERNAME || 'root',
       password: process.env.DB_PASSWORD || 'root',
       database: process.env.DB_DATABASE || 'chat',
-      entities: [Session, Message],
+      entities: [Session, Message, SessionFile, SessionDocument],
       synchronize: true, // 仅在开发环境使用
     }),
     ChatModule,

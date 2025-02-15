@@ -5,6 +5,10 @@ import { Session } from '../entities/session.entity';
 import { Message } from '../entities/message.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { SessionFile } from '../entities/session-file.entity';
+import { SessionDocument } from '../entities/session-document.entity';
+import { TempDocumentService } from '../services/temp-document.service';
+import * as fs from 'fs';
 
 @Injectable()
 export class SessionService {
@@ -15,6 +19,11 @@ export class SessionService {
     private sessionRepository: Repository<Session>,
     @InjectRepository(Message)
     private messageRepository: Repository<Message>,
+    @InjectRepository(SessionFile)
+    private sessionFileRepository: Repository<SessionFile>,
+    @InjectRepository(SessionDocument)
+    private sessionDocumentRepository: Repository<SessionDocument>,
+    private tempDocumentService: TempDocumentService,
   ) {}
 
   async createSession(): Promise<Session> {
@@ -106,7 +115,27 @@ export class SessionService {
         throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
       }
 
+      // 1. 删除临时文件
+      await this.tempDocumentService.cleanupSession(sessionId);
+
+      // 2. 删除会话文件
+      const sessionFiles = await this.sessionFileRepository.find({
+        where: { sessionId },
+      });
+      for (const file of sessionFiles) {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      }
+      await this.sessionFileRepository.delete({ sessionId });
+
+      // 3. 删除会话文档
+      await this.sessionDocumentRepository.delete({ sessionId });
+
+      // 4. 删除消息记录
       await this.messageRepository.delete({ sessionId });
+
+      // 5. 删除会话
       await this.sessionRepository.delete({ sessionId });
 
       this.logger.log(`Successfully deleted session: ${sessionId}`);
