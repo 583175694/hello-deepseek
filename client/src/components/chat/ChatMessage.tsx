@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -80,6 +80,70 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
+
+  // 添加用于打字机效果的状态
+  const [displayedReasoning, setDisplayedReasoning] = useState("");
+  const [displayedContent, setDisplayedContent] = useState("");
+  const reasoningBufferRef = useRef("");
+  const contentBufferRef = useRef("");
+  const reasoningIndexRef = useRef(0);
+  const contentIndexRef = useRef(0);
+  const frameIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!isAI) return;
+
+    // 追加新内容而不是重置
+    const newReasoning = message.reasoning || "";
+    const newContent = message.content || "";
+
+    // 如果新内容长度大于当前缓冲区，则更新缓冲区
+    if (newReasoning.length > reasoningBufferRef.current.length) {
+      reasoningBufferRef.current = newReasoning;
+    }
+    if (newContent.length > contentBufferRef.current.length) {
+      contentBufferRef.current = newContent;
+    }
+
+    const updateText = () => {
+      let shouldContinue = false;
+
+      // 更新reasoning
+      if (reasoningIndexRef.current < reasoningBufferRef.current.length) {
+        setDisplayedReasoning(
+          reasoningBufferRef.current.slice(0, reasoningIndexRef.current + 1)
+        );
+        reasoningIndexRef.current++;
+        shouldContinue = true;
+      }
+      // 当reasoning完成后更新content
+      else if (contentIndexRef.current < contentBufferRef.current.length) {
+        setDisplayedContent(
+          contentBufferRef.current.slice(0, contentIndexRef.current + 1)
+        );
+        contentIndexRef.current++;
+        shouldContinue = true;
+      }
+
+      if (shouldContinue && isStreaming) {
+        frameIdRef.current = requestAnimationFrame(updateText);
+      }
+    };
+
+    if (isStreaming) {
+      frameIdRef.current = requestAnimationFrame(updateText);
+    } else {
+      // 如果不是streaming，直接显示完整内容
+      setDisplayedReasoning(newReasoning);
+      setDisplayedContent(newContent);
+    }
+
+    return () => {
+      if (frameIdRef.current) {
+        cancelAnimationFrame(frameIdRef.current);
+      }
+    };
+  }, [message.reasoning, message.content, isStreaming, isAI]);
 
   // 处理复制消息内容
   const handleCopy = async () => {
@@ -188,7 +252,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           // 渲染思考过程，使用左边框突出显示
           <div className="border-l-4 border-primary/30 pl-4 text-muted-foreground">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.reasoning + (isStreaming ? "▊" : "")}
+              {isStreaming ? displayedReasoning + "▊" : message.reasoning}
             </ReactMarkdown>
           </div>
         )}
@@ -208,7 +272,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             },
           }}
         >
-          {message.content + (isStreaming ? "▊" : "")}
+          {isStreaming ? displayedContent + "▊" : message.content}
         </ReactMarkdown>
       </div>
     );
