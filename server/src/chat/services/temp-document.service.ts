@@ -33,20 +33,28 @@ export class TempDocumentService {
     }
   }
 
-  private getSessionPath(sessionId: string): string {
-    return path.join(this.tempBasePath, sessionId);
+  private getSessionPath(sessionId: string, clientId: string): string {
+    return path.join(this.tempBasePath, clientId, sessionId);
   }
 
-  private getSessionVectorStorePath(sessionId: string): string {
-    return path.join(this.vectorStoreTempPath, sessionId);
+  private getSessionVectorStorePath(
+    sessionId: string,
+    clientId: string,
+  ): string {
+    return path.join(this.vectorStoreTempPath, clientId, sessionId);
+  }
+
+  private getStoreKey(sessionId: string, clientId: string): string {
+    return `${clientId}:${sessionId}`;
   }
 
   async saveUploadedFile(
     file: Express.Multer.File,
     sessionId: string,
+    clientId: string,
   ): Promise<string> {
     try {
-      const sessionPath = this.getSessionPath(sessionId);
+      const sessionPath = this.getSessionPath(sessionId, clientId);
       if (!fs.existsSync(sessionPath)) {
         fs.mkdirSync(sessionPath, { recursive: true });
       }
@@ -56,7 +64,7 @@ export class TempDocumentService {
       return filePath;
     } catch (error) {
       this.logger.error(
-        `Failed to save uploaded file for session ${sessionId}:`,
+        `Failed to save uploaded file for session ${sessionId} and client ${clientId}:`,
         error,
       );
       throw new HttpException(
@@ -66,10 +74,14 @@ export class TempDocumentService {
     }
   }
 
-  private async initSessionVectorStore(sessionId: string): Promise<FaissStore> {
-    const vectorStorePath = this.getSessionVectorStorePath(sessionId);
+  private async initSessionVectorStore(
+    sessionId: string,
+    clientId: string,
+  ): Promise<FaissStore> {
+    const vectorStorePath = this.getSessionVectorStorePath(sessionId, clientId);
     const indexPath = path.join(vectorStorePath, 'faiss.index');
     const docStorePath = path.join(vectorStorePath, 'docstore.json');
+    const storeKey = this.getStoreKey(sessionId, clientId);
 
     try {
       if (!fs.existsSync(vectorStorePath)) {
@@ -82,7 +94,7 @@ export class TempDocumentService {
       } else {
         const initialDocument = new Document({
           pageContent: 'Initial document to initialize vector store',
-          metadata: { source: 'initialization', sessionId },
+          metadata: { source: 'initialization', sessionId, clientId },
         });
 
         vectorStore = await FaissStore.fromDocuments(
@@ -92,11 +104,11 @@ export class TempDocumentService {
         await vectorStore.save(vectorStorePath);
       }
 
-      this.sessionVectorStores.set(sessionId, vectorStore);
+      this.sessionVectorStores.set(storeKey, vectorStore);
       return vectorStore;
     } catch (error) {
       this.logger.error(
-        `Failed to initialize vector store for session ${sessionId}:`,
+        `Failed to initialize vector store for session ${sessionId} and client ${clientId}:`,
         error,
       );
       throw new HttpException(
@@ -106,21 +118,35 @@ export class TempDocumentService {
     }
   }
 
-  async getSessionVectorStore(sessionId: string): Promise<FaissStore> {
-    if (!this.sessionVectorStores.has(sessionId)) {
-      await this.initSessionVectorStore(sessionId);
+  async getSessionVectorStore(
+    sessionId: string,
+    clientId: string,
+  ): Promise<FaissStore> {
+    const storeKey = this.getStoreKey(sessionId, clientId);
+    if (!this.sessionVectorStores.has(storeKey)) {
+      await this.initSessionVectorStore(sessionId, clientId);
     }
-    return this.sessionVectorStores.get(sessionId);
+    return this.sessionVectorStores.get(storeKey);
   }
 
-  async addDocuments(documents: Document[], sessionId: string): Promise<void> {
+  async addDocuments(
+    documents: Document[],
+    sessionId: string,
+    clientId: string,
+  ): Promise<void> {
     try {
-      const vectorStore = await this.getSessionVectorStore(sessionId);
-      await vectorStore.addDocuments(documents);
-      await vectorStore.save(this.getSessionVectorStorePath(sessionId));
+      const vectorStore = await this.getSessionVectorStore(sessionId, clientId);
+      const documentsWithClientId = documents.map((doc) => ({
+        ...doc,
+        metadata: { ...doc.metadata, clientId },
+      }));
+      await vectorStore.addDocuments(documentsWithClientId);
+      await vectorStore.save(
+        this.getSessionVectorStorePath(sessionId, clientId),
+      );
     } catch (error) {
       this.logger.error(
-        `Failed to add documents for session ${sessionId}:`,
+        `Failed to add documents for session ${sessionId} and client ${clientId}:`,
         error,
       );
       throw new HttpException(
@@ -133,15 +159,16 @@ export class TempDocumentService {
   async searchSimilarDocuments(
     query: string,
     sessionId: string,
+    clientId: string,
     limit: number = 5,
   ): Promise<Document[]> {
     try {
-      const vectorStore = await this.getSessionVectorStore(sessionId);
+      const vectorStore = await this.getSessionVectorStore(sessionId, clientId);
       const results = await vectorStore.similaritySearch(query, limit);
       return results;
     } catch (error) {
       this.logger.error(
-        `Failed to search documents for session ${sessionId}:`,
+        `Failed to search documents for session ${sessionId} and client ${clientId}:`,
         error,
       );
       throw new HttpException(
@@ -151,24 +178,31 @@ export class TempDocumentService {
     }
   }
 
-  async cleanupSession(sessionId: string): Promise<void> {
+  async cleanupSession(sessionId: string, clientId: string): Promise<void> {
     try {
       // 清理临时文件
-      const sessionPath = this.getSessionPath(sessionId);
+      const sessionPath = this.getSessionPath(sessionId, clientId);
       if (fs.existsSync(sessionPath)) {
         fs.rmSync(sessionPath, { recursive: true, force: true });
       }
 
       // 清理向量存储
-      const vectorStorePath = this.getSessionVectorStorePath(sessionId);
+      const vectorStorePath = this.getSessionVectorStorePath(
+        sessionId,
+        clientId,
+      );
       if (fs.existsSync(vectorStorePath)) {
         fs.rmSync(vectorStorePath, { recursive: true, force: true });
       }
 
       // 清理内存中的向量存储
-      this.sessionVectorStores.delete(sessionId);
+      const storeKey = this.getStoreKey(sessionId, clientId);
+      this.sessionVectorStores.delete(storeKey);
     } catch (error) {
-      this.logger.error(`Failed to cleanup session ${sessionId}:`, error);
+      this.logger.error(
+        `Failed to cleanup session ${sessionId} and client ${clientId}:`,
+        error,
+      );
       throw new HttpException(
         'Failed to cleanup session',
         HttpStatus.INTERNAL_SERVER_ERROR,

@@ -11,6 +11,9 @@ export class DocumentEmbed {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  clientId: string;
+
   @Column('text')
   content: string;
 

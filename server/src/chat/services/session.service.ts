@@ -27,12 +27,14 @@ export class SessionService {
   ) {}
 
   async createSession(
+    clientId: string,
     roleName?: string,
     systemPrompt?: string,
   ): Promise<Session> {
     this.logger.log('Creating new session');
     const session = this.sessionRepository.create({
       sessionId: uuidv4(),
+      clientId,
       roleName,
       systemPrompt,
     });
@@ -41,10 +43,11 @@ export class SessionService {
     return savedSession;
   }
 
-  async getSessions() {
+  async getSessions(clientId: string) {
     try {
-      this.logger.log('Fetching all sessions');
+      this.logger.log(`Fetching all sessions for client: ${clientId}`);
       const sessions = await this.sessionRepository.find({
+        where: { clientId },
         order: {
           createdAt: 'DESC',
         },
@@ -56,10 +59,13 @@ export class SessionService {
           'updatedAt',
           'roleName',
           'systemPrompt',
+          'clientId',
         ],
       });
 
-      this.logger.log(`Found ${sessions.length} sessions`);
+      this.logger.log(
+        `Found ${sessions.length} sessions for client: ${clientId}`,
+      );
       return sessions.map((session) => ({
         id: session.id,
         sessionId: session.sessionId,
@@ -81,11 +87,11 @@ export class SessionService {
     }
   }
 
-  async getSessionMessages(sessionId: string) {
+  async getSessionMessages(sessionId: string, clientId: string) {
     try {
       this.logger.log(`Fetching messages for session: ${sessionId}`);
       const session = await this.sessionRepository.findOne({
-        where: { sessionId },
+        where: { sessionId, clientId },
       });
 
       if (!session) {
@@ -94,7 +100,7 @@ export class SessionService {
       }
 
       const messages = await this.messageRepository.find({
-        where: { sessionId },
+        where: { sessionId, clientId },
         order: { createdAt: 'ASC' },
         select: ['id', 'role', 'content', 'createdAt'],
       });
@@ -119,11 +125,11 @@ export class SessionService {
     }
   }
 
-  async deleteSession(sessionId: string) {
+  async deleteSession(sessionId: string, clientId: string) {
     try {
       this.logger.log(`Attempting to delete session: ${sessionId}`);
       const session = await this.sessionRepository.findOne({
-        where: { sessionId },
+        where: { sessionId, clientId },
       });
 
       if (!session) {
@@ -132,27 +138,27 @@ export class SessionService {
       }
 
       // 1. 删除临时文件
-      await this.tempDocumentService.cleanupSession(sessionId);
+      await this.tempDocumentService.cleanupSession(sessionId, clientId);
 
       // 2. 删除会话文件
       const sessionFiles = await this.sessionFileRepository.find({
-        where: { sessionId },
+        where: { sessionId, clientId },
       });
       for (const file of sessionFiles) {
         if (fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
         }
       }
-      await this.sessionFileRepository.delete({ sessionId });
+      await this.sessionFileRepository.delete({ sessionId, clientId });
 
       // 3. 删除会话文档
-      await this.sessionDocumentRepository.delete({ sessionId });
+      await this.sessionDocumentRepository.delete({ sessionId, clientId });
 
       // 4. 删除消息记录
-      await this.messageRepository.delete({ sessionId });
+      await this.messageRepository.delete({ sessionId, clientId });
 
       // 5. 删除会话
-      await this.sessionRepository.delete({ sessionId });
+      await this.sessionRepository.delete({ sessionId, clientId });
 
       this.logger.log(`Successfully deleted session: ${sessionId}`);
       return { message: 'Session deleted successfully' };

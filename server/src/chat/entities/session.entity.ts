@@ -16,6 +16,9 @@ export class Session {
   @Column({ unique: true })
   sessionId: string;
 
+  @Column()
+  clientId: string;
+
   @Column({ nullable: true })
   roleName: string;
 

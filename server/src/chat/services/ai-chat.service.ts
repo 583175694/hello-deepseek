@@ -120,12 +120,16 @@ export class AIChatService {
   private async performTempDocumentSearch(
     message: string,
     sessionId: string,
+    clientId: string,
   ): Promise<string> {
-    this.logger.log(`Performing temp document search for session ${sessionId}`);
+    this.logger.log(
+      `Performing temp document search for session ${sessionId} and client ${clientId}`,
+    );
     try {
       const tempResults = await this.tempDocumentService.searchSimilarDocuments(
         message,
         sessionId,
+        clientId,
       );
       if (tempResults.length > 0) {
         return (
@@ -143,6 +147,7 @@ export class AIChatService {
   // 流式聊天处理
   async streamChat(
     message: string,
+    clientId: string,
     sessionId: string,
     useWebSearch: boolean = false,
     useVectorSearch: boolean = false,
@@ -151,23 +156,30 @@ export class AIChatService {
       content: string;
     }) => void,
   ) {
-    this.logger.log(`Starting stream chat for session ${sessionId}`);
+    this.logger.log(
+      `Starting stream chat for session ${sessionId} and client ${clientId}`,
+    );
     try {
       // 获取或创建会话
       let session;
       if (!sessionId) {
         this.logger.log('No sessionId provided, creating new session...');
-        session = await this.sessionService.createSession();
+        session = await this.sessionService.createSession(clientId);
         sessionId = session.sessionId;
         this.logger.log(`New session created with ID: ${sessionId}`);
       } else {
-        session = await this.sessionService.getSessionMessages(sessionId);
+        session = await this.sessionService.getSessionMessages(
+          sessionId,
+          clientId,
+        );
         session = session.session;
       }
 
       this.logger.log('Loading chat history...');
-      const memory =
-        await this.messageService.loadMemoryFromDatabase(sessionId);
+      const memory = await this.messageService.loadMemoryFromDatabase(
+        sessionId,
+        clientId,
+      );
       const memoryVariables = await memory.loadMemoryVariables({});
       this.logger.log('Chat history loaded successfully');
 
@@ -182,6 +194,7 @@ export class AIChatService {
         const tempSearchResults = await this.performTempDocumentSearch(
           message,
           sessionId,
+          clientId,
         );
         if (tempSearchResults) {
           searchContext += tempSearchResults + '\n\n';
@@ -217,14 +230,17 @@ export class AIChatService {
       if (useVectorSearch) {
         this.logger.log('Performing vector database search...');
         const vectorSearchResults =
-          await this.documentService.searchSimilarDocuments(message, 3);
+          await this.documentService.searchSimilarDocuments(
+            clientId,
+            message,
+            3,
+          );
         if (vectorSearchResults && vectorSearchResults.length > 0) {
           this.logger.log(
             `Found ${vectorSearchResults.length} vector search results`,
           );
           // 存储文档来源
           vectorSearchResults.forEach((doc) => {
-            console.log(doc);
             sources.push({
               type: 'vector',
               url: doc.metadata.filename,
@@ -245,7 +261,12 @@ export class AIChatService {
 
       // 保存用户消息
       this.logger.log('Saving user message...');
-      await this.messageService.saveMessage('user', message, sessionId);
+      await this.messageService.saveMessage(
+        'user',
+        message,
+        sessionId,
+        clientId,
+      );
       this.logger.log('User message saved successfully');
 
       // 创建并执行聊天链
@@ -299,9 +320,9 @@ export class AIChatService {
         'assistant',
         fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
         sessionId,
+        clientId,
       );
       this.logger.log('Assistant response saved successfully');
-      this.logger.log('Stream chat completed successfully');
     } catch (error) {
       this.logger.error('Stream chat error:', error);
       throw error;

@@ -9,16 +9,24 @@ import { Buffer } from 'buffer';
 @Injectable()
 export class SessionFileService {
   private readonly logger = new Logger(SessionFileService.name);
-  private readonly uploadDir = path.join(process.cwd(), 'session-uploads');
+  private readonly uploadBaseDir = path.join(process.cwd(), 'session-uploads');
 
   constructor(
     @InjectRepository(SessionFile)
     private sessionFileRepository: Repository<SessionFile>,
   ) {
-    // 确保上传目录存在
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+    // 确保上传基础目录存在
+    if (!fs.existsSync(this.uploadBaseDir)) {
+      fs.mkdirSync(this.uploadBaseDir, { recursive: true });
     }
+  }
+
+  private getClientUploadDir(clientId: string): string {
+    const clientDir = path.join(this.uploadBaseDir, clientId);
+    if (!fs.existsSync(clientDir)) {
+      fs.mkdirSync(clientDir, { recursive: true });
+    }
+    return clientDir;
   }
 
   // 添加文件名处理方法
@@ -31,6 +39,7 @@ export class SessionFileService {
   async uploadFile(
     file: Express.Multer.File,
     sessionId: string,
+    clientId: string,
   ): Promise<SessionFile> {
     try {
       // 确保文件名是 UTF-8 编码
@@ -40,10 +49,13 @@ export class SessionFileService {
 
       // 处理文件名
       const sanitizedFileName = this.sanitizeFileName(originalName);
-      const filePath = path.join(this.uploadDir, sanitizedFileName);
+      const uploadDir = this.getClientUploadDir(clientId);
+      const filePath = path.join(uploadDir, sanitizedFileName);
 
       // 保存文件
-      this.logger.log(`Saving file ${sanitizedFileName} to ${filePath}`);
+      this.logger.log(
+        `Saving file ${sanitizedFileName} to ${filePath} for client: ${clientId}`,
+      );
       fs.writeFileSync(filePath, file.buffer);
 
       // 创建文件记录
@@ -54,6 +66,7 @@ export class SessionFileService {
         size: file.size,
         path: filePath,
         sessionId,
+        clientId,
       });
 
       // 保存到数据库
@@ -66,16 +79,23 @@ export class SessionFileService {
     }
   }
 
-  async getSessionFiles(sessionId: string): Promise<SessionFile[]> {
+  async getSessionFiles(
+    sessionId: string,
+    clientId: string,
+  ): Promise<SessionFile[]> {
     return this.sessionFileRepository.find({
-      where: { sessionId },
+      where: { sessionId, clientId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async deleteFile(id: number, sessionId: string): Promise<void> {
+  async deleteFile(
+    id: number,
+    sessionId: string,
+    clientId: string,
+  ): Promise<void> {
     const file = await this.sessionFileRepository.findOne({
-      where: { id, sessionId },
+      where: { id, sessionId, clientId },
     });
 
     if (!file) {

@@ -8,13 +8,11 @@ import * as path from 'path';
 @Injectable()
 export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
-  private vectorStore: FaissStore;
+  private vectorStores: Map<string, FaissStore> = new Map();
   private embeddings: ByteDanceDoubaoEmbeddings;
-  private readonly vectorStorePath = path.join(process.cwd(), 'vector_store');
-  private readonly indexPath = path.join(this.vectorStorePath, 'faiss.index');
-  private readonly docStorePath = path.join(
-    this.vectorStorePath,
-    'docstore.json',
+  private readonly vectorStoreBasePath = path.join(
+    process.cwd(),
+    'vector_store',
   );
 
   constructor() {
@@ -23,34 +21,45 @@ export class DocumentService {
       model: 'ep-20250215013011-6nd8j',
       verbose: true,
     });
-
-    this.initVectorStore();
   }
 
-  private async initVectorStore() {
+  private getClientVectorStorePath(clientId: string): string {
+    return path.join(this.vectorStoreBasePath, clientId);
+  }
+
+  private async getVectorStore(clientId: string): Promise<FaissStore> {
+    if (this.vectorStores.has(clientId)) {
+      return this.vectorStores.get(clientId);
+    }
+
+    const vectorStorePath = this.getClientVectorStorePath(clientId);
+    const indexPath = path.join(vectorStorePath, 'faiss.index');
+    const docStorePath = path.join(vectorStorePath, 'docstore.json');
+
     try {
-      if (!fs.existsSync(this.vectorStorePath)) {
-        fs.mkdirSync(this.vectorStorePath, { recursive: true });
+      if (!fs.existsSync(vectorStorePath)) {
+        fs.mkdirSync(vectorStorePath, { recursive: true });
       }
 
-      if (fs.existsSync(this.indexPath) && fs.existsSync(this.docStorePath)) {
-        this.vectorStore = await FaissStore.load(
-          this.vectorStorePath,
-          this.embeddings,
-        );
+      let vectorStore: FaissStore;
+      if (fs.existsSync(indexPath) && fs.existsSync(docStorePath)) {
+        vectorStore = await FaissStore.load(vectorStorePath, this.embeddings);
       } else {
         const initialDocument = new Document({
           pageContent: 'Initial document to initialize vector store',
-          metadata: { source: 'initialization' },
+          metadata: { source: 'initialization', clientId },
         });
 
-        this.vectorStore = await FaissStore.fromDocuments(
+        vectorStore = await FaissStore.fromDocuments(
           [initialDocument],
           this.embeddings,
         );
 
-        await this.vectorStore.save(this.vectorStorePath);
+        await vectorStore.save(vectorStorePath);
       }
+
+      this.vectorStores.set(clientId, vectorStore);
+      return vectorStore;
     } catch (error) {
       this.logger.error('Failed to initialize vector store:', error);
       throw new HttpException(
@@ -60,14 +69,16 @@ export class DocumentService {
     }
   }
 
-  async addDocuments(documents: Document[]): Promise<void> {
+  async addDocuments(clientId: string, documents: Document[]): Promise<void> {
     try {
-      if (!this.vectorStore) {
-        throw new Error('Vector store not initialized');
-      }
+      const vectorStore = await this.getVectorStore(clientId);
+      const documentsWithClientId = documents.map((doc) => ({
+        ...doc,
+        metadata: { ...doc.metadata, clientId },
+      }));
 
-      await this.vectorStore.addDocuments(documents);
-      await this.vectorStore.save(this.vectorStorePath);
+      await vectorStore.addDocuments(documentsWithClientId);
+      await vectorStore.save(this.getClientVectorStorePath(clientId));
     } catch (error) {
       this.logger.error('Failed to add documents:', error);
       throw new HttpException(
@@ -78,11 +89,13 @@ export class DocumentService {
   }
 
   async searchSimilarDocuments(
+    clientId: string,
     query: string,
     limit: number = 5,
   ): Promise<Document[]> {
     try {
-      const results = await this.vectorStore.similaritySearch(query, limit);
+      const vectorStore = await this.getVectorStore(clientId);
+      const results = await vectorStore.similaritySearch(query, limit);
       return results;
     } catch (error) {
       this.logger.error('Failed to search documents:', error);

@@ -13,6 +13,7 @@ import {
   Delete,
   UseInterceptors,
   UploadedFile,
+  Headers,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Document } from '@langchain/core/documents';
@@ -40,9 +41,11 @@ export class ChatController {
   // 创建新会话的接口
   @Post('session')
   async createSession(
+    @Headers('x-client-id') clientId: string,
     @Body() data: { roleName?: string; systemPrompt?: string },
   ) {
     return await this.sessionService.createSession(
+      clientId,
       data.roleName,
       data.systemPrompt,
     );
@@ -51,6 +54,7 @@ export class ChatController {
   // 处理流式聊天请求
   @Sse('stream')
   async streamChat(
+    @Headers('x-client-id') clientId: string,
     @Query('message') message: string,
     @Query('sessionId') sessionId?: string,
     @Query('useWebSearch') useWebSearch?: string,
@@ -74,6 +78,7 @@ export class ChatController {
       this.aiChatService
         .streamChat(
           message,
+          clientId,
           sessionId,
           shouldUseWebSearch,
           shouldUseVectorSearch,
@@ -96,64 +101,88 @@ export class ChatController {
 
   // 获取所有会话列表的接口
   @Get('sessions')
-  async getSessions() {
-    return { sessions: await this.sessionService.getSessions() };
+  async getSessions(@Headers('x-client-id') clientId: string) {
+    return { sessions: await this.sessionService.getSessions(clientId) };
   }
 
   // 获取指定会话的历史消息
   @Get('sessions/:sessionId/messages')
-  async getSessionMessages(@Param('sessionId') sessionId: string) {
-    return await this.sessionService.getSessionMessages(sessionId);
+  async getSessionMessages(
+    @Headers('x-client-id') clientId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return await this.sessionService.getSessionMessages(sessionId, clientId);
   }
 
   // 删除指定会话
   @Post('sessions/:sessionId/delete')
-  async deleteSession(@Param('sessionId') sessionId: string) {
-    return await this.sessionService.deleteSession(sessionId);
+  async deleteSession(
+    @Headers('x-client-id') clientId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return await this.sessionService.deleteSession(sessionId, clientId);
   }
 
   // 上传文档的接口
   @Post('documents')
-  async uploadDocument(@Body() data: { content: string; metadata?: any }) {
+  async uploadDocument(
+    @Headers('x-client-id') clientId: string,
+    @Body() data: { content: string; metadata?: any },
+  ) {
     const document = new Document({
       pageContent: data.content,
-      metadata: data.metadata || {},
+      metadata: { ...data.metadata, clientId },
     });
-    await this.documentService.addDocuments([document]);
+    await this.documentService.addDocuments(clientId, [document]);
     return { message: 'Document added successfully' };
   }
 
   // 搜索文档的接口
   @Get('documents/search')
   async searchDocuments(
+    @Headers('x-client-id') clientId: string,
     @Query('query') query: string,
     @Query('limit') limit?: number,
   ) {
-    return await this.documentService.searchSimilarDocuments(query, limit);
+    return await this.documentService.searchSimilarDocuments(
+      clientId,
+      query,
+      limit,
+    );
   }
 
   // 上传文件端点
   @Post('files/upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   async uploadFile(
+    @Headers('x-client-id') clientId: string,
     @UploadedFile() file: Express.Multer.File,
     @Query('chunkSize') chunkSize?: number,
   ) {
-    await this.fileService.uploadAndProcessFile(file, chunkSize);
+    await this.fileService.uploadAndProcessFile(file, clientId, chunkSize);
     return { message: 'File uploaded and processed successfully' };
   }
 
   // 获取文件列表端点
   @Get('files')
-  async listFiles(): Promise<{ files: FileInfo[] }> {
-    const files = await this.fileService.listFiles();
+  async listFiles(@Headers('x-client-id') clientId: string): Promise<{
+    files: FileInfo[];
+  }> {
+    const files = await this.fileService.listFiles(clientId);
     return { files };
   }
 
   // 删除文件端点
   @Delete('files/:filename')
-  async deleteFile(@Param('filename') filename: string) {
-    await this.fileService.deleteFile(filename);
+  async deleteFile(
+    @Headers('x-client-id') clientId: string,
+    @Param('filename') filename: string,
+  ) {
+    await this.fileService.deleteFile(filename, clientId);
     return { message: 'File deleted successfully' };
   }
 
@@ -161,30 +190,43 @@ export class ChatController {
   @Post('sessions/:sessionId/files')
   @UseInterceptors(FileInterceptor('file'))
   async uploadSessionFile(
+    @Headers('x-client-id') clientId: string,
     @Param('sessionId') sessionId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const sessionFile = await this.sessionFileService.uploadFile(
       file,
       sessionId,
+      clientId,
     );
     return { message: 'File uploaded successfully', file: sessionFile };
   }
 
   // 获取会话文件列表端点
   @Get('sessions/:sessionId/files')
-  async getSessionFiles(@Param('sessionId') sessionId: string) {
-    const files = await this.sessionFileService.getSessionFiles(sessionId);
+  async getSessionFiles(
+    @Headers('x-client-id') clientId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const files = await this.sessionFileService.getSessionFiles(
+      sessionId,
+      clientId,
+    );
     return { files };
   }
 
   // 删除会话文件端点
   @Delete('sessions/:sessionId/files/:fileId')
   async deleteSessionFile(
+    @Headers('x-client-id') clientId: string,
     @Param('sessionId') sessionId: string,
     @Param('fileId') fileId: string,
   ) {
-    await this.sessionFileService.deleteFile(parseInt(fileId), sessionId);
+    await this.sessionFileService.deleteFile(
+      parseInt(fileId),
+      sessionId,
+      clientId,
+    );
     return { message: 'File deleted successfully' };
   }
 
@@ -192,12 +234,14 @@ export class ChatController {
   @Post('sessions/:sessionId/temp-files')
   @UseInterceptors(FileInterceptor('file'))
   async uploadTempFile(
+    @Headers('x-client-id') clientId: string,
     @Param('sessionId') sessionId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const filePath = await this.tempDocumentService.saveUploadedFile(
       file,
       sessionId,
+      clientId,
     );
     const documents = [
       new Document({
@@ -206,10 +250,11 @@ export class ChatController {
           filename: file.originalname,
           mimeType: file.mimetype,
           sessionId: sessionId,
+          clientId: clientId,
         },
       }),
     ];
-    await this.tempDocumentService.addDocuments(documents, sessionId);
+    await this.tempDocumentService.addDocuments(documents, sessionId, clientId);
     return {
       message: 'Temporary file uploaded and processed successfully',
       filePath,
@@ -218,8 +263,11 @@ export class ChatController {
 
   // 清理会话临时文件端点
   @Delete('sessions/:sessionId/temp-files')
-  async cleanupTempFiles(@Param('sessionId') sessionId: string) {
-    await this.tempDocumentService.cleanupSession(sessionId);
+  async cleanupTempFiles(
+    @Headers('x-client-id') clientId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    await this.tempDocumentService.cleanupSession(sessionId, clientId);
     return { message: 'Temporary files cleaned up successfully' };
   }
 }

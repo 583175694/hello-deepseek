@@ -14,6 +14,9 @@ export class SessionFile {
   id: number;
 
   @Column()
+  clientId: string;
+
+  @Column()
   filename: string;
 
   @Column()

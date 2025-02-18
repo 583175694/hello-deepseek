@@ -14,6 +14,9 @@ export class Message {
   id: number;
 
   @Column()
+  clientId: string;
+
+  @Column()
   role: string;
 
   @Column('text')

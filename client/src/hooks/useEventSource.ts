@@ -1,4 +1,6 @@
 import { useCallback, useRef } from "react";
+import { EventSourcePolyfill } from "event-source-polyfill";
+import { getClientIdHeader } from "@/lib/clientId";
 
 interface EventSourceOptions {
   onMessage?: (data: string) => void;
@@ -22,7 +24,11 @@ export function useEventSource() {
       // 先关闭已存在的连接
       close();
 
-      const source = new EventSource(url);
+      const source = new EventSourcePolyfill(url, {
+        headers: {
+          ...getClientIdHeader(),
+        },
+      });
       eventSourceRef.current = source;
 
       source.onopen = () => {
@@ -39,7 +45,7 @@ export function useEventSource() {
       };
 
       source.onerror = (error) => {
-        options.onError?.(error);
+        options.onError?.(error as Event);
         close();
       };
 

@@ -19,13 +19,13 @@ export interface FileInfo {
 @Injectable()
 export class FileService {
   private readonly logger = new Logger(FileService.name);
-  private readonly uploadDir = path.join(process.cwd(), 'uploads');
+  private readonly uploadBaseDir = path.join(process.cwd(), 'uploads');
   private init = false;
 
   constructor(private documentService: DocumentService) {
-    // 确保上传目录存在
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+    // 确保上传基础目录存在
+    if (!fs.existsSync(this.uploadBaseDir)) {
+      fs.mkdirSync(this.uploadBaseDir, { recursive: true });
     }
 
     // 初始化时处理已有文件
@@ -34,63 +34,80 @@ export class FileService {
     }
   }
 
+  private getClientUploadDir(clientId: string): string {
+    const clientDir = path.join(this.uploadBaseDir, clientId);
+    if (!fs.existsSync(clientDir)) {
+      fs.mkdirSync(clientDir, { recursive: true });
+    }
+    return clientDir;
+  }
+
   // 处理已有文件的方法
   private async processExistingFiles() {
     try {
-      const files = fs.readdirSync(this.uploadDir);
-      for (const filename of files) {
-        const filePath = path.join(this.uploadDir, filename);
-        const stats = fs.statSync(filePath);
+      const clientDirs = fs.readdirSync(this.uploadBaseDir);
+      for (const clientId of clientDirs) {
+        const clientDir = path.join(this.uploadBaseDir, clientId);
+        if (!fs.statSync(clientDir).isDirectory()) continue;
 
-        if (stats.isFile()) {
-          this.logger.log(`Processing existing file: ${filename}`);
+        const files = fs.readdirSync(clientDir);
+        for (const filename of files) {
+          const filePath = path.join(clientDir, filename);
+          const stats = fs.statSync(filePath);
 
-          // 根据文件类型选择合适的加载器
-          let loader;
-          if (filename.toLowerCase().endsWith('.pdf')) {
-            loader = new PDFLoader(filePath);
-          } else {
-            loader = new TextLoader(filePath);
-          }
-
-          try {
-            // 加载文档
-            const docs = await loader.load();
-
-            // 文本分割
-            const splitter = new RecursiveCharacterTextSplitter({
-              chunkSize: 1000,
-              chunkOverlap: 200,
-            });
-
-            const splitDocs = await splitter.splitDocuments(docs);
-
-            // 为每个文档片段添加元数据
-            const processedDocs = splitDocs.map((doc) => {
-              return new Document({
-                pageContent: doc.pageContent,
-                metadata: {
-                  ...doc.metadata,
-                  filename: filename,
-                  originalFilename: filename,
-                  uploadedAt: stats.birthtime.toISOString(),
-                  mimeType: filename.toLowerCase().endsWith('.pdf')
-                    ? 'application/pdf'
-                    : 'text/plain',
-                },
-              });
-            });
-
-            // 将文档添加到向量存储
-            await this.documentService.addDocuments(processedDocs);
+          if (stats.isFile()) {
             this.logger.log(
-              `Successfully processed existing file ${filename} into ${processedDocs.length} chunks`,
+              `Processing existing file: ${filename} for client: ${clientId}`,
             );
-          } catch (error) {
-            this.logger.error(
-              `Error processing existing file ${filename}:`,
-              error,
-            );
+
+            // 根据文件类型选择合适的加载器
+            let loader;
+            if (filename.toLowerCase().endsWith('.pdf')) {
+              loader = new PDFLoader(filePath);
+            } else {
+              loader = new TextLoader(filePath);
+            }
+
+            try {
+              // 加载文档
+              const docs = await loader.load();
+
+              // 文本分割
+              const splitter = new RecursiveCharacterTextSplitter({
+                chunkSize: 1000,
+                chunkOverlap: 200,
+              });
+
+              const splitDocs = await splitter.splitDocuments(docs);
+
+              // 为每个文档片段添加元数据
+              const processedDocs = splitDocs.map((doc) => {
+                return new Document({
+                  pageContent: doc.pageContent,
+                  metadata: {
+                    ...doc.metadata,
+                    filename: filename,
+                    originalFilename: filename,
+                    uploadedAt: stats.birthtime.toISOString(),
+                    mimeType: filename.toLowerCase().endsWith('.pdf')
+                      ? 'application/pdf'
+                      : 'text/plain',
+                    clientId,
+                  },
+                });
+              });
+
+              // 将文档添加到向量存储
+              await this.documentService.addDocuments(clientId, processedDocs);
+              this.logger.log(
+                `Successfully processed existing file ${filename} into ${processedDocs.length} chunks for client: ${clientId}`,
+              );
+            } catch (error) {
+              this.logger.error(
+                `Error processing existing file ${filename} for client ${clientId}:`,
+                error,
+              );
+            }
           }
         }
       }
@@ -108,6 +125,7 @@ export class FileService {
 
   async uploadAndProcessFile(
     file: Express.Multer.File,
+    clientId: string,
     chunkSize: number = 1000,
   ): Promise<void> {
     let finalFilePath: string;
@@ -121,7 +139,8 @@ export class FileService {
 
       // 处理文件名
       const sanitizedFileName = this.sanitizeFileName(originalName);
-      const filePath = path.join(this.uploadDir, sanitizedFileName);
+      const uploadDir = this.getClientUploadDir(clientId);
+      const filePath = path.join(uploadDir, sanitizedFileName);
 
       // 检查文件是否已存在，如果存在则添加时间戳
       finalFileName = sanitizedFileName;
@@ -133,11 +152,13 @@ export class FileService {
         );
         const ext = path.extname(sanitizedFileName);
         finalFileName = `${baseName}_${Date.now()}${ext}`;
-        finalFilePath = path.join(this.uploadDir, finalFileName);
+        finalFilePath = path.join(uploadDir, finalFileName);
       }
 
       // 保存文件
-      this.logger.log(`Saving file ${finalFileName} to ${finalFilePath}`);
+      this.logger.log(
+        `Saving file ${finalFileName} to ${finalFilePath} for client: ${clientId}`,
+      );
       fs.writeFileSync(finalFilePath, file.buffer);
 
       // 根据文件类型选择合适的加载器
@@ -176,6 +197,7 @@ export class FileService {
             originalFilename: originalName,
             uploadedAt: new Date().toISOString(),
             mimeType: file.mimetype,
+            clientId,
           },
         });
       });
@@ -184,10 +206,10 @@ export class FileService {
       this.logger.log(
         `Adding ${processedDocs.length} chunks to vector store for ${finalFileName}`,
       );
-      await this.documentService.addDocuments(processedDocs);
+      await this.documentService.addDocuments(clientId, processedDocs);
 
       this.logger.log(
-        `Successfully processed file ${finalFileName} (original: ${originalName}) into ${processedDocs.length} chunks`,
+        `Successfully processed file ${finalFileName} (original: ${originalName}) into ${processedDocs.length} chunks for client: ${clientId}`,
       );
     } catch (error) {
       this.logger.error(`Error processing file ${file.originalname}:`, error);
@@ -207,11 +229,12 @@ export class FileService {
     }
   }
 
-  async listFiles(): Promise<FileInfo[]> {
+  async listFiles(clientId: string): Promise<FileInfo[]> {
     try {
-      const files = fs.readdirSync(this.uploadDir);
+      const uploadDir = this.getClientUploadDir(clientId);
+      const files = fs.readdirSync(uploadDir);
       return files.map((filename) => {
-        const filePath = path.join(this.uploadDir, filename);
+        const filePath = path.join(uploadDir, filename);
         const stats = fs.statSync(filePath);
         return {
           filename,
@@ -227,9 +250,10 @@ export class FileService {
     }
   }
 
-  async deleteFile(filename: string): Promise<void> {
+  async deleteFile(filename: string, clientId: string): Promise<void> {
     try {
-      const filePath = path.join(this.uploadDir, filename);
+      const uploadDir = this.getClientUploadDir(clientId);
+      const filePath = path.join(uploadDir, filename);
       if (!fs.existsSync(filePath)) {
         throw new Error('File not found');
       }
@@ -238,11 +262,15 @@ export class FileService {
       if (stats.isDirectory()) {
         // 如果是目录，使用 rmSync 递归删除
         fs.rmSync(filePath, { recursive: true, force: true });
-        this.logger.log(`Successfully deleted directory ${filename}`);
+        this.logger.log(
+          `Successfully deleted directory ${filename} for client: ${clientId}`,
+        );
       } else {
         // 如果是文件，使用 unlinkSync 删除
         fs.unlinkSync(filePath);
-        this.logger.log(`Successfully deleted file ${filename}`);
+        this.logger.log(
+          `Successfully deleted file ${filename} for client: ${clientId}`,
+        );
       }
     } catch (error) {
       this.logger.error(`Error deleting file ${filename}:`, error);

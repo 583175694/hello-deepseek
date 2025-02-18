@@ -26,20 +26,23 @@ export class MessageService {
     role: string,
     content: string,
     sessionId: string,
+    clientId: string,
   ): Promise<Message> {
     const message = this.messageRepository.create({
       role,
       content,
       sessionId,
+      clientId,
     });
     return await this.messageRepository.save(message);
   }
 
   async getSessionHistory(
     sessionId: string,
+    clientId: string,
   ): Promise<{ role: string; content: string }[]> {
     const messages = await this.messageRepository.find({
-      where: { session: { sessionId } },
+      where: { sessionId, clientId },
       order: { createdAt: 'ASC' },
     });
     return messages.map((msg) => ({
@@ -48,8 +51,8 @@ export class MessageService {
     }));
   }
 
-  async loadMemoryFromDatabase(sessionId: string) {
-    const messages = await this.getSessionHistory(sessionId);
+  async loadMemoryFromDatabase(sessionId: string, clientId: string) {
+    const messages = await this.getSessionHistory(sessionId, clientId);
     await this.memory.clear();
 
     for (let i = 0; i < messages.length; i += 2) {

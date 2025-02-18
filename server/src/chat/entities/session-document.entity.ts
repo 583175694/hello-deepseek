@@ -13,6 +13,9 @@ export class SessionDocument {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  clientId: string;
+
   @Column('text')
   content: string;
 
