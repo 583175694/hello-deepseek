@@ -131,11 +131,7 @@ export function ChatInput({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px]"
-            placeholder={
-              isLoading
-                ? "AI 正在回复中..."
-                : "发送消息... (Shift + Enter 换行)"
-            }
+            placeholder={isLoading ? "AI 正在回复中..." : "发送消息..."}
             disabled={disabled || isLoading}
             rows={1}
           />
@@ -149,6 +145,7 @@ export function ChatInput({
           onChange={handleFileUpload}
           accept=".pdf,.doc,.docx,.txt,.md"
           disabled={disabled || isLoading}
+          capture="environment"
         />
         <Button
           type="button"
@@ -157,6 +154,7 @@ export function ChatInput({
           onClick={() => document.getElementById("file-upload")?.click()}
           disabled={disabled || isLoading}
           title="上传文档"
+          className="hidden lg:inline-flex"
         >
           <Paperclip className="w-4 h-4" />
         </Button>
@@ -173,22 +171,27 @@ export function ChatInput({
       </form>
 
       {/* 功能按钮区域 */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2">
           {/* 网络搜索切换按钮 */}
           <Button
             type="button"
             size="sm"
             variant="ghost"
             className={cn(
-              "h-7 px-2 gap-1",
+              "h-7 px-2 gap-1 text-xs lg:text-sm",
               useWebSearch &&
                 "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
             onClick={() => setUseWebSearch(!useWebSearch)}
             disabled={disabled || isLoading}
           >
-            <Globe className={cn("w-4 h-4", useWebSearch && "text-primary")} />
+            <Globe
+              className={cn(
+                "w-3 h-3 lg:w-4 lg:h-4",
+                useWebSearch && "text-primary"
+              )}
+            />
             {useWebSearch && isLoading ? "搜索中..." : "联网搜索"}
           </Button>
 
@@ -198,7 +201,7 @@ export function ChatInput({
             size="sm"
             variant="ghost"
             className={cn(
-              "h-7 px-2 gap-1",
+              "h-7 px-2 gap-1 text-xs lg:text-sm",
               useVectorSearch &&
                 "bg-primary/10 text-primary hover:bg-primary/20 font-medium"
             )}
@@ -206,9 +209,25 @@ export function ChatInput({
             disabled={disabled || isLoading}
           >
             <Database
-              className={cn("w-4 h-4", useVectorSearch && "text-primary")}
+              className={cn(
+                "w-3 h-3 lg:w-4 lg:h-4",
+                useVectorSearch && "text-primary"
+              )}
             />
             {useVectorSearch && isLoading ? "搜索中..." : "我的知识库"}
+          </Button>
+
+          {/* 移动端文件上传按钮 */}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 gap-1 text-xs lg:hidden"
+            onClick={() => document.getElementById("file-upload")?.click()}
+            disabled={disabled || isLoading}
+          >
+            <Paperclip className="w-3 h-3" />
+            上传文件
           </Button>
         </div>
 
@@ -219,7 +238,7 @@ export function ChatInput({
           className="h-7"
           disabled={disabled || isLoading}
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-3 h-3 lg:w-4 lg:h-4" />
         </Button>
       </div>
     </div>

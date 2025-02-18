@@ -79,8 +79,8 @@ export function ChatHistory() {
 
   return (
     <div className="flex flex-row h-full">
-      {/* 左侧列表区域 */}
-      <div className="w-[280px] border-r border-border h-[calc(100vh-72px)]">
+      {/* 左侧列表区域 - 在移动端默认隐藏 */}
+      <div className="hidden lg:block w-[280px] border-r border-border h-[calc(100vh-72px)]">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">对话</h2>
@@ -95,18 +95,30 @@ export function ChatHistory() {
 
       {currentSessionId ? (
         <div className="flex-1 flex flex-col h-full">
+          {/* 移动端顶部操作栏 */}
+          <div className="lg:hidden flex items-center justify-between p-4 pl-12 border-b">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <PlusIcon className="mr-2 h-4 w-4" />
+              新建会话
+            </Button>
+          </div>
+
           {/* 消息列表区域 */}
           <div className="flex-1 overflow-y-auto">
             <div className="px-4 py-6">
               <div className="space-y-6 max-w-3xl mx-auto">
                 {messages.length === 0 ? (
                   // 空消息提示
-                  <div className="h-[80vh] flex flex-col items-center justify-center text-muted-foreground">
-                    <div className="p-8 rounded-lg text-center">
-                      <h2 className="text-2xl font-semibold mb-3">
+                  <div className="h-[60vh] lg:h-[80vh] flex flex-col items-center justify-center text-muted-foreground">
+                    <div className="p-4 lg:p-8 rounded-lg text-center">
+                      <h2 className="text-xl lg:text-2xl font-semibold mb-3">
                         开始一个新的对话
                       </h2>
-                      <p className="text-base mb-6 max-w-md mx-auto text-muted-foreground">
+                      <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
                         你可以问我任何问题，我会尽力帮助你。如果需要参考知识库中的内容，可以开启知识库搜索。
                       </p>
                     </div>
@@ -128,7 +140,7 @@ export function ChatHistory() {
                 )}
                 {/* 错误提示 */}
                 {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md mx-4 lg:mx-0">
                     {error}
                   </div>
                 )}
@@ -157,10 +169,12 @@ export function ChatHistory() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
-            <h2 className="text-2xl font-semibold mb-3">欢迎使用 AI 助手</h2>
-            <p className="text-base mb-6 max-w-md mx-auto text-muted-foreground">
+            <h2 className="text-xl lg:text-2xl font-semibold mb-3">
+              欢迎使用 AI 助手
+            </h2>
+            <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
               选择一个现有的对话或创建一个新的对话以开始聊天
             </p>
             <Button
