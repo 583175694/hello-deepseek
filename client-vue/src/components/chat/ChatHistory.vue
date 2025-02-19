@@ -86,31 +86,31 @@
               />
             </div>
             <div
-              v-if="message.id === chatStore.streamingMessage?.id"
-              class="absolute bottom-2 right-2 flex gap-1"
-            >
-              <div
-                v-for="i in 3"
-                :key="i"
-                class="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
-                :style="{ animationDelay: `${(i - 1) * 0.16}s` }"
-              />
-            </div>
-            <div
               v-if="message.role === 'assistant'"
-              class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center"
+              class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center relative"
             >
               <div class="flex gap-2">
                 <button
                   v-for="(action, index) in actions"
                   :key="index"
                   class="inline-flex items-center px-3 py-1 text-sm text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100"
+                  v-if="
+                    !chatStore.streamingMessage ||
+                    message.id !== chatStore.streamingMessage.id
+                  "
+                  @click="handleAction(action, message)"
                 >
                   <component :is="action.icon" class="w-4 h-4 mr-1" />
                   {{ action.label }}
                 </button>
               </div>
-              <div class="flex gap-2">
+              <div
+                class="flex gap-2"
+                v-if="
+                  !chatStore.streamingMessage ||
+                  message.id !== chatStore.streamingMessage.id
+                "
+              >
                 <button
                   class="p-1 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100"
                 >
@@ -121,6 +121,20 @@
                 >
                   <HandThumbDownIcon class="w-5 h-5" />
                 </button>
+              </div>
+              <div
+                v-if="
+                  chatStore.streamingMessage &&
+                  message.id === chatStore.streamingMessage.id
+                "
+                class="absolute bottom-2 right-2 flex gap-1"
+              >
+                <div
+                  v-for="i in 3"
+                  :key="i"
+                  class="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                  :style="{ animationDelay: `${(i - 1) * 0.16}s` }"
+                />
               </div>
             </div>
           </div>
@@ -224,6 +238,23 @@ onMounted(async () => {
     }
   }
 });
+
+const handleAction = (action: { icon: any; label: string }, message: any) => {
+  switch (action.label) {
+    case "复制":
+      navigator.clipboard.writeText(message.content);
+      break;
+    case "刷新":
+      // TODO: 实现刷新功能
+      break;
+    case "分享":
+      // TODO: 实现分享功能
+      break;
+    case "下载":
+      // TODO: 实现下载功能
+      break;
+  }
+};
 </script>
 
 <style>
