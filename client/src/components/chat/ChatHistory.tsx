@@ -207,30 +207,6 @@ export function ChatHistory() {
           {/* 消息列表区域 */}
           <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
             <div className="px-4 py-6">
-              {/* 显示临时文件列表 */}
-              {tempFiles.length > 0 && (
-                <div className="max-w-3xl mx-auto mb-6">
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium mb-2">临时文件</h3>
-                    <div className="space-y-2">
-                      {tempFiles.map((file) => (
-                        <div
-                          key={file.filename}
-                          className="flex items-center gap-2 text-sm text-muted-foreground"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span className="flex-1 truncate">
-                            {file.filename}
-                          </span>
-                          <span className="text-xs">
-                            {(file.size / 1024).toFixed(1)}KB
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="space-y-6 max-w-3xl mx-auto">
                 {messages.length === 0 ? (
                   // 空消息提示

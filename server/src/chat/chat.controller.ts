@@ -245,39 +245,22 @@ export class ChatController {
   // 上传临时文件端点
   @Post('sessions/:sessionId/temp-files')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadTempFile(
-    @Headers('x-client-id') clientId: string,
-    @Param('sessionId') sessionId: string,
+  async uploadTempDocument(
     @UploadedFile() file: Express.Multer.File,
+    @Param('sessionId') sessionId: string,
+    @Headers('x-client-id') clientId: string,
   ) {
-    const filePath = await this.tempDocumentService.saveUploadedFile(
-      file,
-      sessionId,
-      clientId,
-    );
-    const documents = [
-      new Document({
-        pageContent: file.buffer.toString(),
-        metadata: {
-          filename: file.originalname,
-          mimeType: file.mimetype,
-          sessionId: sessionId,
-          clientId: clientId,
-        },
-      }),
-    ];
-    await this.tempDocumentService.addDocuments(documents, sessionId, clientId);
-
-    // 获取更新后的文件信息
-    const tempFiles = await this.tempDocumentService.getSessionDocuments(
-      sessionId,
-      clientId,
-    );
+    const { filePath, tempFiles } =
+      await this.tempDocumentService.uploadAndProcessFile(
+        file,
+        sessionId,
+        clientId,
+      );
 
     return {
-      message: 'Temporary file uploaded and processed successfully',
+      message: 'File uploaded and processed successfully',
       filePath,
-      tempFiles,
+      files: tempFiles,
     };
   }
 

@@ -183,10 +183,17 @@ export class AIChatService {
             '会话临时文档搜索结果：\n' +
             tempDocuments.map((doc) => doc.pageContent).join('\n') +
             '\n\n';
-          sources.push({
-            type: 'temp',
-            url: 'session_document',
+
+          // 从每个文档的元数据中获取文件名
+          tempDocuments.forEach((doc) => {
+            if (doc.metadata?.filename) {
+              sources.push({
+                type: 'temp',
+                url: doc.metadata.filename,
+              });
+            }
           });
+
           this.logger.log('Temp document search results added to context');
         } else {
           this.logger.log('No valid temp documents found');
