@@ -23,6 +23,7 @@ export function ChatHistory() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
+  const [isMobileListOpen, setIsMobileListOpen] = useState(false);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -182,8 +183,22 @@ export function ChatHistory() {
 
   return (
     <div className="flex flex-row h-full">
-      {/* 左侧列表区域 - 在移动端默认隐藏 */}
-      <div className="hidden lg:block w-[280px] border-r border-border h-[calc(100vh-72px)]">
+      {/* 左侧列表区域 - 在移动端使用固定定位 */}
+      <div
+        className={`
+        lg:block lg:w-[280px] lg:relative
+        fixed inset-y-0 left-0
+        w-[280px] h-full
+        bg-background border-r border-border
+        transform transition-transform duration-300 ease-in-out
+        ${
+          isMobileListOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+        }
+        z-50
+      `}
+      >
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">对话</h2>
@@ -199,15 +214,27 @@ export function ChatHistory() {
       {currentSessionId ? (
         <div className="flex-1 flex flex-col h-full">
           {/* 移动端顶部操作栏 */}
-          <div className="lg:hidden flex items-center justify-between p-4 pl-12 border-b">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <PlusIcon className="mr-2 h-4 w-4" />
-              新建会话
-            </Button>
+          <div className="lg:hidden flex items-center justify-between px-20 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setIsMobileListOpen(true)}
+              >
+                历史会话
+              </Button>
+              <div className="h-4 w-px bg-border" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <PlusIcon className="mr-2 h-4 w-4" />
+                新建会话
+              </Button>
+            </div>
           </div>
 
           {/* 消息列表区域 */}
@@ -301,6 +328,14 @@ export function ChatHistory() {
         onOpenChange={setIsCreateDialogOpen}
         onCreateSession={createNewSession}
       />
+
+      {/* 移动端历史会话遮罩 */}
+      {isMobileListOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsMobileListOpen(false)}
+        />
+      )}
     </div>
   );
 }

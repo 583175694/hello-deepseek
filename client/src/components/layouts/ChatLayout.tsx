@@ -21,13 +21,26 @@ export function ChatLayout() {
     <div className="flex h-screen">
       {/* 移动端菜单按钮 */}
       <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border"
+        className="lg:hidden fixed top-2 left-4 z-50 p-3 rounded-lg bg-background border shadow-sm hover:bg-accent/50 transition-colors"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Toggle menu"
       >
         <div className="w-5 h-4 flex flex-col justify-between">
-          <span className="w-full h-0.5 bg-foreground" />
-          <span className="w-full h-0.5 bg-foreground" />
-          <span className="w-full h-0.5 bg-foreground" />
+          <span
+            className={`w-full h-0.5 bg-foreground transition-transform duration-300 ${
+              isMobileMenuOpen ? "rotate-45 translate-y-[7px]" : ""
+            }`}
+          />
+          <span
+            className={`w-full h-0.5 bg-foreground transition-opacity duration-300 ${
+              isMobileMenuOpen ? "opacity-0" : "opacity-100"
+            }`}
+          />
+          <span
+            className={`w-full h-0.5 bg-foreground transition-transform duration-300 ${
+              isMobileMenuOpen ? "-rotate-45 -translate-y-[7px]" : ""
+            }`}
+          />
         </div>
       </button>
 
@@ -35,13 +48,14 @@ export function ChatLayout() {
       <div
         className={`
         fixed lg:relative
-        w-[240px] lg:w-[144px]
+        w-[180px] lg:w-[144px]
         h-screen
         border-r
         flex flex-col items-center
         py-4 gap-2
         bg-background
-        transition-transform duration-300
+        shadow-lg lg:shadow-none
+        transition-all duration-300 ease-in-out
         ${
           isMobileMenuOpen
             ? "translate-x-0"
