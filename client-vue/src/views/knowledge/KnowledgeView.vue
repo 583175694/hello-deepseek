@@ -1,73 +1,125 @@
 <template>
-  <div class="app-container">
+  <div class="flex h-screen w-screen overflow-hidden">
     <nav-sidebar />
-    <div class="main-container">
-      <div class="knowledge-container">
-        <div class="knowledge-header">
-          <h1>知识库</h1>
-          <n-upload
-            ref="uploadRef"
-            :custom-request="customUpload"
-            :show-file-list="false"
-            accept=".pdf,.txt,.md,.doc,.docx"
-          >
-            <n-button type="primary" :loading="isUploading">
-              <template #icon>
-                <n-icon><cloud-upload /></n-icon>
-              </template>
-              上传文件
-            </n-button>
-          </n-upload>
+    <div class="flex-1 overflow-hidden">
+      <div class="h-full flex flex-col bg-white">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+          <h1 class="text-2xl font-medium text-gray-900">知识库</h1>
+          <div>
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden"
+              accept=".pdf,.txt,.md,.doc,.docx"
+              @change="handleFileChange"
+              multiple
+            />
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              :disabled="isUploading"
+              @click="() => fileInputRef?.click()"
+            >
+              <CloudArrowUpIcon class="w-5 h-5 mr-2" :class="{ 'animate-spin': isUploading }" />
+              {{ isUploading ? '上传中...' : '上传文件' }}
+            </button>
+          </div>
         </div>
-        <div class="knowledge-content">
-          <div v-if="error" class="error-message">
-            {{ error }}
-          </div>
-          <div class="empty-state" v-if="files.length === 0">
-            <n-empty description="知识库还是空的">
-              <template #icon>
-                <n-icon size="48"><document /></n-icon>
-              </template>
-              <template #extra>
-                <n-upload
-                  ref="uploadRef"
-                  :custom-request="customUpload"
-                  :show-file-list="false"
-                  accept=".pdf,.txt,.md,.doc,.docx"
-                >
-                  <n-button type="primary" :loading="isUploading">
-                    上传文件
-                  </n-button>
-                </n-upload>
-              </template>
-            </n-empty>
-          </div>
-          <div v-else class="file-list">
-            <div v-for="file in files" :key="file.id" class="file-card">
-              <div class="file-header">
-                <n-icon size="24" class="file-icon">
-                  <document />
-                </n-icon>
-                <n-button
-                  circle
-                  size="tiny"
-                  class="delete-button"
-                  @click="handleDeleteFile(file.id)"
-                >
-                  <template #icon>
-                    <n-icon><trash /></n-icon>
-                  </template>
-                </n-button>
-              </div>
-              <div class="file-content">
-                <h3 class="file-name">{{ file.filename }}</h3>
-                <div class="file-info">
-                  <span>大小：{{ (file.size / 1024).toFixed(2) }} KB</span>
-                  <span>类型：{{ file.type }}</span>
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <TransitionGroup
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 -translate-y-2"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition-all duration-300 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 translate-y-2"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          >
+            <div
+              v-if="error"
+              class="col-span-full p-4 bg-red-50 rounded-lg"
+            >
+              <div class="flex">
+                <ExclamationCircleIcon class="h-5 w-5 text-red-400" />
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-red-800">错误</h3>
+                  <div class="mt-2 text-sm text-red-700">{{ error }}</div>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div
+              v-if="files.length === 0 && !error"
+              class="col-span-full flex flex-col items-center justify-center py-12"
+            >
+              <DocumentIcon class="w-12 h-12 text-gray-400" />
+              <h3 class="mt-2 text-sm font-medium text-gray-900">知识库还是空的</h3>
+              <p class="mt-1 text-sm text-gray-500">开始上传文件来构建你的知识库</p>
+              <div class="mt-6">
+                <button
+                  type="button"
+                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  @click="() => fileInputRef?.click()"
+                >
+                  <PlusIcon class="w-5 h-5 mr-2" />
+                  上传文件
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-for="file in files"
+              :key="file.id"
+              class="relative group bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+            >
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3">
+                  <DocumentTextIcon class="w-8 h-8 text-gray-400" />
+                  <div>
+                    <h3 class="text-sm font-medium text-gray-900 truncate max-w-[200px]" :title="file.filename">
+                      {{ file.filename }}
+                    </h3>
+                    <div class="mt-1 text-xs text-gray-500 space-y-1">
+                      <p>大小：{{ formatFileSize(file.size) }}</p>
+                      <p>类型：{{ file.type }}</p>
+                    </div>
+                  </div>
+                </div>
+                <Menu as="div" class="relative">
+                  <MenuButton
+                    class="flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100 focus:outline-none"
+                  >
+                    <EllipsisVerticalIcon class="w-5 h-5 text-gray-400" />
+                  </MenuButton>
+                  <transition
+                    enter-active-class="transition ease-out duration-100"
+                    enter-from-class="transform opacity-0 scale-95"
+                    enter-to-class="transform opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-75"
+                    leave-from-class="transform opacity-100 scale-100"
+                    leave-to-class="transform opacity-0 scale-95"
+                  >
+                    <MenuItems
+                      class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    >
+                      <MenuItem v-slot="{ active }">
+                        <button
+                          class="w-full text-left px-4 py-2 text-sm"
+                          :class="[
+                            active ? 'bg-red-50 text-red-900' : 'text-red-700'
+                          ]"
+                          @click="() => handleDeleteFile(file.id)"
+                        >
+                          删除
+                        </button>
+                      </MenuItem>
+                    </MenuItems>
+                  </transition>
+                </Menu>
+              </div>
+            </div>
+          </TransitionGroup>
         </div>
       </div>
     </div>
@@ -75,15 +127,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import {
-  NButton,
-  NIcon,
-  NEmpty,
-  NUpload,
-  type UploadCustomRequestOptions,
-} from "naive-ui";
-import { CloudUpload, Document, Trash } from "@vicons/ionicons5";
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  TransitionGroup,
+} from "@headlessui/vue";
+import {
+  CloudArrowUpIcon,
+  DocumentIcon,
+  DocumentTextIcon,
+  EllipsisVerticalIcon,
+  ExclamationCircleIcon,
+  PlusIcon,
+} from "@heroicons/vue/24/outline";
 import { chatApi } from "@/api/chat";
 import type { FileInfo } from "@/types/chat";
 import NavSidebar from "@/components/layout/NavSidebar.vue";
@@ -91,7 +150,7 @@ import NavSidebar from "@/components/layout/NavSidebar.vue";
 const files = ref<FileInfo[]>([]);
 const isUploading = ref(false);
 const error = ref<string | null>(null);
-const uploadRef = ref();
+const fileInputRef = ref<HTMLInputElement>();
 
 // 加载文件列表
 const loadFiles = async () => {
@@ -105,24 +164,26 @@ const loadFiles = async () => {
   }
 };
 
-// 自定义上传请求
-const customUpload = async ({
-  file,
-  onFinish,
-  onError,
-}: UploadCustomRequestOptions) => {
-  try {
-    isUploading.value = true;
-    error.value = null;
-    await chatApi.uploadFile(file.file as File);
-    await loadFiles();
-    onFinish();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "上传文件失败";
-    console.error(err);
-    onError();
-  } finally {
-    isUploading.value = false;
+// 处理文件选择
+const handleFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0) {
+    try {
+      isUploading.value = true;
+      error.value = null;
+      
+      for (const file of Array.from(input.files)) {
+        await chatApi.uploadFile(file);
+      }
+      
+      await loadFiles();
+      input.value = ''; // 清空input以允许上传相同文件
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "上传文件失败";
+      console.error(err);
+    } finally {
+      isUploading.value = false;
+    }
   }
 };
 
@@ -140,142 +201,15 @@ const handleDeleteFile = async (fileId: string) => {
   }
 };
 
+// 格式化文件大小
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+};
+
 // 初始加载文件列表
-onMounted(() => {
-  loadFiles();
-});
+loadFiles();
 </script>
-
-<style scoped lang="scss">
-.app-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-.main-container {
-  flex: 1;
-  overflow: hidden;
-}
-
-.knowledge-container {
-  height: 100vh;
-  padding: 24px;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-}
-
-.knowledge-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-
-  h1 {
-    font-size: 24px;
-    font-weight: 500;
-    margin: 0 0 16px 0;
-    width: 100px;
-  }
-
-  .switches {
-    display: flex;
-    gap: 16px;
-  }
-}
-
-.knowledge-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 24px;
-
-  .error-message {
-    margin-bottom: 16px;
-    padding: 12px;
-    background-color: #fef0f0;
-    color: #f56c6c;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-
-  .file-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-    width: 100%;
-    padding: 0;
-    align-content: start;
-  }
-
-  .file-card {
-    background: #fff;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 16px;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-
-    &:hover {
-      border-color: #ccc;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-
-      .delete-button {
-        opacity: 1;
-      }
-    }
-
-    .file-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
-
-      .file-icon {
-        color: #666;
-      }
-
-      .delete-button {
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-    }
-
-    .file-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-
-      .file-name {
-        font-size: 14px;
-        font-weight: 500;
-        margin-bottom: 8px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-      }
-
-      .file-info {
-        font-size: 12px;
-        color: #999;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-    }
-  }
-
-  .empty-state {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-}
-</style>

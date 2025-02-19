@@ -12,6 +12,56 @@ export const useChatStore = defineStore("chat", () => {
   const error = ref<string | null>(null);
   const streamingMessage = ref<Message | null>(null);
 
+  async function loadSessions() {
+    try {
+      loading.value = true;
+      error.value = null;
+      const { sessions: sessionList } = await chatApi.getSessions();
+      sessions.value = sessionList;
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : "Failed to load sessions";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function createSession(roleName?: string, systemPrompt?: string) {
+    try {
+      loading.value = true;
+      error.value = null;
+      const session = await chatApi.createSession(roleName, systemPrompt);
+      sessions.value = [...sessions.value, session];
+      return session;
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : "Failed to create session";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function deleteSession(sessionId: string) {
+    try {
+      loading.value = true;
+      error.value = null;
+      await chatApi.deleteSession(sessionId);
+      sessions.value = sessions.value.filter((s) => s.sessionId !== sessionId);
+      if (currentSession.value?.sessionId === sessionId) {
+        currentSession.value = null;
+        messages.value = [];
+      }
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : "Failed to delete session";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function setCurrentSession(session: Session | null) {
     currentSession.value = session;
     if (session) {
@@ -22,7 +72,9 @@ export const useChatStore = defineStore("chat", () => {
         );
         messages.value = sessionMessages;
       } catch (err) {
-        error.value = err instanceof Error ? err.message : "加载消息失败";
+        error.value =
+          err instanceof Error ? err.message : "Failed to load messages";
+        throw err;
       } finally {
         loading.value = false;
       }
@@ -31,16 +83,11 @@ export const useChatStore = defineStore("chat", () => {
     }
   }
 
-  function setSessions(newSessions: Session[]) {
-    sessions.value = newSessions;
-  }
-
   function setMessages(newMessages: Message[]) {
     messages.value = newMessages;
   }
 
   function addMessage(message: Message) {
-    // 如果是流式消息的最终版本，替换流式消息
     if (streamingMessage.value && message.id === streamingMessage.value.id) {
       const index = messages.value.findIndex((m) => m.id === message.id);
       if (index !== -1) {
@@ -50,7 +97,6 @@ export const useChatStore = defineStore("chat", () => {
       }
       streamingMessage.value = null;
     } else {
-      // 检查消息是否已存在
       const existingIndex = messages.value.findIndex(
         (m) => m.id === message.id
       );
@@ -69,15 +115,10 @@ export const useChatStore = defineStore("chat", () => {
         (m) => m.id === streamingMessage.value?.id
       );
       if (index !== -1) {
-        // 使用 Vue 的响应式更新方式
         messages.value[index] = { ...message };
       }
       streamingMessage.value = { ...message };
     }
-  }
-
-  function setLoading(isLoading: boolean) {
-    loading.value = isLoading;
   }
 
   function setSendingMessage(isSending: boolean) {
@@ -98,6 +139,7 @@ export const useChatStore = defineStore("chat", () => {
   }
 
   return {
+    // State
     currentSession,
     sessions,
     messages,
@@ -105,12 +147,15 @@ export const useChatStore = defineStore("chat", () => {
     sendingMessage,
     error,
     streamingMessage,
+
+    // Actions
+    loadSessions,
+    createSession,
+    deleteSession,
     setCurrentSession,
-    setSessions,
     setMessages,
     addMessage,
     updateStreamingMessage,
-    setLoading,
     setSendingMessage,
     setError,
     clearMessages,

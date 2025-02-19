@@ -1,39 +1,66 @@
 <template>
-  <div class="chat-history" ref="historyRef">
-    <div v-if="!chatStore.currentSession" class="empty-state">
+  <div class="flex-1 overflow-y-auto p-5 bg-white" ref="historyRef">
+    <div
+      v-if="!chatStore.currentSession"
+      class="h-full flex items-center justify-center text-gray-500 text-lg"
+    >
       请选择或创建一个会话
     </div>
     <template v-else>
-      <div v-if="chatStore.loading" class="loading-state">
+      <div
+        v-if="chatStore.loading"
+        class="h-full flex items-center justify-center text-gray-600 text-lg"
+      >
         加载历史消息中...
       </div>
       <template v-else>
-        <div v-if="chatStore.messages.length === 0" class="empty-state">
+        <div
+          v-if="chatStore.messages.length === 0"
+          class="h-full flex items-center justify-center text-gray-500 text-lg"
+        >
           暂无消息，开始对话吧
         </div>
         <div
           v-for="message in chatStore.messages"
           :key="message.id"
-          class="message-item"
+          class="mb-6 flex"
           :class="[
-            message.role,
+            message.role === 'user' ? 'flex-row-reverse' : 'flex-row',
             { 'is-streaming': message.id === chatStore.streamingMessage?.id },
           ]"
         >
-          <div class="avatar">
+          <div
+            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl flex-shrink-0"
+            :class="[message.role === 'user' ? 'ml-3' : 'mr-3']"
+          >
             {{ message.role === "user" ? "👤" : "🤖" }}
           </div>
-          <div class="content">
+          <div
+            class="max-w-[80%] rounded-lg p-4"
+            :class="[
+              message.role === 'user' ? 'bg-blue-50' : 'bg-gray-50',
+              message.id === chatStore.streamingMessage?.id
+                ? 'border border-blue-100 bg-blue-50'
+                : '',
+            ]"
+          >
             <template v-if="message.role === 'assistant'">
-              <div v-if="message.reasoning" class="reasoning">
-                <div class="title">思考过程：</div>
+              <div
+                v-if="message.reasoning"
+                class="mb-4 p-3 bg-gray-100 rounded"
+              >
+                <div class="text-sm font-medium text-blue-600 mb-2">
+                  思考过程：
+                </div>
                 <div
                   class="markdown-body"
                   v-html="renderMarkdown(message.reasoning)"
                 />
               </div>
-              <div v-if="message.content" class="answer">
-                <div class="title">回答：</div>
+              <div v-if="message.content">
+                <div class="text-sm font-medium text-green-600 mb-2">
+                  回答：
+                </div>
                 <div
                   class="markdown-body"
                   v-html="renderMarkdown(message.content)"
@@ -46,8 +73,13 @@
                 v-html="renderMarkdown(message.content)"
               />
             </template>
-            <div v-if="message.sources" class="sources">
-              <div class="title">参考来源：</div>
+            <div
+              v-if="message.sources"
+              class="mt-4 pt-4 border-t border-gray-200"
+            >
+              <div class="text-sm font-medium text-gray-600 mb-2">
+                参考来源：
+              </div>
               <div
                 class="markdown-body"
                 v-html="renderMarkdown(message.sources)"
@@ -55,51 +87,41 @@
             </div>
             <div
               v-if="message.id === chatStore.streamingMessage?.id"
-              class="streaming-indicator"
+              class="absolute bottom-2 right-2 flex gap-1"
             >
-              <span class="dot"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
+              <div
+                v-for="i in 3"
+                :key="i"
+                class="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                :style="{ animationDelay: `${(i - 1) * 0.16}s` }"
+              />
             </div>
-            <div v-if="message.role === 'assistant'" class="message-actions">
-              <n-button-group>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><copy /></n-icon>
-                  </template>
-                  复制
-                </n-button>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><refresh /></n-icon>
-                  </template>
-                  刷新
-                </n-button>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><share-social /></n-icon>
-                  </template>
-                  分享
-                </n-button>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><download /></n-icon>
-                  </template>
-                  下载
-                </n-button>
-              </n-button-group>
-              <n-button-group>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><thumbs-up /></n-icon>
-                  </template>
-                </n-button>
-                <n-button size="tiny" secondary>
-                  <template #icon>
-                    <n-icon><thumbs-down /></n-icon>
-                  </template>
-                </n-button>
-              </n-button-group>
+            <div
+              v-if="message.role === 'assistant'"
+              class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center"
+            >
+              <div class="flex gap-2">
+                <button
+                  v-for="(action, index) in actions"
+                  :key="index"
+                  class="inline-flex items-center px-3 py-1 text-sm text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100"
+                >
+                  <component :is="action.icon" class="w-4 h-4 mr-1" />
+                  {{ action.label }}
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  class="p-1 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100"
+                >
+                  <HandThumbUpIcon class="w-5 h-5" />
+                </button>
+                <button
+                  class="p-1 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100"
+                >
+                  <HandThumbDownIcon class="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -112,20 +134,26 @@
 import { ref, watch, nextTick, onMounted } from "vue";
 import { marked } from "marked";
 import hljs from "highlight.js";
-import { NButton, NButtonGroup, NIcon } from "naive-ui";
 import {
-  Copy,
-  Refresh,
-  ShareSocial,
-  Download,
-  ThumbsUp,
-  ThumbsDown,
-} from "@vicons/ionicons5";
+  DocumentDuplicateIcon,
+  ArrowPathIcon,
+  ShareIcon,
+  ArrowDownTrayIcon,
+  HandThumbUpIcon,
+  HandThumbDownIcon,
+} from "@heroicons/vue/24/outline";
 import { useChatStore } from "@/stores/chat";
 import { chatApi } from "@/api/chat";
 
 const chatStore = useChatStore();
 const historyRef = ref<HTMLElement>();
+
+const actions = [
+  { icon: DocumentDuplicateIcon, label: "复制" },
+  { icon: ArrowPathIcon, label: "刷新" },
+  { icon: ShareIcon, label: "分享" },
+  { icon: ArrowDownTrayIcon, label: "下载" },
+];
 
 // 监听会话变化，加载消息历史
 watch(
@@ -133,15 +161,11 @@ watch(
   async (newSession) => {
     if (newSession) {
       try {
-        chatStore.setLoading(true);
-        const { messages } = await chatApi.getMessages(newSession.sessionId);
-        chatStore.setMessages(messages);
+        await chatStore.setCurrentSession(newSession);
       } catch (error) {
         chatStore.setError(
           error instanceof Error ? error.message : "加载消息失败"
         );
-      } finally {
-        chatStore.setLoading(false);
       }
     } else {
       chatStore.clearMessages();
@@ -192,185 +216,38 @@ watch(
 onMounted(async () => {
   if (chatStore.currentSession) {
     try {
-      chatStore.setLoading(true);
-      const { messages } = await chatApi.getMessages(
-        chatStore.currentSession.sessionId
-      );
-      chatStore.setMessages(messages);
+      await chatStore.setCurrentSession(chatStore.currentSession);
     } catch (error) {
       chatStore.setError(
         error instanceof Error ? error.message : "加载消息失败"
       );
-    } finally {
-      chatStore.setLoading(false);
     }
   }
 });
 </script>
 
-<style scoped lang="scss">
-.chat-history {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  background: #fff;
+<style>
+@import "highlight.js/styles/atom-one-dark.css";
 
-  .empty-state,
-  .loading-state {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-    font-size: 16px;
-  }
+.markdown-body {
+  @apply text-sm leading-relaxed;
+}
 
-  .loading-state {
-    color: #666;
-  }
+.markdown-body pre {
+  @apply bg-gray-900 p-4 rounded-lg my-3 overflow-x-auto;
+}
 
-  .message-item {
-    display: flex;
-    margin-bottom: 24px;
-    opacity: 1;
-    transition: opacity 0.3s ease;
+.markdown-body code {
+  @apply font-mono text-white;
+}
 
-    &.is-streaming .content {
-      border: 1px solid #e6f4ff;
-      background: #f0f7ff;
-    }
+.markdown-body p {
+  @apply my-2;
+}
 
-    &.user {
-      flex-direction: row-reverse;
-
-      .avatar {
-        margin-left: 12px;
-        margin-right: 0;
-      }
-
-      .content {
-        background: #e6f4ff;
-      }
-    }
-
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #f0f0f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      margin-right: 12px;
-      flex-shrink: 0;
-    }
-
-    .content {
-      max-width: 80%;
-      background: #f9f9f9;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      line-height: 1.6;
-      word-break: break-word;
-      position: relative;
-
-      :deep(.markdown-body) {
-        background: transparent;
-        font-size: 14px;
-
-        pre {
-          background: #282c34;
-          padding: 16px;
-          border-radius: 8px;
-          margin: 12px 0;
-          overflow-x: auto;
-        }
-
-        code {
-          color: #fff;
-          font-family: "Fira Code", monospace;
-        }
-
-        p {
-          margin: 8px 0;
-        }
-
-        ul,
-        ol {
-          margin: 8px 0;
-          padding-left: 20px;
-        }
-      }
-
-      .reasoning,
-      .answer,
-      .sources {
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid #eee;
-
-        &:first-child {
-          margin-top: 0;
-          padding-top: 0;
-          border-top: none;
-        }
-
-        .title {
-          font-weight: 500;
-          margin-bottom: 8px;
-          color: #666;
-        }
-      }
-
-      .reasoning {
-        background: #f8f9fa;
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 16px;
-
-        .title {
-          color: #1a73e8;
-        }
-      }
-
-      .answer {
-        .title {
-          color: #188038;
-        }
-      }
-
-      .streaming-indicator {
-        position: absolute;
-        bottom: 8px;
-        right: 8px;
-        display: flex;
-        gap: 4px;
-        align-items: center;
-
-        .dot {
-          width: 4px;
-          height: 4px;
-          background-color: #1890ff;
-          border-radius: 50%;
-          animation: bounce 1.4s infinite ease-in-out;
-
-          &:nth-child(1) {
-            animation-delay: 0s;
-          }
-
-          &:nth-child(2) {
-            animation-delay: 0.16s;
-          }
-
-          &:nth-child(3) {
-            animation-delay: 0.32s;
-          }
-        }
-      }
-    }
-  }
+.markdown-body ul,
+.markdown-body ol {
+  @apply my-2 pl-5;
 }
 
 @keyframes bounce {
@@ -386,27 +263,7 @@ onMounted(async () => {
   }
 }
 
-.message-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #eee;
-
-  :deep(.n-button-group) {
-    .n-button {
-      padding: 4px 12px;
-      color: #666;
-
-      &:hover {
-        color: #333;
-      }
-
-      .n-icon {
-        margin-right: 4px;
-      }
-    }
-  }
+.animate-bounce {
+  animation: bounce 1.4s infinite ease-in-out;
 }
 </style>
