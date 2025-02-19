@@ -34,9 +34,15 @@
         placeholder="输入消息，按 Enter 发送，Shift + Enter 换行"
         @keydown="handleKeyDown"
       />
-      <n-button type="primary" :disabled="isDisabled" @click="handleSend">
+      <n-button
+        v-if="!chatStore.sendingMessage"
+        type="primary"
+        :disabled="isDisabled"
+        @click="handleSend"
+      >
         发送
       </n-button>
+      <n-button v-else type="error" @click="handleStop"> 停止 </n-button>
     </div>
 
     <div v-if="uploadingFiles.length > 0" class="upload-list">
@@ -85,6 +91,7 @@ const content = ref("");
 const useWeb = ref(false);
 const useKnowledge = ref(false);
 const uploadingFiles = ref<UploadFile[]>([]);
+const controller = ref<AbortController | null>(null);
 
 // 使用计算属性来判断是否禁用发送按钮
 const isDisabled = computed(() => {
@@ -95,6 +102,17 @@ const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     handleSend();
+  }
+};
+
+const handleStop = () => {
+  if (controller.value) {
+    controller.value.abort();
+    controller.value = null;
+    chatStore.setSendingMessage(false);
+    if (chatStore.streamingMessage) {
+      chatStore.streamingMessage = null;
+    }
   }
 };
 
@@ -129,12 +147,12 @@ const handleSend = async () => {
     let accumulatedReasoning = "";
 
     // 发送消息并处理流式响应
-    const controller = new AbortController();
+    controller.value = new AbortController();
     try {
       await chatApi.streamChat(
         chatStore.currentSession!.sessionId,
         userMessage.content,
-        controller.signal,
+        controller.value.signal,
         (chunk) => {
           try {
             // 解析 SSE 数据
@@ -184,6 +202,8 @@ const handleSend = async () => {
       } else {
         throw error;
       }
+    } finally {
+      controller.value = null;
     }
   } catch (error) {
     chatStore.setError(error instanceof Error ? error.message : "发送消息失败");

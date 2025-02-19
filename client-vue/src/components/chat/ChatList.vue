@@ -161,6 +161,7 @@ const handleDeleteSession = async (session: Session) => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
 
   .header {
     padding: 16px;

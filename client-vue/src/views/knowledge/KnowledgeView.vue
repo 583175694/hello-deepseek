@@ -1,20 +1,6 @@
 <template>
   <div class="app-container">
-    <div class="nav-sidebar">
-      <div class="logo">
-        <n-icon size="24" class="logo-icon">
-          <logo-github />
-        </n-icon>
-        <span class="logo-text">AI 助手</span>
-      </div>
-      <n-menu
-        v-model:value="activeKey"
-        :options="menuOptions"
-        :collapsed="false"
-        :collapsed-width="64"
-        :collapsed-icon-size="22"
-      />
-    </div>
+    <nav-sidebar />
     <div class="main-container">
       <div class="knowledge-container">
         <div class="knowledge-header">
@@ -89,59 +75,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, h, watch, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted } from "vue";
 import {
   NButton,
   NIcon,
   NEmpty,
-  NMenu,
   NUpload,
   type UploadCustomRequestOptions,
 } from "naive-ui";
-import {
-  LogoGithub,
-  ChatbubbleEllipses,
-  Book,
-  CloudUpload,
-  Document,
-  Trash,
-} from "@vicons/ionicons5";
+import { CloudUpload, Document, Trash } from "@vicons/ionicons5";
 import { chatApi } from "@/api/chat";
 import type { FileInfo } from "@/types/chat";
+import NavSidebar from "@/components/layout/NavSidebar.vue";
 
-const router = useRouter();
-const activeKey = ref<string>("knowledge");
 const files = ref<FileInfo[]>([]);
 const isUploading = ref(false);
 const error = ref<string | null>(null);
 const uploadRef = ref();
-
-const menuOptions = [
-  {
-    label: "对话",
-    key: "chat",
-    icon: renderIcon(ChatbubbleEllipses),
-  },
-  {
-    label: "知识库",
-    key: "knowledge",
-    icon: renderIcon(Book),
-  },
-];
-
-function renderIcon(icon: any) {
-  return () => h(NIcon, null, { default: () => h(icon) });
-}
-
-// 监听菜单选择
-watch(activeKey, (newKey) => {
-  if (newKey === "knowledge") {
-    router.push("/knowledge");
-  } else {
-    router.push("/");
-  }
-});
 
 // 加载文件列表
 const loadFiles = async () => {
@@ -202,64 +152,6 @@ onMounted(() => {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-}
-
-.nav-sidebar {
-  width: 64px;
-  background: #001529;
-  display: flex;
-  flex-direction: column;
-  transition: width 0.2s;
-
-  .logo {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-    .logo-icon {
-      color: #fff;
-    }
-
-    .logo-text {
-      color: #fff;
-      margin-left: 8px;
-      font-size: 16px;
-      font-weight: 500;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-  }
-
-  &:hover {
-    width: 200px;
-
-    .logo-text {
-      opacity: 1;
-    }
-  }
-
-  :deep(.n-menu) {
-    flex: 1;
-    background: transparent;
-
-    .n-menu-item {
-      height: 48px;
-      color: rgba(255, 255, 255, 0.65);
-
-      &:hover {
-        color: #fff;
-      }
-
-      &.n-menu-item--selected {
-        color: #fff;
-        background: rgba(255, 255, 255, 0.1);
-      }
-    }
-  }
 }
 
 .main-container {

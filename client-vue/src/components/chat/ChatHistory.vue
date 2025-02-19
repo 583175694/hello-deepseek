@@ -61,6 +61,46 @@
               <span class="dot"></span>
               <span class="dot"></span>
             </div>
+            <div v-if="message.role === 'assistant'" class="message-actions">
+              <n-button-group>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><copy /></n-icon>
+                  </template>
+                  复制
+                </n-button>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><refresh /></n-icon>
+                  </template>
+                  刷新
+                </n-button>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><share-social /></n-icon>
+                  </template>
+                  分享
+                </n-button>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><download /></n-icon>
+                  </template>
+                  下载
+                </n-button>
+              </n-button-group>
+              <n-button-group>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><thumbs-up /></n-icon>
+                  </template>
+                </n-button>
+                <n-button size="tiny" secondary>
+                  <template #icon>
+                    <n-icon><thumbs-down /></n-icon>
+                  </template>
+                </n-button>
+              </n-button-group>
+            </div>
           </div>
         </div>
       </template>
@@ -72,6 +112,15 @@
 import { ref, watch, nextTick, onMounted } from "vue";
 import { marked } from "marked";
 import hljs from "highlight.js";
+import { NButton, NButtonGroup, NIcon } from "naive-ui";
+import {
+  Copy,
+  Refresh,
+  ShareSocial,
+  Download,
+  ThumbsUp,
+  ThumbsDown,
+} from "@vicons/ionicons5";
 import { useChatStore } from "@/stores/chat";
 import { chatApi } from "@/api/chat";
 
@@ -334,6 +383,30 @@ onMounted(async () => {
   40% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+.message-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+
+  :deep(.n-button-group) {
+    .n-button {
+      padding: 4px 12px;
+      color: #666;
+
+      &:hover {
+        color: #333;
+      }
+
+      .n-icon {
+        margin-right: 4px;
+      }
+    }
   }
 }
 </style>
