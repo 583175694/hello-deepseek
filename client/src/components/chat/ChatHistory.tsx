@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
@@ -44,7 +44,7 @@ export function ChatHistory() {
   };
 
   // 处理滚动事件
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     // 设置用户正在滚动
     setIsUserScrolling(true);
 
@@ -58,7 +58,7 @@ export function ChatHistory() {
       setIsUserScrolling(false);
       setShouldAutoScroll(isAtBottom());
     }, 500);
-  };
+  }, []);
 
   // 添加滚动到底部的函数
   const scrollToBottom = () => {
@@ -92,7 +92,7 @@ export function ChatHistory() {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, []);
+  }, [handleScroll]);
 
   // 当切换会话时，重置自动滚动状态
   useEffect(() => {
