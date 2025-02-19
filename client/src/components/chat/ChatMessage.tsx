@@ -31,10 +31,17 @@ function CodeBlock({
 }) {
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleCopyCode = async () => {
+  const handleCopyCode = () => {
     const code = String(children).replace(/\n$/, "");
     try {
-      await navigator.clipboard.writeText(code);
+      const textarea = document.createElement("textarea");
+      textarea.value = code;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 1500);
     } catch (err) {
@@ -146,7 +153,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   }, [message.reasoning, message.content, isStreaming, isAI]);
 
   // 处理复制消息内容
-  const handleCopy = async () => {
+  const handleCopy = () => {
     // 构建要复制的文本
     let textToCopy = "";
 
@@ -161,7 +168,14 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     }
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      const textarea = document.createElement("textarea");
+      textarea.value = textToCopy;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
       setCopied(true);
       // 1.5秒后重置复制状态
       setTimeout(() => setCopied(false), 1500);

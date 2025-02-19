@@ -14,6 +14,10 @@ import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 export function ChatHistory() {
   // 添加消息容器的引用
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -27,6 +31,35 @@ export function ChatHistory() {
     abortStream,
   } = useAIChat();
 
+  // 检查是否在底部的函数
+  const isAtBottom = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+
+    const threshold = 10; // 允许10px的误差
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight <=
+      threshold
+    );
+  };
+
+  // 处理滚动事件
+  const handleScroll = () => {
+    // 设置用户正在滚动
+    setIsUserScrolling(true);
+
+    // 清除之前的定时器
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    // 设置新的定时器，500ms 后认为用户停止滚动
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsUserScrolling(false);
+      setShouldAutoScroll(isAtBottom());
+    }, 500);
+  };
+
   // 添加滚动到底部的函数
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,8 +67,38 @@ export function ChatHistory() {
 
   // 在消息列表变化时滚动到底部
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, currentSessionId]);
+    // 当切换会话时，总是滚动到底部
+    if (messages.length === 0) {
+      setShouldAutoScroll(true);
+      setIsUserScrolling(false);
+    }
+
+    // 只有当用户没有在滚动且应该自动滚动时，才执行滚动
+    if (shouldAutoScroll && !isUserScrolling) {
+      scrollToBottom();
+    }
+  }, [messages, currentSessionId, shouldAutoScroll, isUserScrolling]);
+
+  // 监听滚动事件
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener("scroll", handleScroll);
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      // 清理定时器
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 当切换会话时，重置自动滚动状态
+  useEffect(() => {
+    setShouldAutoScroll(true);
+    setIsUserScrolling(false);
+  }, [currentSessionId]);
 
   // 加载会话消息历史
   useEffect(() => {
@@ -108,7 +171,7 @@ export function ChatHistory() {
           </div>
 
           {/* 消息列表区域 */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
             <div className="px-4 py-6">
               <div className="space-y-6 max-w-3xl mx-auto">
                 {messages.length === 0 ? (
