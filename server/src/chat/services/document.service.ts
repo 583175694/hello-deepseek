@@ -5,16 +5,27 @@ import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/byted
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * 文档服务类
+ * 用于管理和处理文档的向量存储、搜索等功能
+ */
 @Injectable()
 export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
+  // 存储每个客户端的向量存储实例
   private vectorStores: Map<string, FaissStore> = new Map();
+  // 字节跳动的文本嵌入模型实例
   private embeddings: ByteDanceDoubaoEmbeddings;
+  // 向量存储的基础路径
   private readonly vectorStoreBasePath = path.join(
     process.cwd(),
     'vector_store',
   );
 
+  /**
+   * 构造函数
+   * 初始化字节跳动的文本嵌入模型
+   */
   constructor() {
     this.embeddings = new ByteDanceDoubaoEmbeddings({
       apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
@@ -23,11 +34,22 @@ export class DocumentService {
     });
   }
 
+  /**
+   * 获取客户端向量存储路径
+   * @param clientId 客户端ID
+   * @returns 向量存储路径
+   */
   private getClientVectorStorePath(clientId: string): string {
     return path.join(this.vectorStoreBasePath, clientId);
   }
 
+  /**
+   * 获取或创建客户端的向量存储实例
+   * @param clientId 客户端ID
+   * @returns Promise<FaissStore> 向量存储实例
+   */
   private async getVectorStore(clientId: string): Promise<FaissStore> {
+    // 如果已存在，直接返回缓存的实例
     if (this.vectorStores.has(clientId)) {
       return this.vectorStores.get(clientId);
     }
@@ -37,14 +59,17 @@ export class DocumentService {
     const docStorePath = path.join(vectorStorePath, 'docstore.json');
 
     try {
+      // 确保向量存储目录存在
       if (!fs.existsSync(vectorStorePath)) {
         fs.mkdirSync(vectorStorePath, { recursive: true });
       }
 
       let vectorStore: FaissStore;
+      // 如果存在现有的向量存储文件，则加载它
       if (fs.existsSync(indexPath) && fs.existsSync(docStorePath)) {
         vectorStore = await FaissStore.load(vectorStorePath, this.embeddings);
       } else {
+        // 否则创建新的向量存储
         const initialDocument = new Document({
           pageContent: 'Initial document to initialize vector store',
           metadata: { source: 'initialization', clientId },
@@ -58,6 +83,7 @@ export class DocumentService {
         await vectorStore.save(vectorStorePath);
       }
 
+      // 缓存向量存储实例
       this.vectorStores.set(clientId, vectorStore);
       return vectorStore;
     } catch (error) {
@@ -69,14 +95,21 @@ export class DocumentService {
     }
   }
 
+  /**
+   * 添加文档到向量存储
+   * @param clientId 客户端ID
+   * @param documents 要添加的文档数组
+   */
   async addDocuments(clientId: string, documents: Document[]): Promise<void> {
     try {
       const vectorStore = await this.getVectorStore(clientId);
+      // 为每个文档添加客户端ID
       const documentsWithClientId = documents.map((doc) => ({
         ...doc,
         metadata: { ...doc.metadata, clientId },
       }));
 
+      // 添加文档并保存向量存储
       await vectorStore.addDocuments(documentsWithClientId);
       await vectorStore.save(this.getClientVectorStorePath(clientId));
     } catch (error) {
@@ -88,6 +121,13 @@ export class DocumentService {
     }
   }
 
+  /**
+   * 搜索相似文档
+   * @param clientId 客户端ID
+   * @param query 查询文本
+   * @param limit 返回结果数量限制
+   * @returns Promise<Document[]> 相似文档数组
+   */
   async searchSimilarDocuments(
     clientId: string,
     query: string,

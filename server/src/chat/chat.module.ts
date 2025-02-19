@@ -6,6 +6,7 @@ import { Session } from './entities/session.entity';
 import { Message } from './entities/message.entity';
 import { SessionFile } from './entities/session-file.entity';
 import { SessionDocument } from './entities/session-document.entity';
+import { SessionTempFile } from './entities/session-temp-file.entity';
 import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
@@ -17,7 +18,13 @@ import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, Message, SessionFile, SessionDocument]),
+    TypeOrmModule.forFeature([
+      Session,
+      Message,
+      SessionFile,
+      SessionDocument,
+      SessionTempFile,
+    ]),
   ],
   controllers: [ChatController],
   providers: [

@@ -1,7 +1,10 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Document } from '@langchain/core/documents';
 import { FaissStore } from '@langchain/community/vectorstores/faiss';
 import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/bytedance_doubao';
+import { SessionTempFile } from '../entities/session-temp-file.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,7 +20,10 @@ export class TempDocumentService {
   );
   private sessionVectorStores: Map<string, FaissStore> = new Map();
 
-  constructor() {
+  constructor(
+    @InjectRepository(SessionTempFile)
+    private sessionTempFileRepository: Repository<SessionTempFile>,
+  ) {
     this.embeddings = new ByteDanceDoubaoEmbeddings({
       apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
       model: 'ep-20250215013011-6nd8j',
@@ -80,10 +86,31 @@ export class TempDocumentService {
         // 清理内存中的向量存储
         const storeKey = this.getStoreKey(sessionId, clientId);
         this.sessionVectorStores.delete(storeKey);
+
+        // 软删除现有的临时文件记录
+        await this.sessionTempFileRepository.softDelete({
+          sessionId,
+          clientId,
+        });
       }
 
       const filePath = path.join(sessionPath, file.originalname);
       fs.writeFileSync(filePath, file.buffer);
+
+      // 创建新的临时文件记录
+      const tempFile = this.sessionTempFileRepository.create({
+        filename: file.originalname,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        path: filePath,
+        sessionId,
+        clientId,
+      });
+
+      // 保存到数据库
+      await this.sessionTempFileRepository.save(tempFile);
+
       return filePath;
     } catch (error) {
       this.logger.error(
@@ -203,6 +230,9 @@ export class TempDocumentService {
 
   async cleanupSession(sessionId: string, clientId: string): Promise<void> {
     try {
+      // 软删除数据库记录
+      await this.sessionTempFileRepository.softDelete({ sessionId, clientId });
+
       // 清理临时文件
       const sessionPath = this.getSessionPath(sessionId, clientId);
       if (fs.existsSync(sessionPath)) {
@@ -240,22 +270,18 @@ export class TempDocumentService {
     { filename: string; type: string; size: number; createdAt: Date }[]
   > {
     try {
-      const sessionPath = this.getSessionPath(sessionId, clientId);
-      if (!fs.existsSync(sessionPath)) {
-        return [];
-      }
-
-      const files = fs.readdirSync(sessionPath);
-      return files.map((filename) => {
-        const filePath = path.join(sessionPath, filename);
-        const stats = fs.statSync(filePath);
-        return {
-          filename,
-          type: path.extname(filename).slice(1) || 'unknown',
-          size: stats.size,
-          createdAt: stats.birthtime,
-        };
+      // 从数据库获取未删除的临时文件记录
+      const tempFiles = await this.sessionTempFileRepository.find({
+        where: { sessionId, clientId },
+        withDeleted: false,
       });
+
+      return tempFiles.map((file) => ({
+        filename: file.filename,
+        type: path.extname(file.filename).slice(1) || 'unknown',
+        size: file.size,
+        createdAt: file.createdAt,
+      }));
     } catch (error) {
       this.logger.error(
         `Failed to get session documents for session ${sessionId} and client ${clientId}:`,
