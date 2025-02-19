@@ -74,7 +74,6 @@ import { marked } from "marked";
 import hljs from "highlight.js";
 import { useChatStore } from "@/stores/chat";
 import { chatApi } from "@/api/chat";
-import type { Message } from "@/types/chat";
 
 const chatStore = useChatStore();
 const historyRef = ref<HTMLElement>();
@@ -102,15 +101,20 @@ watch(
 );
 
 // 配置 marked
-marked.setOptions({
-  highlight: (code, lang) => {
+const markedOptions = {
+  renderer: new marked.Renderer(),
+  gfm: true,
+  breaks: true,
+  highlight: (code: string, language: string) => {
+    const lang = language || "";
     if (lang && hljs.getLanguage(lang)) {
       return hljs.highlight(code, { language: lang }).value;
     }
     return hljs.highlightAuto(code).value;
   },
-  breaks: true,
-});
+};
+
+marked.setOptions(markedOptions);
 
 const renderMarkdown = (content: string) => {
   if (!content) return "";

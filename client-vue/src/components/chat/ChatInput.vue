@@ -73,6 +73,7 @@ import {
   NProgress,
   NIcon,
   type UploadCustomRequestOptions,
+  type UploadFileInfo,
 } from "naive-ui";
 import { AttachOutline } from "@vicons/ionicons5";
 import { useChatStore } from "@/stores/chat";
@@ -188,7 +189,21 @@ const handleSend = async () => {
     chatStore.setError(error instanceof Error ? error.message : "发送消息失败");
   } finally {
     chatStore.setSendingMessage(false);
-    chatStore.streamingMessage.value = null;
+    if (chatStore.streamingMessage) {
+      chatStore.streamingMessage = null;
+    }
+  }
+};
+
+const handleUploadChange = (data: {
+  file: UploadFileInfo;
+  fileList: UploadFileInfo[];
+  event?: Event;
+}) => {
+  if (data.file.status === "finished") {
+    uploadingFiles.value = uploadingFiles.value.filter(
+      (file) => file.file.name !== data.file.name
+    );
   }
 };
 
@@ -197,15 +212,16 @@ const customUpload = async ({
   onFinish,
   onError,
 }: UploadCustomRequestOptions) => {
-  const uploadFile: UploadFile = {
-    file,
+  const uploadFile = {
+    file: file as unknown as File,
     progress: 0,
-    status: "uploading",
+    status: "uploading" as "uploading" | "success" | "error",
+    error: undefined as string | undefined,
   };
   uploadingFiles.value.push(uploadFile);
 
   try {
-    const fileInfo = await chatApi.uploadFile(file);
+    await chatApi.uploadFile(file as unknown as File);
     uploadFile.progress = 100;
     uploadFile.status = "success";
     onFinish();
@@ -213,14 +229,6 @@ const customUpload = async ({
     uploadFile.status = "error";
     uploadFile.error = error instanceof Error ? error.message : "上传失败";
     onError();
-  }
-};
-
-const handleUploadChange = (options: { file: UploadFile }) => {
-  if (options.file.status === "finished") {
-    uploadingFiles.value = uploadingFiles.value.filter(
-      (file) => file.file.name !== options.file.file.name
-    );
   }
 };
 </script>

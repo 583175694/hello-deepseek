@@ -1,16 +1,10 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type {
-  Message,
-  Session,
-  FileInfo,
-  SendMessageParams,
-  ChatState,
-} from "@/types/chat";
-import { chatApi, fileApi } from "@/api/chat";
+import type { ChatState, FileInfo, SendMessageParams } from "@/types/chat";
+import { chatApi } from "@/api/chat";
 
 export const useChatStore = defineStore("chat", () => {
-  const state = ref<ChatState>({
+  const state = ref<ChatState & { files: FileInfo[] }>({
     loading: false,
     error: null,
     messages: [],
@@ -24,7 +18,10 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const response = await chatApi.sendMessage(params);
+      const response = await chatApi.sendMessage(
+        params.sessionId!,
+        params.content
+      );
       state.value.messages.push(response);
       return response;
     } catch (error) {
@@ -40,8 +37,8 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const session = await chatApi.createSession({ roleName, systemPrompt });
-      state.value.sessions.push(session);
+      const session = await chatApi.createSession(roleName, systemPrompt);
+      state.value.sessions = [...state.value.sessions, session];
       state.value.currentSession = session;
       return session;
     } catch (error) {
@@ -77,7 +74,7 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const sessions = await chatApi.getSessions();
+      const { sessions } = await chatApi.getSessions();
       state.value.sessions = sessions;
     } catch (error) {
       state.value.error =
@@ -92,7 +89,7 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const messages = await chatApi.getSessionMessages(sessionId);
+      const { messages } = await chatApi.getMessages(sessionId);
       state.value.messages = messages;
     } catch (error) {
       state.value.error =
@@ -107,8 +104,8 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const fileInfo = await fileApi.uploadFile(file);
-      state.value.files.push(fileInfo);
+      const fileInfo = await chatApi.uploadFile(file);
+      state.value.files = [...state.value.files, fileInfo];
       return fileInfo;
     } catch (error) {
       state.value.error =
@@ -123,8 +120,10 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      await fileApi.deleteFile(filename);
-      state.value.files = state.value.files.filter((f) => f.name !== filename);
+      await chatApi.deleteFile(filename);
+      state.value.files = state.value.files.filter(
+        (f) => f.filename !== filename
+      );
     } catch (error) {
       state.value.error =
         error instanceof Error ? error.message : "Failed to delete file";
@@ -138,7 +137,7 @@ export const useChatStore = defineStore("chat", () => {
     try {
       state.value.loading = true;
       state.value.error = null;
-      const files = await fileApi.getFiles();
+      const files = await chatApi.getFiles();
       state.value.files = files;
     } catch (error) {
       state.value.error =

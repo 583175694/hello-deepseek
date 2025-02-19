@@ -97,8 +97,6 @@ import {
   NEmpty,
   NMenu,
   NUpload,
-  NSpace,
-  NSwitch,
   type UploadCustomRequestOptions,
 } from "naive-ui";
 import {
@@ -118,8 +116,6 @@ const files = ref<FileInfo[]>([]);
 const isUploading = ref(false);
 const error = ref<string | null>(null);
 const uploadRef = ref();
-const useWeb = ref(false);
-const useKnowledge = ref(true);
 
 const menuOptions = [
   {
@@ -151,7 +147,7 @@ watch(activeKey, (newKey) => {
 const loadFiles = async () => {
   try {
     error.value = null;
-    const { files: fileList } = await chatApi.getFiles();
+    const fileList = await chatApi.getFiles();
     files.value = fileList;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "加载文件列表失败";
