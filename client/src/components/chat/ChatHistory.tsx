@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
+import type { TempFile } from "@/types/api";
+import { FileText } from "lucide-react";
 
 export function ChatHistory() {
   // 添加消息容器的引用
@@ -21,6 +23,7 @@ export function ChatHistory() {
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [hasTempDocs, setHasTempDocs] = useState(false);
+  const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -109,6 +112,9 @@ export function ChatHistory() {
       try {
         const data = await chatService.getSessionMessages(currentSessionId);
         setMessageList(data.messages);
+        // 设置临时文件状态
+        setHasTempDocs(Boolean(data.tempFiles?.length));
+        setTempFiles(data.tempFiles || []);
       } catch (error) {
         console.error("加载消息历史失败:", error);
       }
@@ -123,12 +129,27 @@ export function ChatHistory() {
       throw new Error("No active session");
     }
 
-    console.log("handleFileUpload", file, hasTempDocs);
+    // 如果已经有文件，先不允许上传
+    if (tempFiles.length > 0) {
+      throw new Error("已有上传的文件");
+    }
+
+    console.log("handleFileUpload", file);
 
     const result = await fileService.uploadTempFile(currentSessionId, file);
+    const tempFile = {
+      filename: file.name,
+      type: file.type,
+      size: file.size,
+      createdAt: new Date().toISOString(),
+    };
+
     setHasTempDocs(true);
+    // 设置新的临时文件
+    setTempFiles([tempFile]);
+
     return {
-      name: file.name,
+      ...tempFile,
       path: result.filePath,
     };
   };
@@ -137,8 +158,10 @@ export function ChatHistory() {
   const handleFileRemove = async () => {
     if (!currentSessionId) return;
     try {
+      // 统一使用cleanupTempFiles来删除文件
       await fileService.cleanupTempFiles(currentSessionId);
       setHasTempDocs(false);
+      setTempFiles([]);
     } catch (error) {
       console.error("文件删除失败:", error);
       throw error;
@@ -148,6 +171,7 @@ export function ChatHistory() {
   // 重置临时文档状态
   useEffect(() => {
     setHasTempDocs(false);
+    setTempFiles([]); // 重置临时文件列表
   }, [currentSessionId]);
 
   return (
@@ -183,6 +207,30 @@ export function ChatHistory() {
           {/* 消息列表区域 */}
           <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
             <div className="px-4 py-6">
+              {/* 显示临时文件列表 */}
+              {tempFiles.length > 0 && (
+                <div className="max-w-3xl mx-auto mb-6">
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium mb-2">临时文件</h3>
+                    <div className="space-y-2">
+                      {tempFiles.map((file) => (
+                        <div
+                          key={file.filename}
+                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span className="flex-1 truncate">
+                            {file.filename}
+                          </span>
+                          <span className="text-xs">
+                            {(file.size / 1024).toFixed(1)}KB
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="space-y-6 max-w-3xl mx-auto">
                 {messages.length === 0 ? (
                   // 空消息提示
@@ -239,6 +287,7 @@ export function ChatHistory() {
                 onFileRemove={handleFileRemove}
                 sessionId={currentSessionId}
                 hasTempDocs={hasTempDocs}
+                tempDocs={tempFiles}
               />
             </div>
           </div>

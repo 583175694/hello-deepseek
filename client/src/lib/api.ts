@@ -1,6 +1,7 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "@/config";
 import { getClientIdHeader } from "./clientId";
+import type { GetSessionMessagesResponse } from "@/types/api";
 
 // 将baseURL改为从配置中导入
 export const baseURL = API_BASE_URL;
@@ -59,7 +60,9 @@ export const chatService = {
   },
 
   // 获取会话消息历史
-  async getSessionMessages(sessionId: string) {
+  async getSessionMessages(
+    sessionId: string
+  ): Promise<GetSessionMessagesResponse> {
     const response = await api.get(`/chat/sessions/${sessionId}/messages`);
     return response.data;
   },

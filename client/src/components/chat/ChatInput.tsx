@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 
 // 定义临时文件类型
 interface TempFile {
-  name: string;
-  path: string;
+  filename: string;
+  type: string;
+  size: number;
+  createdAt: string;
 }
 
 // 定义组件的 Props 接口
@@ -28,6 +30,7 @@ interface ChatInputProps {
   onFileRemove?: () => Promise<void>; // 添加文件删除回调
   sessionId?: string; // 添加会话ID
   hasTempDocs?: boolean;
+  tempDocs?: TempFile[];
 }
 
 export function ChatInput({
@@ -38,13 +41,14 @@ export function ChatInput({
   onFileUpload,
   onFileRemove,
   hasTempDocs = false,
+  tempDocs = [],
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
   const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
   const [useVectorSearch, setUseVectorSearch] = useState(false); // 是否启用知识库搜索
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
-  const [tempFile, setTempFile] = useState<TempFile | null>(null); // 添加临时文件状态
+  const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -81,12 +85,17 @@ export function ChatInput({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onFileUpload) {
+      // 如果已经有文件，先不允许上传
+      if (tempFiles.length > 0) {
+        e.target.value = "";
+        return;
+      }
+
       try {
         const uploadedFile = await onFileUpload(file);
-        setTempFile(uploadedFile);
+        setTempFiles([uploadedFile]); // 直接设置为新文件，而不是添加到数组
       } catch (error) {
         console.error("文件上传失败:", error);
-        // 这里可以添加错误提示
       }
     }
     // 重置文件输入框的值
@@ -98,7 +107,7 @@ export function ChatInput({
     if (onFileRemove) {
       try {
         await onFileRemove();
-        setTempFile(null);
+        setTempFiles([]); // 直接清空文件列表
         // 重置文件输入框的值
         const fileInput = document.getElementById(
           "file-upload"
@@ -108,18 +117,23 @@ export function ChatInput({
         }
       } catch (error) {
         console.error("文件删除失败:", error);
-        // 这里可以添加错误提示
       }
     }
   };
 
+  useEffect(() => {
+    setTempFiles(tempDocs);
+  }, [tempDocs]);
+
   return (
     <div className="flex flex-col gap-3">
       {/* 显示临时文件 */}
-      {tempFile && (
+      {tempFiles.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
           <Paperclip className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm flex-1 truncate">{tempFile.name}</span>
+          <span className="text-sm flex-1 truncate">
+            {tempFiles[0].filename}
+          </span>
           <Button
             type="button"
             size="icon"
@@ -154,7 +168,7 @@ export function ChatInput({
           className="hidden"
           onChange={handleFileUpload}
           accept=".pdf,.doc,.docx,.txt,.md"
-          disabled={disabled || isLoading}
+          disabled={disabled || isLoading || tempFiles.length > 0}
           capture="environment"
         />
         <Button
@@ -162,8 +176,8 @@ export function ChatInput({
           size="icon"
           variant="ghost"
           onClick={() => document.getElementById("file-upload")?.click()}
-          disabled={disabled || isLoading}
-          title="上传文档"
+          disabled={disabled || isLoading || tempFiles.length > 0}
+          title={tempFiles.length > 0 ? "已有上传的文件" : "上传文档"}
           className="hidden lg:inline-flex"
         >
           <Paperclip className="w-4 h-4" />

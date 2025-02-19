@@ -59,6 +59,29 @@ export class TempDocumentService {
         fs.mkdirSync(sessionPath, { recursive: true });
       }
 
+      // 检查是否已存在文件，如果存在则删除
+      const existingFiles = fs.readdirSync(sessionPath);
+      if (existingFiles.length > 0) {
+        // 删除现有文件
+        existingFiles.forEach((filename) => {
+          const filePath = path.join(sessionPath, filename);
+          fs.unlinkSync(filePath);
+        });
+
+        // 清理向量存储
+        const vectorStorePath = this.getSessionVectorStorePath(
+          sessionId,
+          clientId,
+        );
+        if (fs.existsSync(vectorStorePath)) {
+          fs.rmSync(vectorStorePath, { recursive: true, force: true });
+        }
+
+        // 清理内存中的向量存储
+        const storeKey = this.getStoreKey(sessionId, clientId);
+        this.sessionVectorStores.delete(storeKey);
+      }
+
       const filePath = path.join(sessionPath, file.originalname);
       fs.writeFileSync(filePath, file.buffer);
       return filePath;
@@ -207,6 +230,38 @@ export class TempDocumentService {
         'Failed to cleanup session',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  async getSessionDocuments(
+    sessionId: string,
+    clientId: string,
+  ): Promise<
+    { filename: string; type: string; size: number; createdAt: Date }[]
+  > {
+    try {
+      const sessionPath = this.getSessionPath(sessionId, clientId);
+      if (!fs.existsSync(sessionPath)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(sessionPath);
+      return files.map((filename) => {
+        const filePath = path.join(sessionPath, filename);
+        const stats = fs.statSync(filePath);
+        return {
+          filename,
+          type: path.extname(filename).slice(1) || 'unknown',
+          size: stats.size,
+          createdAt: stats.birthtime,
+        };
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to get session documents for session ${sessionId} and client ${clientId}:`,
+        error,
+      );
+      return [];
     }
   }
 }

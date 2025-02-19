@@ -111,7 +111,19 @@ export class ChatController {
     @Headers('x-client-id') clientId: string,
     @Param('sessionId') sessionId: string,
   ) {
-    return await this.sessionService.getSessionMessages(sessionId, clientId);
+    const sessionData = await this.sessionService.getSessionMessages(
+      sessionId,
+      clientId,
+    );
+    const tempFiles = await this.tempDocumentService.getSessionDocuments(
+      sessionId,
+      clientId,
+    );
+
+    return {
+      ...sessionData,
+      tempFiles,
+    };
   }
 
   // 删除指定会话
@@ -255,9 +267,17 @@ export class ChatController {
       }),
     ];
     await this.tempDocumentService.addDocuments(documents, sessionId, clientId);
+
+    // 获取更新后的文件信息
+    const tempFiles = await this.tempDocumentService.getSessionDocuments(
+      sessionId,
+      clientId,
+    );
+
     return {
       message: 'Temporary file uploaded and processed successfully',
       filePath,
+      tempFiles,
     };
   }
 
