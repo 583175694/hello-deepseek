@@ -11,7 +11,6 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
-import { FileText } from "lucide-react";
 
 export function ChatHistory() {
   // 添加消息容器的引用
@@ -40,7 +39,7 @@ export function ChatHistory() {
     const container = scrollContainerRef.current;
     if (!container) return true;
 
-    const threshold = 10; // 允许10px的误差
+    const threshold = 100; // 允许100px的误差
     return (
       container.scrollHeight - container.scrollTop - container.clientHeight <=
       threshold
@@ -82,6 +81,13 @@ export function ChatHistory() {
       scrollToBottom();
     }
   }, [messages, currentSessionId, shouldAutoScroll, isUserScrolling]);
+
+  // 在流式传输时保持滚动到底部
+  useEffect(() => {
+    if (isStreaming && shouldAutoScroll) {
+      scrollToBottom();
+    }
+  }, [isStreaming, shouldAutoScroll]);
 
   // 监听滚动事件
   useEffect(() => {
