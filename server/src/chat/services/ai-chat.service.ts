@@ -116,34 +116,6 @@ export class AIChatService {
     }
   }
 
-  // 执行临时文档搜索
-  private async performTempDocumentSearch(
-    message: string,
-    sessionId: string,
-    clientId: string,
-  ): Promise<string> {
-    this.logger.log(
-      `Performing temp document search for session ${sessionId} and client ${clientId}`,
-    );
-    try {
-      const tempResults = await this.tempDocumentService.searchSimilarDocuments(
-        message,
-        sessionId,
-        clientId,
-      );
-      if (tempResults.length > 0) {
-        return (
-          '会话临时文档搜索结果：\n' +
-          tempResults.map((doc) => doc.pageContent).join('\n')
-        );
-      }
-      return '';
-    } catch (error) {
-      this.logger.error('Temp document search error:', error);
-      return '';
-    }
-  }
-
   // 流式聊天处理
   async streamChat(
     message: string,
