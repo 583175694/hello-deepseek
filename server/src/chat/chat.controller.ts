@@ -59,12 +59,12 @@ export class ChatController {
     @Query('sessionId') sessionId?: string,
     @Query('useWebSearch') useWebSearch?: string,
     @Query('useVectorSearch') useVectorSearch?: string,
+    @Query('useTempDocSearch') useTempDocSearch?: string,
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
     }
 
-    // 将字符串参数转换为布尔值，默认都为 false
     const shouldUseWebSearch =
       useWebSearch === undefined
         ? false
@@ -73,6 +73,10 @@ export class ChatController {
       useVectorSearch === undefined
         ? false
         : useVectorSearch.toLowerCase() === 'true';
+    const shouldUseTempDocSearch =
+      useTempDocSearch === undefined
+        ? false
+        : useTempDocSearch.toLowerCase() === 'true';
 
     return new Observable<MessageEvent>((subscriber) => {
       this.aiChatService
@@ -80,14 +84,10 @@ export class ChatController {
           message,
           clientId,
           sessionId,
+          (response) => subscriber.next({ data: response }),
           shouldUseWebSearch,
           shouldUseVectorSearch,
-          async (response: {
-            type: 'content' | 'reasoning' | 'sources';
-            content: string;
-          }) => {
-            subscriber.next({ data: response });
-          },
+          shouldUseTempDocSearch,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });

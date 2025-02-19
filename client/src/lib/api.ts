@@ -1,5 +1,4 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import type { ChatRequest, ChatResponse } from "@/types/api";
 import { API_BASE_URL } from "@/config";
 import { getClientIdHeader } from "./clientId";
 
@@ -26,11 +25,6 @@ interface CreateSessionParams {
 }
 
 export const chatService = {
-  chat: async (data: ChatRequest) => {
-    const response = await api.post<ChatResponse>("/chat", data);
-    return response.data;
-  },
-
   // 创建新会话
   async createSession(params?: CreateSessionParams) {
     const response = await api.post("/chat/session", params);

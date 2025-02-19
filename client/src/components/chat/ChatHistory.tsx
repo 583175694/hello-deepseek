@@ -20,6 +20,7 @@ export function ChatHistory() {
   const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [hasTempDocs, setHasTempDocs] = useState(false);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -122,7 +123,10 @@ export function ChatHistory() {
       throw new Error("No active session");
     }
 
+    console.log("handleFileUpload", file, hasTempDocs);
+
     const result = await fileService.uploadTempFile(currentSessionId, file);
+    setHasTempDocs(true);
     return {
       name: file.name,
       path: result.filePath,
@@ -134,11 +138,17 @@ export function ChatHistory() {
     if (!currentSessionId) return;
     try {
       await fileService.cleanupTempFiles(currentSessionId);
+      setHasTempDocs(false);
     } catch (error) {
       console.error("文件删除失败:", error);
       throw error;
     }
   };
+
+  // 重置临时文档状态
+  useEffect(() => {
+    setHasTempDocs(false);
+  }, [currentSessionId]);
 
   return (
     <div className="flex flex-row h-full">
@@ -219,6 +229,7 @@ export function ChatHistory() {
                   sendStreamMessage(content, currentSessionId, {
                     useWebSearch,
                     useVectorSearch,
+                    useTempDocSearch: hasTempDocs,
                   });
                 }}
                 disabled={!currentSessionId}
@@ -227,6 +238,7 @@ export function ChatHistory() {
                 onFileUpload={handleFileUpload}
                 onFileRemove={handleFileRemove}
                 sessionId={currentSessionId}
+                hasTempDocs={hasTempDocs}
               />
             </div>
           </div>

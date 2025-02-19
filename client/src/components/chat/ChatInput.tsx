@@ -15,7 +15,11 @@ interface TempFile {
 interface ChatInputProps {
   onSend: (
     content: string,
-    options: { useWebSearch?: boolean; useVectorSearch?: boolean }
+    options: {
+      useWebSearch?: boolean;
+      useVectorSearch?: boolean;
+      useTempDocSearch?: boolean;
+    }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
   isLoading?: boolean; // AI是否正在回复
@@ -23,6 +27,7 @@ interface ChatInputProps {
   onFileUpload?: (file: File) => Promise<TempFile>; // 修改为返回 Promise<TempFile>
   onFileRemove?: () => Promise<void>; // 添加文件删除回调
   sessionId?: string; // 添加会话ID
+  hasTempDocs?: boolean;
 }
 
 export function ChatInput({
@@ -32,6 +37,7 @@ export function ChatInput({
   onAbort,
   onFileUpload,
   onFileRemove,
+  hasTempDocs = false,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
@@ -55,7 +61,11 @@ export function ChatInput({
     if (!input.trim() || disabled || isLoading) return;
 
     // 发送消息，包含搜索选项
-    onSend(input, { useWebSearch, useVectorSearch });
+    onSend(input, {
+      useWebSearch,
+      useVectorSearch,
+      useTempDocSearch: hasTempDocs,
+    });
     setInput(""); // 清空输入框
   };
 

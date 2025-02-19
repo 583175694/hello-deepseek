@@ -17,6 +17,7 @@ interface MessageContent {
 interface ChatOptions {
   useWebSearch?: boolean;
   useVectorSearch?: boolean;
+  useTempDocSearch?: boolean;
 }
 
 export function useAIChat() {

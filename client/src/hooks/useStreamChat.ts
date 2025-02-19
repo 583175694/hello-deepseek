@@ -18,6 +18,7 @@ export function useStreamChat() {
       options?: {
         useWebSearch?: boolean;
         useVectorSearch?: boolean;
+        useTempDocSearch?: boolean;
       },
       onStream?: (response: StreamResponse) => void
     ) => {
@@ -34,6 +35,9 @@ export function useStreamChat() {
       }
       if (options?.useVectorSearch) {
         params.append("useVectorSearch", "true");
+      }
+      if (options?.useTempDocSearch) {
+        params.append("useTempDocSearch", "true");
       }
 
       // 连接 SSE

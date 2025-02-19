@@ -22,6 +22,8 @@ type SessionContextType = {
     systemPrompt: string;
   }) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
+  hasTempDocs: boolean;
+  setHasTempDocs: (value: boolean) => void;
 };
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -29,6 +31,7 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [hasTempDocs, setHasTempDocs] = useState(false);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -46,6 +49,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const session = await chatService.createSession(params);
         setSessions((prev) => [session, ...prev]);
         setCurrentSessionId(session.sessionId);
+        setHasTempDocs(false);
         return session;
       } catch (error) {
         console.error("创建会话失败:", error);
@@ -87,6 +91,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         loadSessions,
         createNewSession,
         deleteSession,
+        hasTempDocs,
+        setHasTempDocs,
       }}
     >
       {children}

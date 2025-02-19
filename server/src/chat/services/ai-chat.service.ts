@@ -149,12 +149,13 @@ export class AIChatService {
     message: string,
     clientId: string,
     sessionId: string,
-    useWebSearch: boolean = false,
-    useVectorSearch: boolean = false,
     onToken: (response: {
-      type: 'content' | 'reasoning' | 'sources';
+      type: 'content' | 'reasoning' | 'sources' | 'temp';
       content: string;
     }) => void,
+    useWebSearch: boolean = false,
+    useVectorSearch: boolean = false,
+    useTempDocSearch: boolean = false,
   ) {
     this.logger.log(
       `Starting stream chat for session ${sessionId} and client ${clientId}`,
@@ -188,22 +189,35 @@ export class AIChatService {
       const sources: Array<{ type: 'web' | 'vector' | 'temp'; url: string }> =
         [];
 
-      // 如果有会话ID，执行临时文档搜索
-      if (sessionId) {
+      // 执行临时文档搜索
+      if (useTempDocSearch && sessionId) {
         this.logger.log('Performing temp document search...');
-        const tempSearchResults = await this.performTempDocumentSearch(
-          message,
-          sessionId,
-          clientId,
-        );
-        if (tempSearchResults) {
-          searchContext += tempSearchResults + '\n\n';
-          // 将临时文档的来源添加到 sources 数组
+        const tempDocuments =
+          await this.tempDocumentService.searchSimilarDocuments(
+            message,
+            sessionId,
+            clientId,
+          );
+
+        if (
+          Array.isArray(tempDocuments) &&
+          tempDocuments.length > 0 &&
+          tempDocuments[0]?.pageContent
+        ) {
+          this.logger.log(
+            `Found ${tempDocuments.length} temp documents with content`,
+          );
+          searchContext +=
+            '会话临时文档搜索结果：\n' +
+            tempDocuments.map((doc) => doc.pageContent).join('\n') +
+            '\n\n';
           sources.push({
             type: 'temp',
             url: 'session_document',
           });
           this.logger.log('Temp document search results added to context');
+        } else {
+          this.logger.log('No valid temp documents found');
         }
       }
 
