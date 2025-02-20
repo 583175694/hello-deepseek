@@ -136,6 +136,122 @@ export class AIChatService {
     }
   }
 
+  // 执行临时文档搜索
+  private async performTempDocSearch(
+    message: string,
+    sessionId: string,
+    clientId: string,
+  ): Promise<{
+    searchContext: string;
+    sources: Array<{ type: 'temp'; url: string }>;
+  }> {
+    this.logger.log('Performing temp document search...');
+    let searchContext = '';
+    const sources: Array<{ type: 'temp'; url: string }> = [];
+
+    const tempDocuments = await this.tempDocumentService.searchSimilarDocuments(
+      message,
+      sessionId,
+      clientId,
+    );
+
+    if (
+      Array.isArray(tempDocuments) &&
+      tempDocuments.length > 0 &&
+      tempDocuments[0]?.pageContent
+    ) {
+      this.logger.log(
+        `Found ${tempDocuments.length} temp documents with content`,
+      );
+      searchContext +=
+        '会话临时文档搜索结果：\n' +
+        tempDocuments.map((doc) => doc.pageContent).join('\n') +
+        '\n\n';
+
+      // 从每个文档的元数据中获取文件名
+      tempDocuments.forEach((doc) => {
+        if (doc.metadata?.filename) {
+          sources.push({
+            type: 'temp',
+            url: doc.metadata.filename,
+          });
+        }
+      });
+
+      this.logger.log('Temp document search results added to context');
+    } else {
+      this.logger.log('No valid temp documents found');
+    }
+
+    return { searchContext, sources };
+  }
+
+  // 执行网络搜索
+  private async performWebSearch(message: string): Promise<{
+    searchContext: string;
+    sources: Array<{ type: 'web'; url: string }>;
+  }> {
+    this.logger.log('Performing web search...');
+    let searchContext = '';
+    const sources: Array<{ type: 'web'; url: string }> = [];
+
+    const webSearchResults = await this.performExaSearch(message);
+    if (webSearchResults) {
+      // 提取URL并存储
+      const urls =
+        webSearchResults
+          .match(/来源: (.*?)\n/g)
+          ?.map((match) => match.replace('来源: ', '').trim()) || [];
+      this.logger.log(`Found ${urls.length} web sources`);
+      urls.forEach((url) => {
+        sources.push({ type: 'web', url });
+      });
+      searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
+      this.logger.log('Web search results added to context');
+    }
+
+    return { searchContext, sources };
+  }
+
+  // 执行向量数据库搜索
+  private async performVectorSearch(
+    message: string,
+    clientId: string,
+  ): Promise<{
+    searchContext: string;
+    sources: Array<{ type: 'vector'; url: string }>;
+  }> {
+    this.logger.log('Performing vector database search...');
+    let searchContext = '';
+    const sources: Array<{ type: 'vector'; url: string }> = [];
+
+    const vectorSearchResults =
+      await this.documentService.searchSimilarDocuments(clientId, message, 3);
+    if (vectorSearchResults && vectorSearchResults.length > 0) {
+      this.logger.log(
+        `Found ${vectorSearchResults.length} vector search results`,
+      );
+      // 存储文档来源
+      vectorSearchResults.forEach((doc) => {
+        sources.push({
+          type: 'vector',
+          url: doc.metadata.filename,
+        });
+      });
+      searchContext +=
+        '本地文档搜索结果：\n' +
+        vectorSearchResults
+          .map(
+            (doc) => `来源: ${doc.metadata.filename}\n内容: ${doc.pageContent}`,
+          )
+          .join('\n\n') +
+        '\n\n';
+      this.logger.log('Vector search results added to context');
+    }
+
+    return { searchContext, sources };
+  }
+
   // 流式聊天处理
   async streamChat(
     message: string,
@@ -184,93 +300,26 @@ export class AIChatService {
 
       // 执行临时文档搜索
       if (useTempDocSearch && sessionId) {
-        this.logger.log('Performing temp document search...');
-        const tempDocuments =
-          await this.tempDocumentService.searchSimilarDocuments(
-            message,
-            sessionId,
-            clientId,
-          );
-
-        if (
-          Array.isArray(tempDocuments) &&
-          tempDocuments.length > 0 &&
-          tempDocuments[0]?.pageContent
-        ) {
-          this.logger.log(
-            `Found ${tempDocuments.length} temp documents with content`,
-          );
-          searchContext +=
-            '会话临时文档搜索结果：\n' +
-            tempDocuments.map((doc) => doc.pageContent).join('\n') +
-            '\n\n';
-
-          // 从每个文档的元数据中获取文件名
-          tempDocuments.forEach((doc) => {
-            if (doc.metadata?.filename) {
-              sources.push({
-                type: 'temp',
-                url: doc.metadata.filename,
-              });
-            }
-          });
-
-          this.logger.log('Temp document search results added to context');
-        } else {
-          this.logger.log('No valid temp documents found');
-        }
+        const { searchContext: tempSearchContext, sources: tempSources } =
+          await this.performTempDocSearch(message, sessionId, clientId);
+        searchContext += tempSearchContext;
+        sources.push(...tempSources);
       }
 
       // 执行网络搜索
       if (useWebSearch) {
-        this.logger.log('Performing web search...');
-        const webSearchResults = await this.performExaSearch(message);
-        if (webSearchResults) {
-          // 提取URL并存储
-          const urls =
-            webSearchResults
-              .match(/来源: (.*?)\n/g)
-              ?.map((match) => match.replace('来源: ', '').trim()) || [];
-          this.logger.log(`Found ${urls.length} web sources`);
-          urls.forEach((url) => {
-            sources.push({ type: 'web', url });
-          });
-          searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
-          this.logger.log('Web search results added to context');
-        }
+        const { searchContext: webSearchContext, sources: webSources } =
+          await this.performWebSearch(message);
+        searchContext += webSearchContext;
+        sources.push(...webSources);
       }
 
       // 执行向量数据库搜索
       if (useVectorSearch) {
-        this.logger.log('Performing vector database search...');
-        const vectorSearchResults =
-          await this.documentService.searchSimilarDocuments(
-            clientId,
-            message,
-            3,
-          );
-        if (vectorSearchResults && vectorSearchResults.length > 0) {
-          this.logger.log(
-            `Found ${vectorSearchResults.length} vector search results`,
-          );
-          // 存储文档来源
-          vectorSearchResults.forEach((doc) => {
-            sources.push({
-              type: 'vector',
-              url: doc.metadata.filename,
-            });
-          });
-          searchContext +=
-            '本地文档搜索结果：\n' +
-            vectorSearchResults
-              .map(
-                (doc) =>
-                  `来源: ${doc.metadata.filename}\n内容: ${doc.pageContent}`,
-              )
-              .join('\n\n') +
-            '\n\n';
-          this.logger.log('Vector search results added to context');
-        }
+        const { searchContext: vectorSearchContext, sources: vectorSources } =
+          await this.performVectorSearch(message, clientId);
+        searchContext += vectorSearchContext;
+        sources.push(...vectorSources);
       }
 
       // 保存用户消息
