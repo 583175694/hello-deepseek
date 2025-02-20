@@ -399,7 +399,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           {/* 消息内容 */}
           <div
             className={cn(
-              "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-6rem)] md:max-w-[calc(100vw-20rem)]",
+              "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
               isAI
                 ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
                 : "bg-primary text-primary-foreground"
