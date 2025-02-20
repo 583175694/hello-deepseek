@@ -181,6 +181,15 @@ export function ChatHistory() {
     setTempFiles([]); // 重置临时文件列表
   }, [currentSessionId]);
 
+  // 处理模型切换
+  const handleModelChange = async (modelId: string) => {
+    try {
+      await chatService.switchModel(modelId);
+    } catch (error) {
+      console.error("切换模型失败:", error);
+    }
+  };
+
   return (
     <div className="flex flex-row h-full">
       {/* 左侧列表区域 - 在移动端使用固定定位 */}
@@ -278,25 +287,21 @@ export function ChatHistory() {
             </div>
           </div>
 
-          {/* 输入框区域 */}
-          <div className="flex-shrink-0 border-t border-border bg-background">
-            <div className="max-w-3xl mx-auto px-4 py-4">
+          {/* 底部输入区域 */}
+          <div className="p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="max-w-3xl mx-auto">
               <ChatInput
-                onSend={(content, { useWebSearch, useVectorSearch }) => {
-                  sendStreamMessage(content, currentSessionId, {
-                    useWebSearch,
-                    useVectorSearch,
-                    useTempDocSearch: hasTempDocs,
-                  });
+                onSend={(content, options) => {
+                  sendStreamMessage(content, currentSessionId, options);
                 }}
                 disabled={!currentSessionId}
                 isLoading={isStreaming}
                 onAbort={abortStream}
                 onFileUpload={handleFileUpload}
                 onFileRemove={handleFileRemove}
-                sessionId={currentSessionId}
                 hasTempDocs={hasTempDocs}
                 tempDocs={tempFiles}
+                onModelChange={handleModelChange}
               />
             </div>
           </div>

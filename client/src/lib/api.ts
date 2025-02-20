@@ -66,6 +66,18 @@ export const chatService = {
     const response = await api.get(`/chat/sessions/${sessionId}/messages`);
     return response.data;
   },
+
+  // 获取可用模型列表
+  async getModels() {
+    const response = await api.get("/chat/models");
+    return response.data;
+  },
+
+  // 切换模型
+  async switchModel(modelId: string) {
+    const response = await api.post("/chat/models/switch", { modelId });
+    return response.data;
+  },
 };
 
 export const fileService = {

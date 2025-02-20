@@ -21,6 +21,7 @@ export class AIChatService {
   private prompt: ChatPromptTemplate; // 聊天提示模板
   private retriever: ExaRetriever; // Exa检索器实例
   private exa: Exa; // Exa客户端实例
+  private currentModelId: string = 'bytedance_deepseek_r1';
   private readonly DEFAULT_SYSTEM_PROMPT =
     '你是一个智能AI助手，可以帮助用户解决各种问题。';
 
@@ -38,15 +39,7 @@ export class AIChatService {
   private initializeServices() {
     this.logger.log('Initializing DeepSeek model...');
     // 初始化DeepSeek模型
-    this.model = new ChatDeepSeek({
-      modelName: models.bytedance.modelName,
-      temperature: 0.7,
-      streaming: true,
-      configuration: {
-        baseURL: models.bytedance.baseURL,
-        apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
-      },
-    });
+    this.initializeModel();
     this.logger.log('DeepSeek model initialized successfully');
 
     this.logger.log('Initializing Exa client and retriever...');
@@ -69,6 +62,36 @@ export class AIChatService {
     ]);
     this.logger.log('Chat prompt template setup completed');
     this.logger.log('Service initialization completed');
+  }
+
+  private initializeModel() {
+    const modelConfig = models[this.currentModelId];
+    if (!modelConfig) {
+      throw new Error(
+        `Model ${this.currentModelId} not found in configuration`,
+      );
+    }
+
+    this.model = new ChatDeepSeek({
+      modelName: modelConfig.modelName,
+      temperature: 0.7,
+      streaming: true,
+      configuration: {
+        baseURL: modelConfig.baseURL,
+        apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+      },
+    });
+  }
+
+  // 切换模型
+  async switchModel(modelId: string) {
+    this.logger.log(`Switching model to ${modelId}...`);
+    if (!models[modelId]) {
+      throw new Error(`Model ${modelId} not found in configuration`);
+    }
+    this.currentModelId = modelId;
+    this.initializeModel();
+    return { message: `Successfully switched to model ${modelId}` };
   }
 
   // 优化搜索查询

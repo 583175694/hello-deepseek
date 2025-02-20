@@ -25,6 +25,7 @@ import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
+import { models } from 'src/configs/models';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -272,5 +273,20 @@ export class ChatController {
   ) {
     await this.tempDocumentService.cleanupSession(sessionId, clientId);
     return { message: 'Temporary files cleaned up successfully' };
+  }
+
+  // 获取可用的模型列表
+  @Get('models')
+  async getAvailableModels() {
+    return Object.entries(models).map(([id, model]) => ({
+      id,
+      ...model,
+    }));
+  }
+
+  // 切换模型
+  @Post('models/switch')
+  async switchModel(@Body() data: { modelId: string }) {
+    return await this.aiChatService.switchModel(data.modelId);
   }
 }

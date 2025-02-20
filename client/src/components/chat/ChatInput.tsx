@@ -12,6 +12,7 @@ import {
   FileIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ModelSelector } from "./ModelSelector";
 
 // 定义临时文件类型
 interface TempFile {
@@ -39,6 +40,7 @@ interface ChatInputProps {
   sessionId?: string; // 添加会话ID
   hasTempDocs?: boolean;
   tempDocs?: TempFile[];
+  onModelChange?: (modelId: string) => void; // 添加模型切换回调
 }
 
 export function ChatInput({
@@ -50,6 +52,7 @@ export function ChatInput({
   onFileRemove,
   hasTempDocs = false,
   tempDocs = [],
+  onModelChange,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
@@ -212,6 +215,12 @@ export function ChatInput({
       {/* 功能按钮区域 */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex flex-wrap items-center gap-2">
+          {/* 模型选择器 */}
+          <ModelSelector
+            onModelChange={onModelChange || (() => {})}
+            disabled={disabled || isLoading}
+          />
+
           {/* 网络搜索切换按钮 */}
           <Button
             type="button"
