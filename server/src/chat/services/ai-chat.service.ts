@@ -327,6 +327,7 @@ export class AIChatService {
       await this.messageService.saveMessage(
         'user',
         message,
+        null,
         sessionId,
         clientId,
       );
@@ -345,6 +346,7 @@ export class AIChatService {
 
       // 处理流式响应
       let fullResponse = '';
+      let fullReasoning = '';
       this.logger.log('Processing stream response...');
       for await (const chunk of stream) {
         if (chunk.content) {
@@ -359,6 +361,7 @@ export class AIChatService {
         if (chunk.additional_kwargs.reasoning_content) {
           const reasoning =
             chunk.additional_kwargs.reasoning_content.toString();
+          fullReasoning += reasoning;
           onToken({
             type: 'reasoning',
             content: reasoning,
@@ -382,6 +385,7 @@ export class AIChatService {
       await this.messageService.saveMessage(
         'assistant',
         fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
+        fullReasoning || null,
         sessionId,
         clientId,
       );

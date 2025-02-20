@@ -63,9 +63,20 @@ function CodeBlock({
           <Copy className="w-4 h-4" />
         )}
       </button>
-      <SyntaxHighlighter language={language} style={oneDark} PreTag="div">
-        {String(children).replace(/\n$/, "")}
-      </SyntaxHighlighter>
+      <div className="max-w-full overflow-x-auto">
+        <SyntaxHighlighter
+          language={language}
+          style={oneDark}
+          PreTag="div"
+          customStyle={{
+            margin: 0,
+            marginBottom: 0,
+            padding: "1rem",
+          }}
+        >
+          {String(children).replace(/\n$/, "")}
+        </SyntaxHighlighter>
+      </div>
     </div>
   );
 }
@@ -388,9 +399,9 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           {/* 消息内容 */}
           <div
             className={cn(
-              "rounded-2xl px-4 prose-sm py-2.5",
+              "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-6rem)] md:max-w-[calc(100vw-20rem)]",
               isAI
-                ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0"
+                ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
                 : "bg-primary text-primary-foreground"
             )}
           >

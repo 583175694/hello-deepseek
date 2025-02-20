@@ -25,12 +25,14 @@ export class MessageService {
   async saveMessage(
     role: string,
     content: string,
+    reasoning: string | null,
     sessionId: string,
     clientId: string,
   ): Promise<Message> {
     const message = this.messageRepository.create({
       role,
       content,
+      reasoning,
       sessionId,
       clientId,
     });
@@ -40,7 +42,7 @@ export class MessageService {
   async getSessionHistory(
     sessionId: string,
     clientId: string,
-  ): Promise<{ role: string; content: string }[]> {
+  ): Promise<{ role: string; content: string; reasoning?: string }[]> {
     const messages = await this.messageRepository.find({
       where: { sessionId, clientId },
       order: { createdAt: 'ASC' },
@@ -48,6 +50,7 @@ export class MessageService {
     return messages.map((msg) => ({
       role: msg.role,
       content: msg.content,
+      reasoning: msg.reasoning,
     }));
   }
 

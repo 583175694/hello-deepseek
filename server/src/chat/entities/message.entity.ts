@@ -22,6 +22,9 @@ export class Message {
   @Column('text')
   content: string;
 
+  @Column('text', { nullable: true })
+  reasoning: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

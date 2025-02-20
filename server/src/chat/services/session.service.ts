@@ -102,7 +102,7 @@ export class SessionService {
       const messages = await this.messageRepository.find({
         where: { sessionId, clientId },
         order: { createdAt: 'ASC' },
-        select: ['id', 'role', 'content', 'createdAt'],
+        select: ['id', 'role', 'content', 'reasoning', 'createdAt'],
       });
 
       this.logger.log(
