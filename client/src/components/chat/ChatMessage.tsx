@@ -13,6 +13,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   Download,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -96,6 +98,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const reasoningIndexRef = useRef(0);
   const contentIndexRef = useRef(0);
   const frameIdRef = useRef<number | undefined>(undefined);
+  const [isReasoningExpanded, setIsReasoningExpanded] = useState(true);
 
   useEffect(() => {
     if (!isAI) return;
@@ -265,9 +268,29 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
         {message.reasoning && (
           // 渲染思考过程，使用左边框突出显示
           <div className="border-l-4 border-primary/30 pl-4 text-muted-foreground">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {isStreaming ? displayedReasoning + "▊" : message.reasoning}
-            </ReactMarkdown>
+            <div
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
+            >
+              {isReasoningExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+              <span className="text-sm font-medium">思考过程</span>
+            </div>
+            <div
+              className={cn(
+                "transition-all duration-200 overflow-hidden",
+                isReasoningExpanded
+                  ? "max-h-[500px] opacity-100"
+                  : "max-h-0 opacity-0"
+              )}
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {isStreaming ? displayedReasoning + "▊" : message.reasoning}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
         <ReactMarkdown

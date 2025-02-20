@@ -89,6 +89,10 @@ export function ChatInput({
 
   // 处理快捷键：Enter 发送，Shift + Enter 换行
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 如果是 IME 输入状态，不处理回车键
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
