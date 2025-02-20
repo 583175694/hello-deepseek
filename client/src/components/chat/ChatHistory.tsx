@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
+import { useScrollToBottom } from "@/hooks/useScrollToBottom";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage } from "./ChatMessage";
 import { chatService, fileService } from "@/lib/api";
@@ -13,12 +14,6 @@ import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
 
 export function ChatHistory() {
-  // 添加消息容器的引用
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [hasTempDocs, setHasTempDocs] = useState(false);
@@ -35,81 +30,13 @@ export function ChatHistory() {
     abortStream,
   } = useAIChat();
 
-  // 检查是否在底部的函数
-  const isAtBottom = () => {
-    const container = scrollContainerRef.current;
-    if (!container) return true;
-
-    const threshold = 100; // 允许100px的误差
-    return (
-      container.scrollHeight - container.scrollTop - container.clientHeight <=
-      threshold
-    );
-  };
-
-  // 处理滚动事件
-  const handleScroll = useCallback(() => {
-    // 设置用户正在滚动
-    setIsUserScrolling(true);
-
-    // 清除之前的定时器
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
-    // 设置新的定时器，500ms 后认为用户停止滚动
-    scrollTimeoutRef.current = setTimeout(() => {
-      setIsUserScrolling(false);
-      setShouldAutoScroll(isAtBottom());
-    }, 500);
-  }, []);
-
-  // 添加滚动到底部的函数
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // 在消息列表变化时滚动到底部
-  useEffect(() => {
-    // 当切换会话时，总是滚动到底部
-    if (messages.length === 0) {
-      setShouldAutoScroll(true);
-      setIsUserScrolling(false);
-    }
-
-    // 只有当用户没有在滚动且应该自动滚动时，才执行滚动
-    if (shouldAutoScroll && !isUserScrolling) {
-      scrollToBottom();
-    }
-  }, [messages, currentSessionId, shouldAutoScroll, isUserScrolling]);
-
-  // 在流式传输时保持滚动到底部
-  useEffect(() => {
-    if (isStreaming && shouldAutoScroll) {
-      scrollToBottom();
-    }
-  }, [isStreaming, shouldAutoScroll]);
-
-  // 监听滚动事件
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener("scroll", handleScroll);
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      // 清理定时器
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [handleScroll]);
-
-  // 当切换会话时，重置自动滚动状态
-  useEffect(() => {
-    setShouldAutoScroll(true);
-    setIsUserScrolling(false);
-  }, [currentSessionId]);
+  // 使用滚动 hook
+  const { messagesEndRef, scrollContainerRef, setShouldAutoScroll } =
+    useScrollToBottom({
+      threshold: 100,
+      behavior: "smooth",
+      isStreaming,
+    });
 
   // 加载会话消息历史
   useEffect(() => {
@@ -181,6 +108,11 @@ export function ChatHistory() {
     setTempFiles([]); // 重置临时文件列表
   }, [currentSessionId]);
 
+  // 当切换会话时，重置自动滚动状态
+  useEffect(() => {
+    setShouldAutoScroll(true);
+  }, [currentSessionId, setShouldAutoScroll]);
+
   // 处理模型切换
   const handleModelChange = async (modelId: string) => {
     try {
@@ -192,7 +124,7 @@ export function ChatHistory() {
 
   return (
     <div className="flex flex-row h-full">
-      {/* 左侧列表区域 - 在移动端使用固定定位 */}
+      {/* 左侧列表区域 */}
       <div
         className={`
         lg:block lg:w-[280px] lg:relative
