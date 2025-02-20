@@ -32,10 +32,9 @@ export function ChatHistory() {
 
   // 使用滚动 hook
   const { messagesEndRef, scrollContainerRef, setShouldAutoScroll } =
-    useScrollToBottom({
+    useScrollToBottom([messages, isStreaming], {
       threshold: 100,
       behavior: "smooth",
-      isStreaming,
     });
 
   // 加载会话消息历史
