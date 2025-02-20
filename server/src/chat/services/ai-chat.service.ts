@@ -17,11 +17,10 @@ import { models } from 'src/configs/models';
 @Injectable()
 export class AIChatService {
   private readonly logger = new Logger(AIChatService.name);
-  private model: ChatDeepSeek; // DeepSeek聊天模型实例
+  private modelInstances: Record<string, ChatDeepSeek> = {}; // 存储所有模型实例
   private prompt: ChatPromptTemplate; // 聊天提示模板
   private retriever: ExaRetriever; // Exa检索器实例
   private exa: Exa; // Exa客户端实例
-  private currentModelId: string = 'bytedance_deepseek_r1';
   private readonly DEFAULT_SYSTEM_PROMPT =
     '你是一个智能AI助手，可以帮助用户解决各种问题。';
 
@@ -37,10 +36,10 @@ export class AIChatService {
 
   // 初始化各项服务
   private initializeServices() {
-    this.logger.log('Initializing DeepSeek model...');
-    // 初始化DeepSeek模型
-    this.initializeModel();
-    this.logger.log('DeepSeek model initialized successfully');
+    this.logger.log('Initializing DeepSeek models...');
+    // 初始化所有可用的模型实例
+    this.initializeAllModels();
+    this.logger.log('DeepSeek models initialized successfully');
 
     this.logger.log('Initializing Exa client and retriever...');
     // 初始化Exa客户端和检索器
@@ -64,38 +63,36 @@ export class AIChatService {
     this.logger.log('Service initialization completed');
   }
 
-  private initializeModel() {
-    const modelConfig = models[this.currentModelId];
-    if (!modelConfig) {
-      throw new Error(
-        `Model ${this.currentModelId} not found in configuration`,
-      );
-    }
-
-    this.model = new ChatDeepSeek({
-      modelName: modelConfig.modelName,
-      temperature: 0.7,
-      streaming: true,
-      configuration: {
-        baseURL: modelConfig.baseURL,
-        apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
-      },
+  private initializeAllModels() {
+    // 初始化所有配置中的模型
+    Object.entries(models).forEach(([modelId, modelConfig]) => {
+      this.modelInstances[modelId] = new ChatDeepSeek({
+        modelName: modelConfig.modelName,
+        temperature: 0.7,
+        streaming: true,
+        configuration: {
+          baseURL: modelConfig.baseURL,
+          apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+        },
+      });
+      this.logger.log(`Initialized model: ${modelId}`);
     });
   }
 
-  // 切换模型
-  async switchModel(modelId: string) {
-    this.logger.log(`Switching model to ${modelId}...`);
-    if (!models[modelId]) {
+  // 获取指定模型实例
+  private getModel(modelId: string): ChatDeepSeek {
+    const model = this.modelInstances[modelId];
+    if (!model) {
       throw new Error(`Model ${modelId} not found in configuration`);
     }
-    this.currentModelId = modelId;
-    this.initializeModel();
-    return { message: `Successfully switched to model ${modelId}` };
+    return model;
   }
 
   // 优化搜索查询
-  private async optimizeSearchQuery(query: string): Promise<string> {
+  private async optimizeSearchQuery(
+    query: string,
+    modelId: string,
+  ): Promise<string> {
     this.logger.log(`Optimizing search query: ${query}`);
     try {
       const chain = ChatPromptTemplate.fromMessages([
@@ -104,7 +101,7 @@ export class AIChatService {
           '你是一个搜索优化专家。你的任务是将用户的问题重新组织成更适合搜索的形式。保持核心含义不变，但要使其更加清晰、准确和易于检索。只返回优化后的问题，不要有任何解释。',
         ],
         ['human', '{input}'],
-      ]).pipe(this.model);
+      ]).pipe(this.getModel(modelId));
 
       const response = await chain.invoke({
         input: query,
@@ -151,9 +148,10 @@ export class AIChatService {
     useWebSearch: boolean = false,
     useVectorSearch: boolean = false,
     useTempDocSearch: boolean = false,
+    modelId: string = 'bytedance_deepseek_r1',
   ) {
     this.logger.log(
-      `Starting stream chat for session ${sessionId} and client ${clientId}`,
+      `Starting stream chat for session ${sessionId} and client ${clientId} using model ${modelId}`,
     );
     try {
       // 获取或创建会话
@@ -287,7 +285,7 @@ export class AIChatService {
 
       // 创建并执行聊天链
       this.logger.log('Creating chat chain and starting stream...');
-      const chain = this.prompt.pipe(this.model);
+      const chain = this.prompt.pipe(this.getModel(modelId));
       const stream = await chain.stream({
         history: memoryVariables.history || [],
         input: message,

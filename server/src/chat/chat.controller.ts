@@ -61,6 +61,7 @@ export class ChatController {
     @Query('useWebSearch') useWebSearch?: string,
     @Query('useVectorSearch') useVectorSearch?: string,
     @Query('useTempDocSearch') useTempDocSearch?: string,
+    @Query('modelId') modelId: string = 'bytedance_deepseek_r1',
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
@@ -89,6 +90,7 @@ export class ChatController {
           shouldUseWebSearch,
           shouldUseVectorSearch,
           shouldUseTempDocSearch,
+          modelId,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });
@@ -282,11 +284,5 @@ export class ChatController {
       id,
       ...model,
     }));
-  }
-
-  // 切换模型
-  @Post('models/switch')
-  async switchModel(@Body() data: { modelId: string }) {
-    return await this.aiChatService.switchModel(data.modelId);
   }
 }

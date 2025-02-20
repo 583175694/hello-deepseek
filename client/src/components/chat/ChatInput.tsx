@@ -30,6 +30,7 @@ interface ChatInputProps {
       useWebSearch?: boolean;
       useVectorSearch?: boolean;
       useTempDocSearch?: boolean;
+      modelId?: string;
     }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
@@ -40,7 +41,6 @@ interface ChatInputProps {
   sessionId?: string; // 添加会话ID
   hasTempDocs?: boolean;
   tempDocs?: TempFile[];
-  onModelChange?: (modelId: string) => void; // 添加模型切换回调
 }
 
 export function ChatInput({
@@ -52,12 +52,14 @@ export function ChatInput({
   onFileRemove,
   hasTempDocs = false,
   tempDocs = [],
-  onModelChange,
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
   const [useWebSearch, setUseWebSearch] = useState(false); // 是否启用网络搜索
   const [useVectorSearch, setUseVectorSearch] = useState(false); // 是否启用知识库搜索
+  const [selectedModelId, setSelectedModelId] = useState(
+    "bytedance_deepseek_r1"
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
 
@@ -80,6 +82,7 @@ export function ChatInput({
       useWebSearch,
       useVectorSearch,
       useTempDocSearch: hasTempDocs,
+      modelId: selectedModelId,
     });
     setInput(""); // 清空输入框
   };
@@ -135,6 +138,10 @@ export function ChatInput({
   useEffect(() => {
     setTempFiles(tempDocs);
   }, [tempDocs]);
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId);
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -217,7 +224,7 @@ export function ChatInput({
         <div className="flex flex-wrap items-center gap-2">
           {/* 模型选择器 */}
           <ModelSelector
-            onModelChange={onModelChange || (() => {})}
+            onModelChange={handleModelChange}
             disabled={disabled || isLoading}
           />
 

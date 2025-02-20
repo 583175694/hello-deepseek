@@ -38,14 +38,9 @@ export function ModelSelector({ onModelChange, disabled }: ModelSelectorProps) {
       });
   }, []);
 
-  const handleModelChange = async (modelId: string) => {
-    try {
-      setSelectedModel(modelId);
-      await chatService.switchModel(modelId);
-      onModelChange(modelId);
-    } catch (error) {
-      console.error("Failed to switch model:", error);
-    }
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    onModelChange(modelId);
   };
 
   return (

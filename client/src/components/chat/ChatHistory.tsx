@@ -112,15 +112,6 @@ export function ChatHistory() {
     setShouldAutoScroll(true);
   }, [currentSessionId, setShouldAutoScroll]);
 
-  // 处理模型切换
-  const handleModelChange = async (modelId: string) => {
-    try {
-      await chatService.switchModel(modelId);
-    } catch (error) {
-      console.error("切换模型失败:", error);
-    }
-  };
-
   return (
     <div className="flex flex-row h-full">
       {/* 左侧列表区域 */}
@@ -232,7 +223,6 @@ export function ChatHistory() {
                 onFileRemove={handleFileRemove}
                 hasTempDocs={hasTempDocs}
                 tempDocs={tempFiles}
-                onModelChange={handleModelChange}
               />
             </div>
           </div>

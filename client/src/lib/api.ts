@@ -45,12 +45,29 @@ export const chatService = {
   },
 
   // 流式聊天
-  async streamChat(message: string, sessionId?: string) {
+  async streamChat(
+    message: string,
+    sessionId?: string,
+    useWebSearch?: boolean,
+    useVectorSearch?: boolean,
+    useTempDocSearch?: boolean,
+    modelId: string = "bytedance_deepseek_r1"
+  ) {
     const params = new URLSearchParams();
     params.append("message", message);
     if (sessionId) {
       params.append("sessionId", sessionId);
     }
+    if (useWebSearch) {
+      params.append("useWebSearch", "true");
+    }
+    if (useVectorSearch) {
+      params.append("useVectorSearch", "true");
+    }
+    if (useTempDocSearch) {
+      params.append("useTempDocSearch", "true");
+    }
+    params.append("modelId", modelId);
 
     const response = await api.get("/chat/stream", {
       params,
@@ -70,12 +87,6 @@ export const chatService = {
   // 获取可用模型列表
   async getModels() {
     const response = await api.get("/chat/models");
-    return response.data;
-  },
-
-  // 切换模型
-  async switchModel(modelId: string) {
-    const response = await api.post("/chat/models/switch", { modelId });
     return response.data;
   },
 };
