@@ -1,9 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
-import { useScrollToBottom } from "@/hooks/useScrollToBottom";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage } from "./ChatMessage";
 import { chatService, fileService } from "@/lib/api";
@@ -12,6 +11,44 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
+import { VariableSizeList, ListChildComponentProps } from "react-window";
+import type { Message } from "@/types/chat";
+
+// 定义消息列表项组件的数据类型
+interface MessageItemData {
+  messages: Message[];
+  isStreaming: boolean;
+  setSize: (index: number, size: number) => void;
+}
+
+const MessageItem = ({
+  index,
+  style,
+  data,
+}: ListChildComponentProps<MessageItemData>) => {
+  const message = data.messages[index];
+  const isLastMessage = index === data.messages.length - 1;
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (itemRef.current) {
+      // 获取实际渲染后的高度并更新
+      const height = itemRef.current.getBoundingClientRect().height;
+      data.setSize(index, height + 12); // 添加消息间距
+    }
+  }, [message.content, index, data.setSize, data]);
+
+  return (
+    <div style={{ ...style, height: "auto", width: "100%" }} ref={itemRef}>
+      <div className="max-w-4xl mx-auto px-4 py-3 px-1">
+        <ChatMessage
+          message={message}
+          isStreaming={data.isStreaming && isLastMessage}
+        />
+      </div>
+    </div>
+  );
+};
 
 export function ChatHistory() {
   const { currentSessionId, createNewSession } = useSessionManager();
@@ -19,6 +56,9 @@ export function ChatHistory() {
   const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+  const [listHeight, setListHeight] = useState(() => window.innerHeight - 126);
+  const messageListRef = useRef<VariableSizeList>(null);
+  const sizeMap = useRef<{ [key: number]: number }>({});
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -30,12 +70,62 @@ export function ChatHistory() {
     abortStream,
   } = useAIChat();
 
-  // 使用滚动 hook
-  const { messagesEndRef, scrollContainerRef, setShouldAutoScroll } =
-    useScrollToBottom([messages, isStreaming], {
-      threshold: 100,
-      behavior: "smooth",
-    });
+  // 设置消息项的高度
+  const setSize = useCallback((index: number, size: number) => {
+    if (sizeMap.current[index] !== size) {
+      sizeMap.current[index] = size;
+      if (messageListRef.current) {
+        messageListRef.current.resetAfterIndex(index);
+      }
+    }
+  }, []);
+
+  // 获取消息项的高度
+  const getSize = useCallback((index: number) => {
+    return sizeMap.current[index] || 100; // 默认高度 100px
+  }, []);
+
+  // 计算消息列表的可用高度
+  const calculateListHeight = useCallback(() => {
+    // 减去顶部导航栏(56px)、底部输入框(88px)和其他边距(32px)的高度
+    return window.innerHeight - 126;
+  }, []);
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      const newHeight = calculateListHeight();
+      setListHeight(newHeight);
+
+      // 重置所有消息项的高度缓存
+      sizeMap.current = {};
+      if (messageListRef.current) {
+        messageListRef.current.resetAfterIndex(0);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // 初始化时也计算一次
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [calculateListHeight]);
+
+  // 当消息列表更新时，滚动到最新消息
+  useEffect(() => {
+    if (messageListRef.current && messages.length > 0) {
+      messageListRef.current.scrollToItem(messages.length - 1, "end");
+    }
+  }, [messages]);
+
+  // 当切换会话时，重置高度缓存
+  useEffect(() => {
+    sizeMap.current = {};
+    if (messageListRef.current) {
+      messageListRef.current.resetAfterIndex(0);
+    }
+  }, [currentSessionId]);
 
   // 加载会话消息历史
   useEffect(() => {
@@ -107,11 +197,6 @@ export function ChatHistory() {
     setTempFiles([]); // 重置临时文件列表
   }, [currentSessionId]);
 
-  // 当切换会话时，重置自动滚动状态
-  useEffect(() => {
-    setShouldAutoScroll(true);
-  }, [currentSessionId, setShouldAutoScroll]);
-
   return (
     <div className="flex flex-row h-full">
       {/* 左侧列表区域 */}
@@ -145,7 +230,7 @@ export function ChatHistory() {
       {currentSessionId ? (
         <div className="flex-1 flex flex-col h-full">
           {/* 移动端顶部操作栏 */}
-          <div className="lg:hidden flex items-center justify-between px-20 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="lg:hidden h-14 flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -169,12 +254,12 @@ export function ChatHistory() {
           </div>
 
           {/* 消息列表区域 */}
-          <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
-            <div className="px-4 py-6">
-              <div className="space-y-6 max-w-3xl mx-auto">
+          <div className="flex-1 overflow-hidden">
+            <div className="w-full h-full flex justify-center">
+              <div className="w-full relative">
                 {messages.length === 0 ? (
                   // 空消息提示
-                  <div className="h-[60vh] lg:h-[80vh] flex flex-col items-center justify-center text-muted-foreground">
+                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
                     <div className="p-4 lg:p-8 rounded-lg text-center">
                       <h2 className="text-xl lg:text-2xl font-semibold mb-3">
                         开始一个新的对话
@@ -185,23 +270,26 @@ export function ChatHistory() {
                     </div>
                   </div>
                 ) : (
-                  <>
-                    {messages.map((message) => (
-                      <ChatMessage
-                        key={message.id}
-                        message={message}
-                        isStreaming={
-                          isStreaming &&
-                          message.id === messages[messages.length - 1].id
-                        }
-                      />
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </>
+                  <VariableSizeList
+                    ref={messageListRef}
+                    height={listHeight}
+                    width="100%"
+                    itemCount={messages.length}
+                    itemSize={getSize}
+                    itemData={{
+                      messages,
+                      isStreaming,
+                      setSize,
+                    }}
+                    className="scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent"
+                    style={{ overflowX: "hidden" }}
+                  >
+                    {MessageItem}
+                  </VariableSizeList>
                 )}
                 {/* 错误提示 */}
                 {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md mx-4 lg:mx-0">
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                     {error}
                   </div>
                 )}
@@ -210,7 +298,7 @@ export function ChatHistory() {
           </div>
 
           {/* 底部输入区域 */}
-          <div className="p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={(content, options) => {
