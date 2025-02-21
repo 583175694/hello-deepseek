@@ -56,7 +56,7 @@ export function ChatHistory() {
   const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
-  const [listHeight, setListHeight] = useState(() => window.innerHeight - 126);
+  const [listHeight, setListHeight] = useState(600); // 设置一个默认高度
   const messageListRef = useRef<VariableSizeList>(null);
   const sizeMap = useRef<{ [key: number]: number }>({});
 
@@ -93,6 +93,9 @@ export function ChatHistory() {
 
   // 监听窗口大小变化
   useEffect(() => {
+    // 初始化时计算实际高度
+    setListHeight(window.innerHeight - 126);
+
     const handleResize = () => {
       const newHeight = calculateListHeight();
       setListHeight(newHeight);
@@ -105,10 +108,6 @@ export function ChatHistory() {
     };
 
     window.addEventListener("resize", handleResize);
-
-    // 初始化时也计算一次
-    handleResize();
-
     return () => window.removeEventListener("resize", handleResize);
   }, [calculateListHeight]);
 
