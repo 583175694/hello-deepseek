@@ -2,8 +2,9 @@
 
 import { ChatHistory } from "@/components/chat/ChatHistory";
 import { KnowledgeBase } from "@/components/knowledge/KnowledgeBase";
+import { AgentBase } from "@/components/agent/AgentBase";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Database } from "lucide-react";
+import { MessageSquare, Database, Bot } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSessionManager } from "@/contexts/SessionContext";
@@ -13,6 +14,8 @@ export function ChatLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const isChat = pathname === "/" || pathname === "/chat";
+  const isKnowledge = pathname === "/knowledge";
+  const isAgent = pathname === "/agent";
   const { createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -81,7 +84,7 @@ export function ChatLayout() {
         <Button
           variant="ghost"
           className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
-            !isChat ? "bg-accent" : "hover:bg-accent/50"
+            isKnowledge ? "bg-accent" : "hover:bg-accent/50"
           }`}
           onClick={() => {
             router.push("/knowledge");
@@ -91,11 +94,30 @@ export function ChatLayout() {
           <Database className="w-5 h-5" />
           <span>知识库</span>
         </Button>
+        <Button
+          variant="ghost"
+          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
+            isAgent ? "bg-accent" : "hover:bg-accent/50"
+          }`}
+          onClick={() => {
+            router.push("/agent");
+            setIsMobileMenuOpen(false);
+          }}
+        >
+          <Bot className="w-5 h-5" />
+          <span>智能体</span>
+        </Button>
       </div>
 
       {/* 右侧内容区域 */}
       <div className="flex-1">
-        {isChat ? <ChatHistory /> : <KnowledgeBase />}
+        {isChat ? (
+          <ChatHistory />
+        ) : isKnowledge ? (
+          <KnowledgeBase />
+        ) : (
+          <AgentBase />
+        )}
       </div>
 
       {/* 移动端菜单遮罩 */}
