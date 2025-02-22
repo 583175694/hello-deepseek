@@ -111,10 +111,10 @@ export function ChatHistory() {
     return () => window.removeEventListener("resize", handleResize);
   }, [calculateListHeight]);
 
-  // 当消息列表更新时，滚动到最新消息
+  // 当消息列表更新时，直接定位到最新消息，不使用动画
   useEffect(() => {
     if (messageListRef.current && messages.length > 0) {
-      messageListRef.current.scrollToItem(messages.length - 1, "end");
+      messageListRef.current.scrollToItem(messages.length - 1);
     }
   }, [messages]);
 
@@ -137,6 +137,13 @@ export function ChatHistory() {
         // 设置临时文件状态
         setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
+
+        // 在消息加载完成后，等待下一个渲染周期再滚动到底部
+        setTimeout(() => {
+          if (messageListRef.current && data.messages.length > 0) {
+            messageListRef.current.scrollToItem(data.messages.length - 1, "end");
+          }
+        }, 0);
       } catch (error) {
         console.error("加载消息历史失败:", error);
       }
