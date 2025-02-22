@@ -1,5 +1,6 @@
 "use client";
 
+// 导入必要的依赖
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
@@ -21,6 +22,7 @@ interface MessageItemData {
   setSize: (index: number, size: number) => void;
 }
 
+// 消息列表项组件
 const MessageItem = ({
   index,
   style,
@@ -30,6 +32,7 @@ const MessageItem = ({
   const isLastMessage = index === data.messages.length - 1;
   const itemRef = useRef<HTMLDivElement>(null);
 
+  // 监听消息内容变化,更新消息高度
   useEffect(() => {
     if (itemRef.current) {
       // 获取实际渲染后的高度并更新
@@ -51,6 +54,7 @@ const MessageItem = ({
 };
 
 export function ChatHistory() {
+  // 状态管理
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [hasTempDocs, setHasTempDocs] = useState(false);
@@ -91,7 +95,7 @@ export function ChatHistory() {
     return window.innerHeight - 126;
   }, []);
 
-  // 监听窗口大小变化
+  // 监听窗口大小变化,更新列表高度
   useEffect(() => {
     // 初始化时计算实际高度
     setListHeight(window.innerHeight - 126);
@@ -111,14 +115,14 @@ export function ChatHistory() {
     return () => window.removeEventListener("resize", handleResize);
   }, [calculateListHeight]);
 
-  // 当消息列表更新时，直接定位到最新消息，不使用动画
+  // 当消息列表更新时,滚动到最新消息
   useEffect(() => {
     if (messageListRef.current && messages.length > 0) {
       messageListRef.current.scrollToItem(messages.length - 1);
     }
   }, [messages]);
 
-  // 当切换会话时，重置高度缓存
+  // 当切换会话时,重置高度缓存
   useEffect(() => {
     sizeMap.current = {};
     setTimeout(() => {

@@ -141,11 +141,14 @@ export class AIChatService {
     message: string,
     sessionId: string,
     clientId: string,
+    onToken: (response: { type: string; content: string }) => void,
   ): Promise<{
     searchContext: string;
     sources: Array<{ type: 'temp'; url: string }>;
   }> {
     this.logger.log('Performing temp document search...');
+    onToken({ type: 'status', content: 'Searching temporary documents...' });
+
     let searchContext = '';
     const sources: Array<{ type: 'temp'; url: string }> = [];
 
@@ -163,6 +166,11 @@ export class AIChatService {
       this.logger.log(
         `Found ${tempDocuments.length} temp documents with content`,
       );
+      onToken({
+        type: 'status',
+        content: `Found ${tempDocuments.length} temporary documents`,
+      });
+
       searchContext +=
         '会话临时文档搜索结果：\n' +
         tempDocuments.map((doc) => doc.pageContent).join('\n') +
@@ -181,17 +189,23 @@ export class AIChatService {
       this.logger.log('Temp document search results added to context');
     } else {
       this.logger.log('No valid temp documents found');
+      onToken({ type: 'status', content: 'No temporary documents found' });
     }
 
     return { searchContext, sources };
   }
 
   // 执行网络搜索
-  private async performWebSearch(message: string): Promise<{
+  private async performWebSearch(
+    message: string,
+    onToken: (response: { type: string; content: string }) => void,
+  ): Promise<{
     searchContext: string;
     sources: Array<{ type: 'web'; url: string }>;
   }> {
     this.logger.log('Performing web search...');
+    onToken({ type: 'status', content: 'Searching web resources...' });
+
     let searchContext = '';
     const sources: Array<{ type: 'web'; url: string }> = [];
 
@@ -203,11 +217,18 @@ export class AIChatService {
           .match(/来源: (.*?)\n/g)
           ?.map((match) => match.replace('来源: ', '').trim()) || [];
       this.logger.log(`Found ${urls.length} web sources`);
+      onToken({
+        type: 'status',
+        content: `Found ${urls.length} web resources`,
+      });
+
       urls.forEach((url) => {
         sources.push({ type: 'web', url });
       });
       searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
       this.logger.log('Web search results added to context');
+    } else {
+      onToken({ type: 'status', content: 'No web resources found' });
     }
 
     return { searchContext, sources };
@@ -217,11 +238,14 @@ export class AIChatService {
   private async performVectorSearch(
     message: string,
     clientId: string,
+    onToken: (response: { type: string; content: string }) => void,
   ): Promise<{
     searchContext: string;
     sources: Array<{ type: 'vector'; url: string }>;
   }> {
     this.logger.log('Performing vector database search...');
+    onToken({ type: 'status', content: 'Searching vector database...' });
+
     let searchContext = '';
     const sources: Array<{ type: 'vector'; url: string }> = [];
 
@@ -231,6 +255,11 @@ export class AIChatService {
       this.logger.log(
         `Found ${vectorSearchResults.length} vector search results`,
       );
+      onToken({
+        type: 'status',
+        content: `Found ${vectorSearchResults.length} documents in vector database`,
+      });
+
       // 存储文档来源
       vectorSearchResults.forEach((doc) => {
         sources.push({
@@ -247,6 +276,11 @@ export class AIChatService {
           .join('\n\n') +
         '\n\n';
       this.logger.log('Vector search results added to context');
+    } else {
+      onToken({
+        type: 'status',
+        content: 'No documents found in vector database',
+      });
     }
 
     return { searchContext, sources };
@@ -258,7 +292,7 @@ export class AIChatService {
     clientId: string,
     sessionId: string,
     onToken: (response: {
-      type: 'content' | 'reasoning' | 'sources' | 'temp';
+      type: 'content' | 'reasoning' | 'sources' | 'temp' | 'status';
       content: string;
     }) => void,
     useWebSearch: boolean = false,
@@ -301,7 +335,12 @@ export class AIChatService {
       // 执行临时文档搜索
       if (useTempDocSearch && sessionId) {
         const { searchContext: tempSearchContext, sources: tempSources } =
-          await this.performTempDocSearch(message, sessionId, clientId);
+          await this.performTempDocSearch(
+            message,
+            sessionId,
+            clientId,
+            onToken,
+          );
         searchContext += tempSearchContext;
         sources.push(...tempSources);
       }
@@ -309,7 +348,7 @@ export class AIChatService {
       // 执行网络搜索
       if (useWebSearch) {
         const { searchContext: webSearchContext, sources: webSources } =
-          await this.performWebSearch(message);
+          await this.performWebSearch(message, onToken);
         searchContext += webSearchContext;
         sources.push(...webSources);
       }
@@ -317,7 +356,7 @@ export class AIChatService {
       // 执行向量数据库搜索
       if (useVectorSearch) {
         const { searchContext: vectorSearchContext, sources: vectorSources } =
-          await this.performVectorSearch(message, clientId);
+          await this.performVectorSearch(message, clientId, onToken);
         searchContext += vectorSearchContext;
         sources.push(...vectorSources);
       }

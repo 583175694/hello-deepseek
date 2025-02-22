@@ -5,13 +5,14 @@ import { nanoid } from "nanoid";
 
 interface StreamContent {
   content: string;
-  type: "content" | "reasoning" | "sources";
+  type: "content" | "reasoning" | "sources" | "status";
 }
 
 interface MessageContent {
   content: string;
   reasoning: string;
   sources: string;
+  status: string;
 }
 
 interface ChatOptions {
@@ -50,6 +51,7 @@ export function useAIChat() {
               content: content.content,
               reasoning: content.reasoning,
               sources: content.sources,
+              status: content.status,
             };
           }
           return msg;
@@ -77,6 +79,7 @@ export function useAIChat() {
           role: "assistant",
           content: "",
           type: "content",
+          status: "",
         });
 
         // 用于累积不同类型的内容
@@ -84,6 +87,7 @@ export function useAIChat() {
           content: "",
           reasoning: "",
           sources: "",
+          status: "",
         };
 
         // 开始流式传输
@@ -95,10 +99,14 @@ export function useAIChat() {
             // 根据类型累积内容
             if (response.type === "content") {
               messageContent.content += response.content;
+              messageContent.status = ""; // 清空状态
             } else if (response.type === "reasoning") {
               messageContent.reasoning += response.content;
+              messageContent.status = ""; // 清空状态
             } else if (response.type === "sources") {
               messageContent.sources += response.content;
+            } else if (response.type === "status") {
+              messageContent.status = response.content;
             }
             // 更新消息
             updateMessage(messageId, messageContent);

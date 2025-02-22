@@ -304,6 +304,12 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             </div>
           </div>
         )}
+        {/* 显示状态信息 */}
+        {isStreaming && message.status && (
+          <div className="text-sm text-muted-foreground mb-2 animate-pulse">
+            {message.status}
+          </div>
+        )}
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

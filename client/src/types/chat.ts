@@ -4,8 +4,9 @@ export interface Message {
   content: string;
   reasoning?: string;
   sources?: string;
+  status?: string;
   createdAt: string;
-  type: "content" | "reasoning" | "sources" | "temp";
+  type: "content" | "reasoning" | "sources" | "temp" | "status";
 }
 
 export interface Chat {
