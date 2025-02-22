@@ -294,7 +294,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
               className={cn(
                 "transition-all duration-200 overflow-hidden",
                 isReasoningExpanded
-                  ? "max-h-[800px] opacity-100"
+                  ? "max-h-[1200px] opacity-100"
                   : "max-h-0 opacity-0"
               )}
             >

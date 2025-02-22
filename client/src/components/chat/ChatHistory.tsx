@@ -121,9 +121,11 @@ export function ChatHistory() {
   // 当切换会话时，重置高度缓存
   useEffect(() => {
     sizeMap.current = {};
-    if (messageListRef.current) {
-      messageListRef.current.resetAfterIndex(0);
-    }
+    setTimeout(() => {
+      if (messageListRef.current) {
+        messageListRef.current.resetAfterIndex(0);
+      }
+    }, 0);
   }, [currentSessionId]);
 
   // 加载会话消息历史
@@ -137,13 +139,6 @@ export function ChatHistory() {
         // 设置临时文件状态
         setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
-
-        // 在消息加载完成后，等待下一个渲染周期再滚动到底部
-        setTimeout(() => {
-          if (messageListRef.current && data.messages.length > 0) {
-            messageListRef.current.scrollToItem(data.messages.length - 1, "end");
-          }
-        }, 0);
       } catch (error) {
         console.error("加载消息历史失败:", error);
       }

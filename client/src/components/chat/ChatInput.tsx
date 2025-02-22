@@ -181,13 +181,19 @@ export function ChatInput({
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value.slice(0, 800))}
             onKeyDown={handleKeyDown}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px]"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px] scrollbar-thin scrollbar-thumb-border/40 hover:scrollbar-thumb-border/60 scrollbar-track-transparent"
             placeholder={isLoading ? "AI 正在回复中..." : "发送消息..."}
             disabled={disabled || isLoading}
             rows={1}
+            maxLength={800}
           />
+          {input.length > 0 && (
+            <div className="absolute bottom-3 right-4 text-xs text-muted-foreground">
+              {input.length}/800
+            </div>
+          )}
         </div>
 
         {/* 添加文件上传按钮 */}
