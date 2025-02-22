@@ -1,7 +1,6 @@
 "use client";
 
-// 导入必要的依赖
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
@@ -12,46 +11,6 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
-import { VariableSizeList, ListChildComponentProps } from "react-window";
-import type { Message } from "@/types/chat";
-
-// 定义消息列表项组件的数据类型
-interface MessageItemData {
-  messages: Message[];
-  isStreaming: boolean;
-  setSize: (index: number, size: number) => void;
-}
-
-// 消息列表项组件
-const MessageItem = ({
-  index,
-  style,
-  data,
-}: ListChildComponentProps<MessageItemData>) => {
-  const message = data.messages[index];
-  const isLastMessage = index === data.messages.length - 1;
-  const itemRef = useRef<HTMLDivElement>(null);
-
-  // 监听消息内容变化,更新消息高度
-  useEffect(() => {
-    if (itemRef.current) {
-      // 获取实际渲染后的高度并更新
-      const height = itemRef.current.getBoundingClientRect().height;
-      data.setSize(index, height + 12); // 添加消息间距
-    }
-  }, [message.content, index, data.setSize, data]);
-
-  return (
-    <div style={{ ...style, height: "auto", width: "100%" }} ref={itemRef}>
-      <div className="max-w-4xl mx-auto px-4 py-3 px-1">
-        <ChatMessage
-          message={message}
-          isStreaming={data.isStreaming && isLastMessage}
-        />
-      </div>
-    </div>
-  );
-};
 
 export function ChatHistory() {
   // 状态管理
@@ -60,9 +19,8 @@ export function ChatHistory() {
   const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
-  const [listHeight, setListHeight] = useState(600); // 设置一个默认高度
-  const messageListRef = useRef<VariableSizeList>(null);
-  const sizeMap = useRef<{ [key: number]: number }>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -74,63 +32,27 @@ export function ChatHistory() {
     abortStream,
   } = useAIChat();
 
-  // 设置消息项的高度
-  const setSize = useCallback((index: number, size: number) => {
-    if (sizeMap.current[index] !== size) {
-      sizeMap.current[index] = size;
-      if (messageListRef.current) {
-        messageListRef.current.resetAfterIndex(index);
-      }
-    }
-  }, []);
+  // 滚动到底部
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+  };
 
-  // 获取消息项的高度
-  const getSize = useCallback((index: number) => {
-    return sizeMap.current[index] || 100; // 默认高度 100px
-  }, []);
-
-  // 计算消息列表的可用高度
-  const calculateListHeight = useCallback(() => {
-    // 减去顶部导航栏(56px)、底部输入框(88px)和其他边距(32px)的高度
-    return window.innerHeight - 126;
-  }, []);
-
-  // 监听窗口大小变化,更新列表高度
-  useEffect(() => {
-    // 初始化时计算实际高度
-    setListHeight(window.innerHeight - 126);
-
-    const handleResize = () => {
-      const newHeight = calculateListHeight();
-      setListHeight(newHeight);
-
-      // 重置所有消息项的高度缓存
-      sizeMap.current = {};
-      if (messageListRef.current) {
-        messageListRef.current.resetAfterIndex(0);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [calculateListHeight]);
+  // 是否接近底部
+  const isNearBottom = () => {
+    const scrollTop = messagesRef.current?.scrollTop || 0;
+    const clientHeight = messagesRef.current?.clientHeight || 0;
+    const scrollHeight = messagesRef.current?.scrollHeight || 0;
+    return scrollTop + clientHeight >= scrollHeight - 40;
+  };
 
   // 当消息列表更新时,滚动到最新消息
   useEffect(() => {
-    if (messageListRef.current && messages.length > 0) {
-      messageListRef.current.scrollToItem(messages.length - 1);
+    if (isStreaming && isNearBottom()) {
+      scrollToBottom();
+    } else if (!isStreaming) {
+      scrollToBottom();
     }
-  }, [messages]);
-
-  // 当切换会话时,重置高度缓存
-  useEffect(() => {
-    sizeMap.current = {};
-    setTimeout(() => {
-      if (messageListRef.current) {
-        messageListRef.current.resetAfterIndex(0);
-      }
-    }, 0);
-  }, [currentSessionId]);
+  }, [messages, isStreaming]);
 
   // 加载会话消息历史
   useEffect(() => {
@@ -144,15 +66,8 @@ export function ChatHistory() {
         setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
 
-        // 在消息加载完成后，等待下一个渲染周期再滚动到底部
-        setTimeout(() => {
-          if (messageListRef.current && data.messages.length > 0) {
-            messageListRef.current.scrollToItem(
-              data.messages.length - 1,
-              "end"
-            );
-          }
-        }, 0);
+        // 在消息加载完成后滚动到底部
+        setTimeout(scrollToBottom, 0);
       } catch (error) {
         console.error("加载消息历史失败:", error);
       }
@@ -167,7 +82,6 @@ export function ChatHistory() {
       throw new Error("No active session");
     }
 
-    // 如果已经有文件，先不允许上传
     if (tempFiles.length > 0) {
       throw new Error("已有上传的文件");
     }
@@ -183,7 +97,6 @@ export function ChatHistory() {
     };
 
     setHasTempDocs(true);
-    // 设置新的临时文件
     setTempFiles([tempFile]);
 
     return {
@@ -196,7 +109,6 @@ export function ChatHistory() {
   const handleFileRemove = async () => {
     if (!currentSessionId) return;
     try {
-      // 统一使用cleanupTempFiles来删除文件
       await fileService.cleanupTempFiles(currentSessionId);
       setHasTempDocs(false);
       setTempFiles([]);
@@ -209,7 +121,7 @@ export function ChatHistory() {
   // 重置临时文档状态
   useEffect(() => {
     setHasTempDocs(false);
-    setTempFiles([]); // 重置临时文件列表
+    setTempFiles([]);
   }, [currentSessionId]);
 
   return (
@@ -269,46 +181,37 @@ export function ChatHistory() {
           </div>
 
           {/* 消息列表区域 */}
-          <div className="flex-1 overflow-hidden">
-            <div className="w-full h-full flex justify-center">
-              <div className="w-full relative">
-                {messages.length === 0 ? (
-                  // 空消息提示
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <div className="p-4 lg:p-8 rounded-lg text-center">
-                      <h2 className="text-xl lg:text-2xl font-semibold mb-3">
-                        开始一个新的对话
-                      </h2>
-                      <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
-                        你可以问我任何问题，我会尽力帮助你。如果需要参考知识库中的内容，可以开启知识库搜索。
-                      </p>
+          <div className="flex-1 overflow-y-auto" ref={messagesRef}>
+            <div className="h-full relative max-w-4xl mx-auto">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4 lg:p-8 text-center">
+                  <h2 className="text-xl lg:text-2xl font-semibold mb-3">
+                    开始一个新的对话
+                  </h2>
+                  <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
+                    你可以问我任何问题，我会尽力帮助你。如果需要参考知识库中的内容，可以开启知识库搜索。
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {messages.map((message, index) => (
+                    <div key={index} className="px-4 py-3">
+                      <ChatMessage
+                        message={message}
+                        isStreaming={
+                          isStreaming && index === messages.length - 1
+                        }
+                      />
                     </div>
-                  </div>
-                ) : (
-                  <VariableSizeList
-                    ref={messageListRef}
-                    height={listHeight}
-                    width="100%"
-                    itemCount={messages.length}
-                    itemSize={getSize}
-                    itemData={{
-                      messages,
-                      isStreaming,
-                      setSize,
-                    }}
-                    className="scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent"
-                    style={{ overflowX: "hidden" }}
-                  >
-                    {MessageItem}
-                  </VariableSizeList>
-                )}
-                {/* 错误提示 */}
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                    {error}
-                  </div>
-                )}
-              </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+              {error && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
+                </div>
+              )}
             </div>
           </div>
 
@@ -318,6 +221,9 @@ export function ChatHistory() {
               <ChatInput
                 onSend={(content, options) => {
                   sendStreamMessage(content, currentSessionId, options);
+                  setTimeout(() => {
+                    scrollToBottom();
+                  }, 10);
                 }}
                 disabled={!currentSessionId}
                 isLoading={isStreaming}

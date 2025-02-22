@@ -132,7 +132,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
       // 更新reasoning
       if (reasoningIndexRef.current < reasoningBufferRef.current.length) {
         setDisplayedReasoning(
-          reasoningBufferRef.current.slice(0, reasoningIndexRef.current + 1)
+          reasoningBufferRef.current.slice(0, reasoningIndexRef.current + 2)
         );
         reasoningIndexRef.current++;
         shouldContinue = true;
@@ -140,7 +140,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
       // 当reasoning完成后更新content
       else if (contentIndexRef.current < contentBufferRef.current.length) {
         setDisplayedContent(
-          contentBufferRef.current.slice(0, contentIndexRef.current + 1)
+          contentBufferRef.current.slice(0, contentIndexRef.current + 2)
         );
         contentIndexRef.current++;
         shouldContinue = true;
