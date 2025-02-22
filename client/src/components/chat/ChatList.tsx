@@ -25,26 +25,26 @@ const ChatItem = ({
   return (
     <div
       style={style}
-      className={`flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 group ${
-        session.sessionId === data.currentSessionId ? "bg-muted" : ""
+      className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 group transition-colors duration-200 rounded-lg mx-1 ${
+        session.sessionId === data.currentSessionId ? "bg-muted shadow-sm" : ""
       }`}
       onClick={() => data.setCurrentSessionId(session.sessionId)}
     >
-      <div className="flex flex-col flex-1 min-w-0">
-        <span className="text-xs text-muted-foreground">
+      <div className="flex flex-col flex-1 min-w-0 gap-0.5">
+        <span className="text-[0.7rem] text-muted-foreground">
           {format(new Date(session.createdAt), "MM/dd HH:mm")}
         </span>
-        <span className="font-medium truncate">
+        <span className="text-sm font-medium truncate">
           {session.roleName || "⭐️ 默认助手"}
         </span>
       </div>
       <Button
         variant="ghost"
         size="icon"
-        className="opacity-0 group-hover:opacity-100 ml-2 shrink-0"
+        className="opacity-0 group-hover:opacity-100 ml-2 shrink-0 transition-opacity duration-200"
         onClick={(e) => data.handleDeleteSession(e, session.sessionId)}
       >
-        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+        <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive transition-colors duration-200" />
       </Button>
     </div>
   );
@@ -77,7 +77,7 @@ export function ChatList() {
     }
   }, [currentSessionId, sessions]);
 
-  const ITEM_HEIGHT = 76; // 每个列表项的高度（包含 padding）
+  const ITEM_HEIGHT = 64; // 减小每个列表项的高度
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)]">
@@ -88,7 +88,7 @@ export function ChatList() {
       ) : (
         <FixedSizeList
           ref={listRef}
-          height={window.innerHeight} // 减去头部和其他元素的高度
+          height={window.innerHeight}
           width="100%"
           itemCount={sessions.length}
           itemSize={ITEM_HEIGHT}
@@ -98,7 +98,7 @@ export function ChatList() {
             setCurrentSessionId,
             handleDeleteSession,
           }}
-          className="scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent"
+          className="scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent py-1"
           style={{ overflowX: "hidden" }}
         >
           {ChatItem}
