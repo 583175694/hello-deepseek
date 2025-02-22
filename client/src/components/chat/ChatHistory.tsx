@@ -181,7 +181,10 @@ export function ChatHistory() {
           </div>
 
           {/* 消息列表区域 */}
-          <div className="flex-1 overflow-y-auto" ref={messagesRef}>
+          <div
+            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500"
+            ref={messagesRef}
+          >
             <div className="h-full relative max-w-4xl mx-auto">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4 lg:p-8 text-center">
