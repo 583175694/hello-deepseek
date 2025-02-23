@@ -8,6 +8,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
+import logo from "@/assets/images/logo.png";
+import Image from "next/image";
 
 export function ChatLayout() {
   const router = useRouter();
@@ -52,7 +54,7 @@ export function ChatLayout() {
         h-screen
         border-r
         flex flex-col items-center
-        py-4 gap-2
+        gap-2
         bg-background
         shadow-lg lg:shadow-none
         transition-all duration-300 ease-in-out
@@ -65,6 +67,7 @@ export function ChatLayout() {
       `}
       >
         <div className="h-14 lg:hidden" /> {/* 移动端顶部空间 */}
+        <Image src={logo} width={144} height={144} alt="量子皮皮虾" />
         <Button
           variant="ghost"
           className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
