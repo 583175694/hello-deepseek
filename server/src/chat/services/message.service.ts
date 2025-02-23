@@ -70,4 +70,19 @@ export class MessageService {
     }
     return this.memory;
   }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    this.logger.log(`Deleting message with ID: ${messageId}`);
+    try {
+      const result = await this.messageRepository.delete(messageId);
+      if (result.affected === 0) {
+        this.logger.warn(`Message not found with ID: ${messageId}`);
+        throw new Error('Message not found');
+      }
+      this.logger.log(`Successfully deleted message with ID: ${messageId}`);
+    } catch (error) {
+      this.logger.error('Delete message error:', error);
+      throw error;
+    }
+  }
 }

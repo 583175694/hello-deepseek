@@ -286,6 +286,18 @@ export class AIChatService {
     return { searchContext, sources };
   }
 
+  // 删除消息
+  async deleteMessage(messageId: string): Promise<void> {
+    this.logger.log(`Deleting message with ID: ${messageId}`);
+    try {
+      await this.messageService.deleteMessage(messageId);
+      this.logger.log('Message deleted successfully');
+    } catch (error) {
+      this.logger.error('Delete message error:', error);
+      throw error;
+    }
+  }
+
   // 流式聊天处理
   async streamChat(
     message: string,

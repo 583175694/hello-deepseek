@@ -8,13 +8,13 @@ import {
   Database,
   Globe,
   Check,
-  RefreshCw,
   Share2,
   ThumbsUp,
   ThumbsDown,
   Download,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -22,6 +22,17 @@ import remarkGfm from "remark-gfm";
 import { useState, useEffect, useRef } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { chatService } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // 添加代码块组件
 function CodeBlock({
@@ -91,9 +102,14 @@ interface Source {
 interface ChatMessageProps {
   message: Message;
   isStreaming?: boolean; // 是否正在流式传输消息
+  onDelete?: (messageId: string) => void; // 添加删除回调
 }
 
-export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  isStreaming,
+  onDelete,
+}: ChatMessageProps) {
   // 判断消息是否来自 AI
   const isAI = message.role === "assistant";
   // 复制状态管理
@@ -110,6 +126,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const contentIndexRef = useRef(0);
   const frameIdRef = useRef<number | undefined>(undefined);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isAI) return;
@@ -198,11 +215,6 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     }
   };
 
-  // 处理刷新
-  const handleRefresh = () => {
-    console.log("刷新回答");
-  };
-
   // 处理分享
   const handleShare = async () => {
     try {
@@ -264,6 +276,17 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     // 清理
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+  };
+
+  // 处理删除消息
+  const handleDelete = async () => {
+    try {
+      await chatService.deleteMessage(message.id);
+      onDelete?.(message.id);
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("删除消息出错:", error);
+    }
   };
 
   // 渲染消息内容
@@ -391,32 +414,38 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 
   // 渲染整个消息组件
   return (
-    <div className="flex flex-col space-y-2">
-      {/* 消息主体部分 */}
-      <div className={cn("flex gap-3", isAI ? "justify-start" : "justify-end")}>
-        {/* AI 头像 */}
-        {isAI && (
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Bot className="w-5 h-5" />
-          </div>
-        )}
-
-        <div className="flex flex-col">
-          {/* 消息内容 */}
-          <div
-            className={cn(
-              "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
-              isAI
-                ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
-                : "bg-primary text-primary-foreground"
-            )}
-          >
-            {renderMessageContent()}
-          </div>
-
-          {/* 交互按钮组 */}
+    <>
+      <div className="flex flex-col space-y-2">
+        {/* 消息主体部分 */}
+        <div
+          className={cn(
+            "flex gap-3 group",
+            isAI ? "justify-start" : "justify-end"
+          )}
+        >
+          {/* AI 头像 */}
           {isAI && (
-            <div className="flex gap-1 mt-1">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Bot className="w-5 h-5" />
+            </div>
+          )}
+
+          <div className="flex flex-col">
+            {/* 消息内容 */}
+            <div
+              className={cn(
+                "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
+                isAI
+                  ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
+                  : "bg-primary text-primary-foreground"
+              )}
+            >
+              {renderMessageContent()}
+            </div>
+
+            {/* 交互按钮组 */}
+            <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* 所有消息都显示的按钮 */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -431,69 +460,105 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 )}
               </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleRefresh}
-                disabled={isStreaming}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              {/* AI 消息特有的按钮 */}
+              {isAI && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleShare}
+                    disabled={isStreaming}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleShare}
-                disabled={isStreaming}
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleDownload}
+                    disabled={isStreaming}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("h-7 w-7", liked && "text-green-500")}
-                onClick={handleLike}
-                disabled={isStreaming}
-              >
-                <ThumbsUp className="h-4 w-4" />
-              </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleLike}
+                    disabled={isStreaming}
+                  >
+                    <ThumbsUp
+                      className={cn(
+                        "h-4 w-4",
+                        liked && "stroke-[2.5] text-primary"
+                      )}
+                    />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("h-7 w-7", disliked && "text-red-500")}
-                onClick={handleDislike}
-                disabled={isStreaming}
-              >
-                <ThumbsDown className="h-4 w-4" />
-              </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleDislike}
+                    disabled={isStreaming}
+                  >
+                    <ThumbsDown
+                      className={cn(
+                        "h-4 w-4",
+                        disliked && "stroke-[2.5] text-primary"
+                      )}
+                    />
+                  </Button>
+                </>
+              )}
 
+              {/* 删除按钮 - 对所有消息都显示 */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
-                onClick={handleDownload}
+                className="h-7 w-7 text-foreground hover:text-foreground"
+                onClick={() => setDeleteDialogOpen(true)}
                 disabled={isStreaming}
               >
-                <Download className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+
+          {/* 用户头像 */}
+          {!isAI && (
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
+              <User className="w-5 h-5" />
             </div>
           )}
         </div>
 
-        {/* 用户头像 */}
-        {!isAI && (
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
-            <User className="w-5 h-5" />
-          </div>
-        )}
+        {/* 渲染消息来源 */}
+        {renderSources()}
       </div>
 
-      {/* 渲染消息来源 */}
-      {renderSources()}
-    </div>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除消息</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将永久删除该消息，删除后将无法恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleDelete}
+            >
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

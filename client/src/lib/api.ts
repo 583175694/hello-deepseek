@@ -89,6 +89,12 @@ export const chatService = {
     const response = await api.get("/chat/models");
     return response.data;
   },
+
+  // 删除消息
+  async deleteMessage(messageId: string) {
+    const response = await api.post(`/chat/messages/${messageId}/delete`);
+    return response.data;
+  },
 };
 
 export const fileService = {

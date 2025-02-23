@@ -124,6 +124,11 @@ export function ChatHistory() {
     setTempFiles([]);
   }, [currentSessionId]);
 
+  // 处理消息删除
+  const handleMessageDelete = (messageId: string) => {
+    setMessageList(messages.filter((message) => message.id !== messageId));
+  };
+
   return (
     <div className="flex flex-row h-full">
       {/* 左侧列表区域 */}
@@ -204,6 +209,7 @@ export function ChatHistory() {
                         isStreaming={
                           isStreaming && index === messages.length - 1
                         }
+                        onDelete={handleMessageDelete}
                       />
                     </div>
                   ))}

@@ -26,6 +26,7 @@ import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 import { models } from 'src/configs/models';
+import { MessageService } from './services/message.service';
 
 // 定义聊天控制器
 @Controller('chat')
@@ -37,6 +38,7 @@ export class ChatController {
     private readonly fileService: FileService,
     private readonly sessionFileService: SessionFileService,
     private readonly tempDocumentService: TempDocumentService,
+    private readonly messageService: MessageService,
   ) {}
 
   // 创建新会话的接口
@@ -284,5 +286,22 @@ export class ChatController {
       id,
       ...model,
     }));
+  }
+
+  // 删除消息
+  @Post('messages/:messageId/delete')
+  async deleteMessage(
+    @Headers('x-client-id') clientId: string,
+    @Param('messageId') messageId: string,
+  ) {
+    try {
+      await this.messageService.deleteMessage(messageId);
+      return { message: 'Message deleted successfully' };
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to delete message',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
