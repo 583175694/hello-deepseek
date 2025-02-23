@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
-import { FixedSizeList, ListChildComponentProps } from "react-window";
 import { useRef, useEffect, useState } from "react";
 import type { Session } from "@/types/chat";
 import {
@@ -18,33 +17,30 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 
-// 定义列表项组件的数据类型
-interface ItemData {
-  sessions: Session[];
+interface ChatItemProps {
+  session: Session;
   currentSessionId: string;
   setCurrentSessionId: (id: string) => void;
-  handleDeleteSession: (sessionId: string) => void;
   handleOpenDeleteDialog: (e: React.MouseEvent, sessionId: string) => void;
 }
 
 const ChatItem = ({
-  index,
-  style,
-  data,
-}: ListChildComponentProps<ItemData>) => {
-  const session = data.sessions[index];
+  session,
+  currentSessionId,
+  setCurrentSessionId,
+  handleOpenDeleteDialog,
+}: ChatItemProps) => {
   return (
     <div
-      style={style}
       className={`flex items-center justify-between p-3 cursor-pointer 
         hover:bg-muted/50 group transition-all duration-200 
         rounded-lg mx-1
         ${
-          session.sessionId === data.currentSessionId
+          session.sessionId === currentSessionId
             ? "bg-muted shadow-sm"
             : "hover:shadow-sm"
         }`}
-      onClick={() => data.setCurrentSessionId(session.sessionId)}
+      onClick={() => setCurrentSessionId(session.sessionId)}
     >
       <div className="flex flex-col flex-1 min-w-0 gap-0.5">
         <span className="text-[0.7rem] text-muted-foreground flex items-center gap-2">
@@ -58,7 +54,7 @@ const ChatItem = ({
         variant="ghost"
         size="icon"
         className="opacity-0 group-hover:opacity-100 ml-2 shrink-0 transition-all duration-200 hover:bg-destructive/10"
-        onClick={(e) => data.handleOpenDeleteDialog(e, session.sessionId)}
+        onClick={(e) => handleOpenDeleteDialog(e, session.sessionId)}
       >
         <Trash2 className="w-3.5 h-3.5 text-muted-foreground [.hover\:bg-destructive\/10_&]:text-destructive transition-colors duration-200" />
       </Button>
@@ -69,7 +65,7 @@ const ChatItem = ({
 export function ChatList() {
   const { sessions, currentSessionId, setCurrentSessionId, deleteSession } =
     useSessionManager();
-  const listRef = useRef<FixedSizeList>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
@@ -92,14 +88,17 @@ export function ChatList() {
   // 当 currentSessionId 改变时，滚动到当前选中的会话
   useEffect(() => {
     if (listRef.current && currentSessionId) {
-      const index = sessions.findIndex((s) => s.sessionId === currentSessionId);
-      if (index !== -1) {
-        listRef.current.scrollToItem(index, "smart");
+      const selectedElement = listRef.current.querySelector(
+        `[data-session-id="${currentSessionId}"]`
+      );
+      if (selectedElement) {
+        selectedElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
       }
     }
-  }, [currentSessionId, sessions]);
-
-  const ITEM_HEIGHT = 64; // 减小每个列表项的高度
+  }, [currentSessionId]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)]">
@@ -110,26 +109,21 @@ export function ChatList() {
         </div>
       ) : (
         <>
-          <FixedSizeList
+          <div
             ref={listRef}
-            height={
-              window.innerHeight - (window.innerWidth >= 1024 ? 96 : 128) - 37
-            }
-            width="100%"
-            itemCount={sessions.length}
-            itemSize={ITEM_HEIGHT}
-            itemData={{
-              sessions,
-              currentSessionId: currentSessionId || "",
-              setCurrentSessionId,
-              handleDeleteSession,
-              handleOpenDeleteDialog,
-            }}
-            className="scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent py-1"
-            style={{ overflowX: "hidden" }}
+            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent py-1"
           >
-            {ChatItem}
-          </FixedSizeList>
+            {sessions.map((session) => (
+              <div key={session.sessionId} data-session-id={session.sessionId}>
+                <ChatItem
+                  session={session}
+                  currentSessionId={currentSessionId || ""}
+                  setCurrentSessionId={setCurrentSessionId}
+                  handleOpenDeleteDialog={handleOpenDeleteDialog}
+                />
+              </div>
+            ))}
+          </div>
           <AlertDialog
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
