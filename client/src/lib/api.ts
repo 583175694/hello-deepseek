@@ -147,3 +147,11 @@ export const fileService = {
     return response.data;
   },
 };
+
+export const aipptService = {
+  // 获取认证码
+  async getAuthCode() {
+    const response = await api.get("/aippt/auth/code");
+    return response.data;
+  },
+};

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/contexts/SessionContext";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          strategy="afterInteractive" // 推荐策略：页面加载完成后执行
+          src="https://api-static.aippt.cn/aippt-iframe-sdk.js"
+        />
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

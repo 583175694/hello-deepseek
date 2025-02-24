@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChatModule } from './chat/chat.module';
+import { AipptModule } from './aippt/aippt.module';
 import { Session } from './chat/entities/session.entity';
 import { Message } from './chat/entities/message.entity';
 import { SessionFile } from './chat/entities/session-file.entity';
@@ -32,6 +33,7 @@ import { SessionTempFile } from './chat/entities/session-temp-file.entity';
       synchronize: true, // 仅在开发环境使用
     }),
     ChatModule,
+    AipptModule,
   ],
   controllers: [AppController],
   providers: [AppService],
