@@ -40,5 +40,6 @@ import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
       useClass: ClientIdInterceptor,
     },
   ],
+  exports: [AIChatService],
 })
 export class ChatModule {}

@@ -147,3 +147,26 @@ export const fileService = {
     return response.data;
   },
 };
+
+interface PPTSlide {
+  title: string;
+  content: string[];
+  imageDescription?: string;
+}
+
+export const pptService = {
+  // 生成PPT大纲
+  async generateOutline(title: string): Promise<string> {
+    const response = await api.post("/ppt/generate-outline", { title });
+    return response.data.outline;
+  },
+
+  // 生成PPT内容
+  async generateContent(title: string, outline: string): Promise<PPTSlide[]> {
+    const response = await api.post("/ppt/generate-content", {
+      title,
+      outline,
+    });
+    return response.data.content;
+  },
+};
