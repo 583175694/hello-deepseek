@@ -39,7 +39,7 @@ export class PPTService {
 
   async generateOutline(title: string): Promise<string> {
     const prompt = `请为标题为"${title}"的PPT生成一个详细的大纲。要求：
-1. 大纲应该包含3-5个主要章节
+1. 根据大纲的复杂性自行判断有多少个主要章节
 2. 每个章节下应该有2-4个子要点
 3. 大纲层次要清晰，使用数字编号（1., 1.1, 1.2等）
 4. 内容要有逻辑性和连贯性

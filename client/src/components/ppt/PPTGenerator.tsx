@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { pptService } from "@/lib/api";
-import { toast } from "sonner";
 import pptxgen from "pptxgenjs";
 import {
   Select,
@@ -105,41 +105,69 @@ export function PPTGenerator() {
     "input" | "preview" | "download"
   >("input");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("modern");
+  const [progress, setProgress] = useState(0);
+
+  // 模拟进度条
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isGeneratingOutline || isGeneratingContent) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 95) {
+            return prev;
+          }
+          // 速度随进度变化：开始快，后面慢
+          const increment = Math.max(1, 10 - Math.floor(prev / 20));
+          return Math.min(95, prev + increment);
+        });
+      }, 300);
+    } else {
+      setProgress(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isGeneratingOutline, isGeneratingContent]);
 
   const handleGenerateOutline = async () => {
     if (!title) {
-      toast.error("请输入标题");
       return;
     }
     setIsGeneratingOutline(true);
     try {
       const outline = await pptService.generateOutline(title);
       setOutline(outline);
-      toast.success("大纲生成成功");
+      setProgress(100);
     } catch (error) {
       console.error("生成大纲失败:", error);
-      toast.error("生成大纲失败");
     } finally {
-      setIsGeneratingOutline(false);
+      setTimeout(() => {
+        setIsGeneratingOutline(false);
+      }, 500); // 给进度条一点时间显示100%
     }
   };
 
   const handleGenerateContent = async () => {
     if (!title || !outline) {
-      toast.error("请输入标题和大纲");
       return;
     }
     setIsGeneratingContent(true);
     try {
       const content = await pptService.generateContent(title, outline);
       setSlides(content);
+      setProgress(100);
       setCurrentStep("preview");
-      toast.success("内容生成成功");
     } catch (error) {
       console.error("生成内容失败:", error);
-      toast.error("生成内容失败");
     } finally {
-      setIsGeneratingContent(false);
+      setTimeout(() => {
+        setIsGeneratingContent(false);
+      }, 500); // 给进度条一点时间显示100%
     }
   };
 
@@ -149,7 +177,6 @@ export function PPTGenerator() {
 
   const handleGeneratePPT = async () => {
     if (!slides.length) {
-      toast.error("没有可生成的内容");
       return;
     }
 
@@ -205,11 +232,9 @@ export function PPTGenerator() {
       // 保存文件
       const fileName = `${title}.pptx`;
       await pres.writeFile({ fileName });
-      toast.success("PPT 生成成功");
       setCurrentStep("preview");
     } catch (error) {
       console.error("生成 PPT 失败:", error);
-      toast.error("生成 PPT 失败");
     } finally {
       setIsGeneratingPPT(false);
     }
@@ -217,66 +242,68 @@ export function PPTGenerator() {
 
   if (currentStep === "preview") {
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">预览 PPT 内容</h1>
-          <div className="space-x-2 flex items-center">
-            <Select
-              value={selectedTemplate}
-              onValueChange={setSelectedTemplate}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="选择模板" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUILT_IN_TEMPLATES.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={handleBack}>
-              返回编辑
-            </Button>
-            <Button onClick={handleGeneratePPT} disabled={isGeneratingPPT}>
-              {isGeneratingPPT ? "生成中..." : "生成 PPT"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {slides.map((slide, index) => (
-            <div
-              key={index}
-              className="border rounded-lg p-6 bg-card shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">
-                  第 {index + 1} 页：{slide.title}
-                </h2>
-              </div>
-              <ul className="list-disc list-inside space-y-2">
-                {slide.content.map((point, pointIndex) => (
-                  <li key={pointIndex} className="text-base">
-                    {point}
-                  </li>
-                ))}
-              </ul>
-              {slide.imageDescription && (
-                <div className="mt-4 text-sm text-muted-foreground">
-                  <p>建议图片：{slide.imageDescription}</p>
-                </div>
-              )}
+      <div className="p-6 w-full h-screen overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">预览 PPT 内容</h1>
+            <div className="space-x-2 flex items-center">
+              <Select
+                value={selectedTemplate}
+                onValueChange={setSelectedTemplate}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="选择模板" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUILT_IN_TEMPLATES.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={handleBack}>
+                返回编辑
+              </Button>
+              <Button onClick={handleGeneratePPT} disabled={isGeneratingPPT}>
+                {isGeneratingPPT ? "生成中..." : "生成 PPT"}
+              </Button>
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-6">
+            {slides.map((slide, index) => (
+              <div
+                key={index}
+                className="border rounded-lg p-6 bg-card shadow-sm"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">
+                    第 {index + 1} 页：{slide.title}
+                  </h2>
+                </div>
+                <ul className="list-disc list-inside space-y-2">
+                  {slide.content.map((point, pointIndex) => (
+                    <li key={pointIndex} className="text-base">
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+                {slide.imageDescription && (
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    <p>建议图片：{slide.imageDescription}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl h-screen overflow-y-auto">
       <h1 className="text-2xl font-bold mb-6">AI PPT 生成器</h1>
 
       <div className="space-y-6">
@@ -297,6 +324,14 @@ export function PPTGenerator() {
               {isGeneratingOutline ? "生成中..." : "生成大纲"}
             </Button>
           </div>
+          {isGeneratingOutline && (
+            <div className="space-y-2 mt-2">
+              <Progress value={progress} className="w-full" />
+              <p className="text-sm text-muted-foreground text-center">
+                正在生成大纲 ({progress}%)
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 大纲编辑 */}
@@ -311,14 +346,24 @@ export function PPTGenerator() {
         </div>
 
         {/* 生成按钮 */}
-        <div className="flex justify-end">
-          <Button
-            onClick={handleGenerateContent}
-            disabled={!title || !outline || isGeneratingContent}
-            className="w-full sm:w-auto"
-          >
-            {isGeneratingContent ? "生成中..." : "生成内容"}
-          </Button>
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              onClick={handleGenerateContent}
+              disabled={!title || !outline || isGeneratingContent}
+              className="w-full sm:w-auto"
+            >
+              {isGeneratingContent ? "生成中..." : "生成内容"}
+            </Button>
+          </div>
+          {isGeneratingContent && (
+            <div className="space-y-2">
+              <Progress value={progress} className="w-full" />
+              <p className="text-sm text-muted-foreground text-center">
+                正在生成内容 ({progress}%)
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
