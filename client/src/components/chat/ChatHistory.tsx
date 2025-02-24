@@ -162,7 +162,7 @@ export function ChatHistory() {
       {currentSessionId ? (
         <div className="flex-1 flex flex-col h-full">
           {/* 移动端顶部操作栏 */}
-          <div className="lg:hidden h-14 flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="lg:hidden h-14 flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pl-20">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
