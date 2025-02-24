@@ -2,15 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import {
-  Send,
-  Settings,
-  Database,
-  Globe,
-  Paperclip,
-  X,
-  FileIcon,
-} from "lucide-react";
+import { Send, Database, Globe, Paperclip, X, FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 
@@ -295,16 +287,6 @@ export function ChatInput({
             上传文件
           </Button>
         </div>
-
-        {/* 设置按钮 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7"
-          disabled={disabled || isLoading}
-        >
-          <Settings className="w-3 h-3 lg:w-4 lg:h-4" />
-        </Button>
       </div>
     </div>
   );

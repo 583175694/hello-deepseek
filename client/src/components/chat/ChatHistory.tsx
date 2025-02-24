@@ -167,20 +167,18 @@ export function ChatHistory() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-9 w-24"
                 onClick={() => setIsMobileListOpen(true)}
               >
                 历史会话
               </Button>
-              <div className="h-4 w-px bg-border" />
               <Button
-                variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-9 w-26 gap-2"
                 onClick={() => setIsCreateDialogOpen(true)}
               >
-                <PlusIcon className="mr-2 h-4 w-4" />
-                新建会话
+                <PlusIcon className="h-4 w-4" />
+                创建新会话
               </Button>
             </div>
           </div>
@@ -254,11 +252,29 @@ export function ChatHistory() {
             <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
               选择一个现有的对话或创建一个新的对话以开始聊天
             </p>
+            <div className="flex flex-col gap-3 items-center lg:hidden">
+              <Button
+                size="lg"
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="w-48 gap-2"
+              >
+                <PlusIcon className="h-5 w-5" />
+                创建新会话
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setIsMobileListOpen(true)}
+                className="w-48"
+              >
+                历史会话
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="lg"
               onClick={() => setIsCreateDialogOpen(true)}
-              className="gap-2"
+              className="gap-2 hidden lg:inline-flex"
             >
               <PlusIcon className="h-5 w-5" />
               创建新会话
