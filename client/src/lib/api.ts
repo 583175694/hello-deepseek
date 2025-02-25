@@ -148,12 +148,6 @@ export const fileService = {
   },
 };
 
-interface PPTSlide {
-  title: string;
-  content: string[];
-  imageDescription?: string;
-}
-
 export const pptService = {
   // 生成PPT大纲
   async generateOutline(title: string): Promise<string> {
@@ -162,7 +156,7 @@ export const pptService = {
   },
 
   // 生成PPT内容
-  async generateContent(title: string, outline: string): Promise<PPTSlide[]> {
+  async generateContent(title: string, outline: string): Promise<string> {
     const response = await api.post("/ppt/generate-content", {
       title,
       outline,
@@ -172,7 +166,7 @@ export const pptService = {
 
   // 获取认证码
   async getAuthCode() {
-    const response = await api.get("/aippt/auth/code");
+    const response = await api.get("/ppt/auth/code");
     return response.data;
   },
 };

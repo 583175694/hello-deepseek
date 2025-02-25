@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChatModule } from './chat/chat.module';
 import { PPTModule } from './ppt/ppt.module';
-import { AipptModule } from './aippt/aippt.module';
 import { Session } from './chat/entities/session.entity';
 import { Message } from './chat/entities/message.entity';
 import { SessionFile } from './chat/entities/session-file.entity';
@@ -35,7 +34,6 @@ import { SessionTempFile } from './chat/entities/session-temp-file.entity';
     }),
     ChatModule,
     PPTModule,
-    AipptModule,
   ],
   controllers: [AppController],
   providers: [AppService],

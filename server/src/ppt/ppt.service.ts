@@ -1,9 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AIChatService } from '../chat/services/ai-chat.service';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PPTService {
-  constructor(private readonly aiChatService: AIChatService) {}
+  private readonly logger = new Logger(PPTService.name);
+  private readonly baseUrl = 'https://co.aippt.cn';
+
+  constructor(
+    private readonly aiChatService: AIChatService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private async getAIResponse(prompt: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -37,6 +46,53 @@ export class PPTService {
     return codeBlockMatch[1].trim();
   }
 
+  // AIPPT 相关功能
+  private generateSignature(
+    method: string,
+    uri: string,
+    timestamp: number,
+  ): string {
+    const secretKey = this.configService.get<string>('AIPPT_SECRET_KEY');
+
+    // 按照文档要求构造待签字符串
+    const stringToSign = `${method}@${uri}@${timestamp}`;
+
+    // 使用 HMAC-SHA1 算法生成签名
+    const hmac = crypto.createHmac('sha1', secretKey);
+    return hmac.update(stringToSign).digest('base64');
+  }
+
+  async getAuthCode(): Promise<{ code: string }> {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const uri = '/api/grant/code/';
+      const signature = this.generateSignature('GET', uri, timestamp);
+      const accessKey = this.configService.get<string>('AIPPT_ACCESS_KEY');
+
+      const response = await axios.get(`${this.baseUrl}${uri}`, {
+        headers: {
+          'x-api-key': accessKey,
+          'x-timestamp': timestamp.toString(),
+          'x-signature': signature,
+        },
+        params: {
+          uid: '1',
+          channel: 'test',
+        },
+      });
+
+      if (response.data.code === 0) {
+        return { code: response.data.data.code };
+      } else {
+        throw new Error(response.data.msg || 'Failed to get auth code');
+      }
+    } catch (error) {
+      this.logger.error('Failed to get auth code:', error);
+      throw error;
+    }
+  }
+
+  // PPT 生成相关功能
   async generateOutline(title: string): Promise<string> {
     const prompt = `请为标题为"${title}"的PPT生成一个详细的大纲。要求：
 1. 根据大纲的复杂性自行判断有多少个主要章节
@@ -49,10 +105,11 @@ export class PPTService {
 
 请直接输出大纲内容，不要有任何额外的解释或说明。`;
 
+    // 直接返回 markdown 格式的大纲
     return this.getAIResponse(prompt);
   }
 
-  async generateContent(title: string, outline: string): Promise<any[]> {
+  async generateContent(title: string, outline: string): Promise<string> {
     const prompt = `你是一个专业的PPT内容生成专家。请基于以下信息生成PPT内容：
 
 标题：${title}
@@ -61,62 +118,60 @@ ${outline}
 
 要求：
 1. 为每个大纲章节生成对应的PPT页面内容
-2. 每个页面包含：标题、主要内容（要点列表）、可选的图表或图片描述
-3. 内容要专业、准确、有深度
-4. 语言要简洁清晰
-5. 每个页面的内容量要适中
+2. 使用多级标题结构，包括主标题(#)、一级标题(##)、二级标题(###)、三级标题(####)等
+3. 每个标题下应包含相关的要点列表，使用"-"作为列表标记
+4. 内容要专业、准确、有深度
+5. 语言要简洁清晰
 6. 确保内容的连贯性和逻辑性
 7. 用中文输出
 
-请使用以下格式输出（注意是markdown格式，包含代码块）：
+请使用以下格式输出（markdown格式）：
 
-\`\`\`json
-[
-  {
-    "title": "页面标题",
-    "content": [
-      "要点1",
-      "要点2",
-      "要点3"
-    ],
-    "imageDescription": "建议的图片描述（可选）"
-  }
-]
-\`\`\`
+# 主标题
+## 1. 一级标题
+### 1.1 二级标题
+#### 1.1.1 三级标题
+- 要点1
+- 要点2
+- 要点3
+#### 1.1.2 三级标题
+- 要点1
+- 要点2
+- 要点3
+### 1.2 二级标题
+- 要点1
+- 要点2
+- 要点3
+
+# 主标题
+## 2. 一级标题
+### 2.1 二级标题
+- 要点1
+- 要点2
+- 要点3
 
 注意：
-1. 必须使用双引号，不能用单引号
-2. 数组和对象的最后一项后面不要加逗号
-3. 所有字符串都要用双引号包裹
-4. 确保输出的是一个合法的JSON数组`;
+1. 使用层次分明的标题结构，从主标题(#)到三级标题(####)
+2. 每个要点都要以"-"开头
+3. 标题之间要有逻辑关系和层次感
+4. 确保内容的专业性和准确性
+5. 每个页面的内容量要适中，不要过多或过少
+6. 参考以下示例格式：
+
+# 构建智能助手的核心技术方案
+## 1. 概述
+### 1.1 智能助手定义
+#### 1.1.1 技术背景
+- 人工智能与机器学习技术的快速发展，为智能助手提供了强大的算法支持。
+- 自然语言处理（NLP）和语音识别技术的进步，使得智能助手能够理解并响应用户指令。
+- 云计算和大数据技术的融合，为智能助手提供了高效的数据处理和存储能力。`;
 
     try {
-      const response = await this.getAIResponse(prompt);
-      const jsonStr = this.extractCodeBlock(response);
-
-      console.log('提取的JSON字符串:', jsonStr);
-
-      const content = JSON.parse(jsonStr);
-
-      if (!Array.isArray(content)) {
-        throw new Error('返回的内容不是数组格式');
-      }
-
-      // 验证每个页面的格式
-      content.forEach((slide, index) => {
-        if (
-          !slide.title ||
-          !Array.isArray(slide.content) ||
-          slide.content.length === 0
-        ) {
-          throw new Error(`第 ${index + 1} 页的格式不正确`);
-        }
-      });
-
-      return content;
+      // 直接返回 markdown 格式的内容
+      return await this.getAIResponse(prompt);
     } catch (error) {
       console.error('生成PPT内容失败:', error);
-      throw new Error('生成的PPT内容格式不正确');
+      throw new Error('生成PPT内容失败');
     }
   }
 }
