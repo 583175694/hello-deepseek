@@ -30,17 +30,32 @@ const ChatItem = ({
   setCurrentSessionId,
   handleOpenDeleteDialog,
 }: ChatItemProps) => {
+  const handleClick = () => {
+    // 立即更新视觉状态
+    const clickedElement = document.querySelector(
+      `[data-session-id="${session.sessionId}"]`
+    );
+    if (clickedElement) {
+      const allItems = document.querySelectorAll("[data-session-id]");
+      allItems.forEach((item) =>
+        item.classList.remove("bg-muted", "shadow-sm")
+      );
+      clickedElement.classList.add("bg-muted", "shadow-sm");
+    }
+    setCurrentSessionId(session.sessionId);
+  };
+
   return (
     <div
       className={`flex items-center justify-between p-3 cursor-pointer 
-        hover:bg-muted/50 group transition-all duration-200 
+        hover:bg-muted/50 group
         rounded-lg mx-1
         ${
           session.sessionId === currentSessionId
             ? "bg-muted shadow-sm"
             : "hover:shadow-sm"
         }`}
-      onClick={() => setCurrentSessionId(session.sessionId)}
+      onClick={handleClick}
     >
       <div className="flex flex-col flex-1 min-w-0 gap-0.5">
         <span className="text-[0.7rem] text-muted-foreground flex items-center gap-2">
@@ -68,12 +83,23 @@ export function ChatList() {
   const listRef = useRef<HTMLDivElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(currentSessionId);
+
+  const handleSessionClick = (sessionId: string) => {
+    setSelectedId(sessionId); // 立即更新选中状态
+    setCurrentSessionId(sessionId); // 触发实际的会话切换
+  };
 
   const handleOpenDeleteDialog = (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     setSessionToDelete(sessionId);
     setDeleteDialogOpen(true);
   };
+
+  // 当 currentSessionId 从外部更新时，同步更新 selectedId
+  useEffect(() => {
+    setSelectedId(currentSessionId);
+  }, [currentSessionId]);
 
   const handleDeleteSession = async (sessionId: string) => {
     try {
@@ -84,21 +110,6 @@ export function ChatList() {
       console.error("删除对话失败:", error);
     }
   };
-
-  // 当 currentSessionId 改变时，滚动到当前选中的会话
-  useEffect(() => {
-    if (listRef.current && currentSessionId) {
-      const selectedElement = listRef.current.querySelector(
-        `[data-session-id="${currentSessionId}"]`
-      );
-      if (selectedElement) {
-        selectedElement.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
-  }, [currentSessionId]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)]">
@@ -117,8 +128,8 @@ export function ChatList() {
               <div key={session.sessionId} data-session-id={session.sessionId}>
                 <ChatItem
                   session={session}
-                  currentSessionId={currentSessionId || ""}
-                  setCurrentSessionId={setCurrentSessionId}
+                  currentSessionId={selectedId || ""}
+                  setCurrentSessionId={handleSessionClick}
                   handleOpenDeleteDialog={handleOpenDeleteDialog}
                 />
               </div>

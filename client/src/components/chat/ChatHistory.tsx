@@ -19,6 +19,7 @@ export function ChatHistory() {
   const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -57,19 +58,23 @@ export function ChatHistory() {
   // 加载会话消息历史
   useEffect(() => {
     const loadMessages = async () => {
-      if (!currentSessionId) return;
+      if (!currentSessionId) {
+        setMessageList([]);
+        return;
+      }
 
+      setIsLoading(true);
       try {
         const data = await chatService.getSessionMessages(currentSessionId);
         setMessageList(data.messages);
-        // 设置临时文件状态
         setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
-
-        // 在消息加载完成后滚动到底部
-        setTimeout(scrollToBottom, 0);
       } catch (error) {
         console.error("加载消息历史失败:", error);
+      } finally {
+        setIsLoading(false);
+        // 在消息加载完成后滚动到底部
+        setTimeout(scrollToBottom, 0);
       }
     };
 
@@ -185,41 +190,29 @@ export function ChatHistory() {
 
           {/* 消息列表区域 */}
           <div
-            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500"
             ref={messagesRef}
+            className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent"
           >
-            <div className="h-full relative max-w-4xl mx-auto">
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4 lg:p-8 text-center">
-                  <h2 className="text-xl lg:text-2xl font-semibold mb-3">
-                    开始一个新的对话
-                  </h2>
-                  <p className="text-sm lg:text-base mb-6 max-w-md mx-auto text-muted-foreground">
-                    你可以问我任何问题，我会尽力帮助你。如果需要参考知识库中的内容，可以开启知识库搜索。
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message, index) => (
-                    <div key={index} className="px-4 py-3">
-                      <ChatMessage
-                        message={message}
-                        isStreaming={
-                          isStreaming && index === messages.length - 1
-                        }
-                        onDelete={handleMessageDelete}
-                      />
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </>
-              )}
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                  {error}
-                </div>
-              )}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-sm text-muted-foreground">加载中...</div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground">
+                <span>开始新的对话</span>
+              </div>
+            ) : (
+              <div className="max-w-3xl w-full mx-auto px-4">
+                {messages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    onDelete={() => handleMessageDelete(message.id)}
+                  />
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
           </div>
 
           {/* 底部输入区域 */}

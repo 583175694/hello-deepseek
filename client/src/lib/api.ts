@@ -169,4 +169,10 @@ export const pptService = {
     });
     return response.data.content;
   },
+
+  // 获取认证码
+  async getAuthCode() {
+    const response = await api.get("/aippt/auth/code");
+    return response.data;
+  },
 };
