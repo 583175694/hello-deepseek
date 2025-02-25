@@ -37,15 +37,6 @@ export class PPTService {
     });
   }
 
-  private extractCodeBlock(markdown: string): string {
-    // 匹配 ```json ... ``` 格式的代码块
-    const codeBlockMatch = markdown.match(/```json\s*([\s\S]*?)\s*```/);
-    if (!codeBlockMatch) {
-      throw new Error('未找到JSON代码块');
-    }
-    return codeBlockMatch[1].trim();
-  }
-
   // AIPPT 相关功能
   private generateSignature(
     method: string,
@@ -100,7 +91,7 @@ export class PPTService {
 
 要求：
 1. 根据内容描述提取关键主题，生成一个合适的PPT标题
-2. 根据主题的复杂性自行判断有多少个主要章节
+2. 根据主题的复杂性生成4-7个主要章节
 3. 每个章节下应该有2-4个子要点
 4. 大纲层次要清晰，使用数字编号（1., 1.1, 1.2等）
 5. 内容要有逻辑性和连贯性
@@ -162,6 +153,7 @@ ${outline}
 4. 确保内容的专业性和准确性
 5. 每个页面的内容量要适中，不要过多或过少
 6. 参考以下示例格式：
+7. PPT页数不要超过30页
 
 # 构建智能助手的核心技术方案
 ## 1. 概述
