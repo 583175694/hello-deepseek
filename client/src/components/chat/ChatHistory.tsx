@@ -26,7 +26,6 @@ export function ChatHistory() {
   // 从 AI 聊天 hook 获取状态和方法
   const {
     messages,
-    error,
     isStreaming,
     sendStreamMessage,
     setMessageList,
