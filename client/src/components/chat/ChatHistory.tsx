@@ -202,10 +202,13 @@ export function ChatHistory() {
               </div>
             ) : (
               <div className="max-w-3xl w-full mx-auto px-4">
-                {messages.map((message) => (
+                {messages.map((message, index) => (
                   <ChatMessage
                     key={message.id}
                     message={message}
+                    isStreaming={
+                      isStreaming && index === messages.length - 1
+                    }
                     onDelete={() => handleMessageDelete(message.id)}
                   />
                 ))}
