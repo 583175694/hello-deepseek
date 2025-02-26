@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PPTController } from './ppt.controller';
 import { PPTService } from './ppt.service';
+import { PPTOperation } from './entities/ppt-operation.entity';
+import { PPTOperationService } from './services/ppt-operation.service';
 import { ChatModule } from '../chat/chat.module';
-import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ChatModule, ConfigModule],
+  imports: [TypeOrmModule.forFeature([PPTOperation]), ChatModule],
   controllers: [PPTController],
-  providers: [PPTService],
-  exports: [PPTService],
+  providers: [PPTService, PPTOperationService],
 })
 export class PPTModule {}

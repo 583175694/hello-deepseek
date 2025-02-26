@@ -10,6 +10,7 @@ import { Message } from './chat/entities/message.entity';
 import { SessionFile } from './chat/entities/session-file.entity';
 import { SessionDocument } from './chat/entities/session-document.entity';
 import { SessionTempFile } from './chat/entities/session-temp-file.entity';
+import { PPTOperation } from './ppt/entities/ppt-operation.entity';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SessionTempFile } from './chat/entities/session-temp-file.entity';
         SessionFile,
         SessionDocument,
         SessionTempFile,
+        PPTOperation,
       ],
       synchronize: true, // 仅在开发环境使用
     }),

@@ -380,13 +380,17 @@ export function PPTGenerator() {
   return (
     <div className="h-screen w-full overflow-y-auto">
       <Script
-        src="https://api-static.aippt.cn/aippt-iframe-sdk.js"
+        src="/js/aippt-iframe-sdk.js"
         onLoad={() => setIsSDKReady(true)}
       />
 
       <div className="w-full mx-auto p-6 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
-        <h1 className="text-2xl font-bold mb-6">AI PPT 生成器</h1>
-
+        <h1 className="text-2xl font-bold mb-6">
+          AI PPT 生成器{" "}
+          <span className="text-sm text-muted-foreground font-normal">
+            {isSDKReady ? "已初始化" : "正在初始化"}
+          </span>
+        </h1>
         <div className="space-y-6">
           {/* 标题输入 */}
           <div className="space-y-2">

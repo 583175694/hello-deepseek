@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AIChatService } from '../chat/services/ai-chat.service';
 import { ConfigService } from '@nestjs/config';
+import { PPTOperationService } from './services/ppt-operation.service';
+import { PPTOperationType } from './entities/ppt-operation.entity';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -10,17 +12,21 @@ export class PPTService {
   private readonly baseUrl = 'https://co.aippt.cn';
 
   constructor(
-    private readonly aiChatService: AIChatService,
+    private readonly chatService: AIChatService,
     private readonly configService: ConfigService,
+    private readonly pptOperationService: PPTOperationService,
   ) {}
 
-  private async getAIResponse(prompt: string): Promise<string> {
+  private async getAIResponse(
+    prompt: string,
+    clientId: string,
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       let response = '';
-      this.aiChatService
+      this.chatService
         .streamChat(
           prompt,
-          'ppt-service',
+          clientId,
           undefined,
           (chunk) => {
             if (chunk.type === 'content') {
@@ -53,8 +59,16 @@ export class PPTService {
     return hmac.update(stringToSign).digest('base64');
   }
 
-  async getAuthCode(): Promise<{ code: string }> {
+  async getAuthCode(
+    clientId: string,
+  ): Promise<{ code: string; operationId: number; pptId: string }> {
     try {
+      // 创建一个新的授权操作记录
+      const operation = await this.pptOperationService.createOperation(
+        clientId,
+        PPTOperationType.AUTH,
+      );
+
       const timestamp = Math.floor(Date.now() / 1000);
       const uri = '/api/grant/code/';
       const signature = this.generateSignature('GET', uri, timestamp);
@@ -73,8 +87,23 @@ export class PPTService {
       });
 
       if (response.data.code === 0) {
-        return { code: response.data.data.code };
+        const authCode = response.data.data.code;
+
+        // 更新操作记录
+        await this.pptOperationService.updateOperation(operation.id, {
+          authCode,
+        });
+
+        return {
+          code: authCode,
+          operationId: operation.id,
+          pptId: operation.pptId,
+        };
       } else {
+        await this.pptOperationService.markOperationAsError(
+          operation.id,
+          response.data.msg || 'Failed to get auth code',
+        );
         throw new Error(response.data.msg || 'Failed to get auth code');
       }
     } catch (error) {
@@ -84,7 +113,18 @@ export class PPTService {
   }
 
   // PPT 生成相关功能
-  async generateOutline(title: string): Promise<string> {
+  async generateOutline(
+    clientId: string,
+    title: string,
+    pptId?: string,
+  ): Promise<{ outline: string; operationId: number; pptId: string }> {
+    // 创建一个新的大纲生成操作记录
+    const operation = await this.pptOperationService.createOperation(
+      clientId,
+      PPTOperationType.OUTLINE,
+      { title, pptId },
+    );
+
     const prompt = `请为以下内容生成一个详细的PPT大纲：
 
 内容描述：${title}
@@ -101,11 +141,43 @@ export class PPTService {
 
 请直接输出大纲内容，不要有任何额外的解释或说明。`;
 
-    // 直接返回 markdown 格式的大纲
-    return this.getAIResponse(prompt);
+    try {
+      // 获取 AI 响应
+      const outline = await this.getAIResponse(prompt, clientId);
+
+      // 更新操作记录
+      await this.pptOperationService.updateOperation(operation.id, {
+        outline,
+      });
+
+      return {
+        outline,
+        operationId: operation.id,
+        pptId: operation.pptId,
+      };
+    } catch (error) {
+      await this.pptOperationService.markOperationAsError(
+        operation.id,
+        '生成PPT大纲失败',
+      );
+      this.logger.error('生成PPT大纲失败:', error);
+      throw new Error('生成PPT大纲失败');
+    }
   }
 
-  async generateContent(title: string, outline: string): Promise<string> {
+  async generateContent(
+    clientId: string,
+    title: string,
+    outline: string,
+    pptId?: string,
+  ): Promise<{ content: string; operationId: number; pptId: string }> {
+    // 创建一个新的内容生成操作记录
+    const operation = await this.pptOperationService.createOperation(
+      clientId,
+      PPTOperationType.CONTENT,
+      { title, outline, pptId },
+    );
+
     const prompt = `你是一个专业的PPT内容生成专家。请基于以下信息生成PPT内容：
 
 标题：${title}
@@ -130,21 +202,6 @@ ${outline}
 - 要点1
 - 要点2
 - 要点3
-#### 1.1.2 三级标题
-- 要点1
-- 要点2
-- 要点3
-### 1.2 二级标题
-- 要点1
-- 要点2
-- 要点3
-
-# 主标题
-## 2. 一级标题
-### 2.1 二级标题
-- 要点1
-- 要点2
-- 要点3
 
 注意：
 1. 使用层次分明的标题结构，从主标题(#)到三级标题(####)
@@ -152,23 +209,42 @@ ${outline}
 3. 标题之间要有逻辑关系和层次感
 4. 确保内容的专业性和准确性
 5. 每个页面的内容量要适中，不要过多或过少
-6. 参考以下示例格式：
-7. PPT页数不要超过30页
-
-# 构建智能助手的核心技术方案
-## 1. 概述
-### 1.1 智能助手定义
-#### 1.1.1 技术背景
-- 人工智能与机器学习技术的快速发展，为智能助手提供了强大的算法支持。
-- 自然语言处理（NLP）和语音识别技术的进步，使得智能助手能够理解并响应用户指令。
-- 云计算和大数据技术的融合，为智能助手提供了高效的数据处理和存储能力。`;
+6. PPT页数不要超过30页`;
 
     try {
-      // 直接返回 markdown 格式的内容
-      return await this.getAIResponse(prompt);
+      // 获取 AI 响应
+      const content = await this.getAIResponse(prompt, clientId);
+
+      // 更新操作记录
+      await this.pptOperationService.updateOperation(operation.id, {
+        content,
+      });
+
+      return {
+        content,
+        operationId: operation.id,
+        pptId: operation.pptId,
+      };
     } catch (error) {
-      console.error('生成PPT内容失败:', error);
+      await this.pptOperationService.markOperationAsError(
+        operation.id,
+        '生成PPT内容失败',
+      );
+      this.logger.error('生成PPT内容失败:', error);
       throw new Error('生成PPT内容失败');
     }
+  }
+
+  // 获取操作记录
+  async getOperationById(operationId: number) {
+    return this.pptOperationService.getOperationById(operationId);
+  }
+
+  async getOperationsByClientId(clientId: string) {
+    return this.pptOperationService.getOperationsByClientId(clientId);
+  }
+
+  async getOperationsByPptId(pptId: string) {
+    return this.pptOperationService.getOperationsByPptId(pptId);
   }
 }
