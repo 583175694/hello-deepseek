@@ -31,7 +31,7 @@ export class SessionService {
     roleName?: string,
     systemPrompt?: string,
   ): Promise<Session> {
-    this.logger.log('Creating new session');
+    this.logger.log('正在创建新会话');
     const session = this.sessionRepository.create({
       sessionId: uuidv4(),
       clientId,
@@ -39,13 +39,13 @@ export class SessionService {
       systemPrompt,
     });
     const savedSession = await this.sessionRepository.save(session);
-    this.logger.log(`Session created with ID: ${savedSession.sessionId}`);
+    this.logger.log(`会话已创建，ID为: ${savedSession.sessionId}`);
     return savedSession;
   }
 
   async getSessions(clientId: string) {
     try {
-      this.logger.log(`Fetching all sessions for client: ${clientId}`);
+      this.logger.log(`正在获取客户端 ${clientId} 的所有会话`);
       const sessions = await this.sessionRepository.find({
         where: { clientId },
         order: {
@@ -63,9 +63,7 @@ export class SessionService {
         ],
       });
 
-      this.logger.log(
-        `Found ${sessions.length} sessions for client: ${clientId}`,
-      );
+      this.logger.log(`为客户端 ${clientId} 找到 ${sessions.length} 个会话`);
       return sessions.map((session) => ({
         id: session.id,
         sessionId: session.sessionId,
@@ -89,7 +87,7 @@ export class SessionService {
 
   async getSessionMessages(sessionId: string, clientId: string) {
     try {
-      this.logger.log(`Fetching messages for session: ${sessionId}`);
+      this.logger.log(`正在获取会话 ${sessionId} 的消息`);
       const session = await this.sessionRepository.findOne({
         where: { sessionId, clientId },
       });
@@ -105,9 +103,7 @@ export class SessionService {
         select: ['id', 'role', 'content', 'reasoning', 'createdAt'],
       });
 
-      this.logger.log(
-        `Found ${messages.length} messages for session: ${sessionId}`,
-      );
+      this.logger.log(`为会话 ${sessionId} 找到 ${messages.length} 条消息`);
       return {
         session: {
           id: session.id,
@@ -127,7 +123,7 @@ export class SessionService {
 
   async deleteSession(sessionId: string, clientId: string) {
     try {
-      this.logger.log(`Attempting to delete session: ${sessionId}`);
+      this.logger.log(`正在尝试删除会话: ${sessionId}`);
       const session = await this.sessionRepository.findOne({
         where: { sessionId, clientId },
       });
@@ -160,7 +156,7 @@ export class SessionService {
       // 5. 删除会话
       await this.sessionRepository.delete({ sessionId, clientId });
 
-      this.logger.log(`Successfully deleted session: ${sessionId}`);
+      this.logger.log(`成功删除会话: ${sessionId}`);
       return { message: 'Session deleted successfully' };
     } catch (error) {
       this.logger.error('Delete session error:', error);

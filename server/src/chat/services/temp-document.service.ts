@@ -206,19 +206,19 @@ export class TempDocumentService {
       // 根据文件类型选择合适的加载器
       let loader;
       if (file.mimetype === 'application/pdf') {
-        this.logger.log(`Using PDF loader for file ${safeFileName}`);
+        this.logger.log(`正在为文件 ${safeFileName} 使用PDF加载器`);
         loader = new PDFLoader(finalFilePath);
       } else {
-        this.logger.log(`Using Text loader for file ${safeFileName}`);
+        this.logger.log(`正在为文件 ${safeFileName} 使用文本加载器`);
         loader = new TextLoader(finalFilePath);
       }
 
       // 加载文档
-      this.logger.log(`Loading document content from ${safeFileName}`);
+      this.logger.log(`正在从 ${safeFileName} 加载文档内容`);
       const docs = await loader.load();
 
       // 文本分割
-      this.logger.log(`Splitting document ${safeFileName} into chunks`);
+      this.logger.log(`正在将文档 ${safeFileName} 分割成块`);
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize,
         chunkOverlap: 200,
@@ -227,9 +227,7 @@ export class TempDocumentService {
       const splitDocs = await splitter.splitDocuments(docs);
 
       // 为每个文档片段添加元数据
-      this.logger.log(
-        `Processing ${splitDocs.length} chunks for ${safeFileName}`,
-      );
+      this.logger.log(`正在处理 ${safeFileName} 的 ${splitDocs.length} 个块`);
       const processedDocs = splitDocs.map((doc) => {
         return new Document({
           pageContent: doc.pageContent,
@@ -246,7 +244,7 @@ export class TempDocumentService {
       });
 
       // 将文档添加到向量存储
-      this.logger.log(`Adding ${processedDocs.length} chunks to vector store`);
+      this.logger.log(`正在添加 ${processedDocs.length} 个块到向量存储`);
       await this.addDocuments(processedDocs, sessionId, clientId);
 
       // 获取更新后的文件信息
@@ -262,7 +260,7 @@ export class TempDocumentService {
       if (finalFilePath && fs.existsSync(finalFilePath)) {
         try {
           fs.unlinkSync(finalFilePath);
-          this.logger.log(`Cleaned up failed upload file: ${finalFilePath}`);
+          this.logger.log(`已清理失败上传的文件: ${finalFilePath}`);
         } catch (cleanupError) {
           this.logger.error(
             `Failed to clean up file ${finalFilePath}:`,

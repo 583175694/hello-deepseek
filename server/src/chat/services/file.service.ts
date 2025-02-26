@@ -57,7 +57,7 @@ export class FileService {
 
           if (stats.isFile()) {
             this.logger.log(
-              `Processing existing file: ${filename} for client: ${clientId}`,
+              `正在处理客户端 ${clientId} 的现有文件: ${filename}`,
             );
 
             // 根据文件类型选择合适的加载器
@@ -100,7 +100,7 @@ export class FileService {
               // 将文档添加到向量存储
               await this.documentService.addDocuments(clientId, processedDocs);
               this.logger.log(
-                `Successfully processed existing file ${filename} into ${processedDocs.length} chunks for client: ${clientId}`,
+                `成功将客户端 ${clientId} 的现有文件 ${filename} 处理为 ${processedDocs.length} 个块`,
               );
             } catch (error) {
               this.logger.error(
@@ -157,26 +157,26 @@ export class FileService {
 
       // 保存文件
       this.logger.log(
-        `Saving file ${finalFileName} to ${finalFilePath} for client: ${clientId}`,
+        `正在为客户端 ${clientId} 保存文件 ${finalFileName} 到 ${finalFilePath}`,
       );
       fs.writeFileSync(finalFilePath, file.buffer);
 
       // 根据文件类型选择合适的加载器
       let loader;
       if (file.mimetype === 'application/pdf') {
-        this.logger.log(`Using PDF loader for file ${finalFileName}`);
+        this.logger.log(`正在为文件 ${finalFileName} 使用PDF加载器`);
         loader = new PDFLoader(finalFilePath);
       } else {
-        this.logger.log(`Using Text loader for file ${finalFileName}`);
+        this.logger.log(`正在为文件 ${finalFileName} 使用文本加载器`);
         loader = new TextLoader(finalFilePath);
       }
 
       // 加载文档
-      this.logger.log(`Loading document content from ${finalFileName}`);
+      this.logger.log(`正在从 ${finalFileName} 加载文档内容`);
       const docs = await loader.load();
 
       // 文本分割
-      this.logger.log(`Splitting document ${finalFileName} into chunks`);
+      this.logger.log(`正在将文档 ${finalFileName} 分割成块`);
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize,
         chunkOverlap: 200,
@@ -185,9 +185,7 @@ export class FileService {
       const splitDocs = await splitter.splitDocuments(docs);
 
       // 为每个文档片段添加元数据
-      this.logger.log(
-        `Processing ${splitDocs.length} chunks for ${finalFileName}`,
-      );
+      this.logger.log(`正在处理 ${finalFileName} 的 ${splitDocs.length} 个块`);
       const processedDocs = splitDocs.map((doc) => {
         return new Document({
           pageContent: doc.pageContent,
@@ -204,12 +202,12 @@ export class FileService {
 
       // 将文档添加到向量存储
       this.logger.log(
-        `Adding ${processedDocs.length} chunks to vector store for ${finalFileName}`,
+        `正在为 ${finalFileName} 添加 ${processedDocs.length} 个块到向量存储`,
       );
       await this.documentService.addDocuments(clientId, processedDocs);
 
       this.logger.log(
-        `Successfully processed file ${finalFileName} (original: ${originalName}) into ${processedDocs.length} chunks for client: ${clientId}`,
+        `成功将客户端 ${clientId} 的文件 ${finalFileName}（原始名: ${originalName}）处理为 ${processedDocs.length} 个块`,
       );
     } catch (error) {
       this.logger.error(`Error processing file ${file.originalname}:`, error);
@@ -217,7 +215,7 @@ export class FileService {
       if (finalFilePath && fs.existsSync(finalFilePath)) {
         try {
           fs.unlinkSync(finalFilePath);
-          this.logger.log(`Cleaned up failed upload file: ${finalFilePath}`);
+          this.logger.log(`已清理失败上传的文件: ${finalFilePath}`);
         } catch (cleanupError) {
           this.logger.error(
             `Failed to clean up file ${finalFilePath}:`,
@@ -262,15 +260,11 @@ export class FileService {
       if (stats.isDirectory()) {
         // 如果是目录，使用 rmSync 递归删除
         fs.rmSync(filePath, { recursive: true, force: true });
-        this.logger.log(
-          `Successfully deleted directory ${filename} for client: ${clientId}`,
-        );
+        this.logger.log(`成功删除客户端 ${clientId} 的目录 ${filename}`);
       } else {
         // 如果是文件，使用 unlinkSync 删除
         fs.unlinkSync(filePath);
-        this.logger.log(
-          `Successfully deleted file ${filename} for client: ${clientId}`,
-        );
+        this.logger.log(`成功删除客户端 ${clientId} 的文件 ${filename}`);
       }
     } catch (error) {
       this.logger.error(`Error deleting file ${filename}:`, error);

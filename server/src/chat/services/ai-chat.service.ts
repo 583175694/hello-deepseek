@@ -30,26 +30,26 @@ export class AIChatService {
     private documentService: DocumentService,
     private tempDocumentService: TempDocumentService,
   ) {
-    this.logger.log('Initializing AIChatService...');
+    this.logger.log('正在初始化AI聊天服务...');
     this.initializeServices();
   }
 
   // 初始化各项服务
   private initializeServices() {
-    this.logger.log('Initializing DeepSeek models...');
+    this.logger.log('正在初始化DeepSeek模型...');
     // 初始化所有可用的模型实例
     this.initializeAllModels();
-    this.logger.log('DeepSeek models initialized successfully');
+    this.logger.log('DeepSeek模型初始化成功');
 
-    this.logger.log('Initializing Exa client and retriever...');
+    this.logger.log('正在初始化Exa客户端和检索器...');
     // 初始化Exa客户端和检索器
     this.exa = new Exa(process.env.EXA_API_KEY);
     this.retriever = new ExaRetriever({
       client: this.exa,
     });
-    this.logger.log('Exa client and retriever initialized successfully');
+    this.logger.log('Exa客户端和检索器初始化成功');
 
-    this.logger.log('Setting up chat prompt template...');
+    this.logger.log('正在设置聊天提示模板...');
     // 设置聊天提示模板
     this.prompt = ChatPromptTemplate.fromMessages([
       [
@@ -59,8 +59,8 @@ export class AIChatService {
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
-    this.logger.log('Chat prompt template setup completed');
-    this.logger.log('Service initialization completed');
+    this.logger.log('聊天提示模板设置完成');
+    this.logger.log('服务初始化完成');
   }
 
   private initializeAllModels() {
@@ -75,7 +75,7 @@ export class AIChatService {
           apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
         },
       });
-      this.logger.log(`Initialized model: ${modelId}`);
+      this.logger.log(`已初始化模型: ${modelId}`);
     });
   }
 
@@ -93,7 +93,7 @@ export class AIChatService {
     query: string,
     modelId: string,
   ): Promise<string> {
-    this.logger.log(`Optimizing search query: ${query}`);
+    this.logger.log(`正在优化搜索查询: ${query}`);
     try {
       const chain = ChatPromptTemplate.fromMessages([
         [
@@ -108,7 +108,7 @@ export class AIChatService {
       });
 
       const optimizedQuery = response.content.toString();
-      this.logger.log(`Query optimized to: ${optimizedQuery}`);
+      this.logger.log(`查询已优化为: ${optimizedQuery}`);
       return optimizedQuery;
     } catch (error) {
       this.logger.error('Query optimization error:', error);
@@ -118,7 +118,7 @@ export class AIChatService {
 
   // 执行Exa搜索
   private async performExaSearch(query: string): Promise<string> {
-    this.logger.log(`Performing Exa search with query: ${query}`);
+    this.logger.log(`正在使用查询执行Exa搜索: ${query}`);
     try {
       // 优化搜索查询（暂时不使用）
       // const optimizedQuery = await this.optimizeSearchQuery(query);
@@ -126,7 +126,7 @@ export class AIChatService {
       // this.logger.log(`Optimized query: ${optimizedQuery}`);
 
       const searchResults = await this.retriever.getRelevantDocuments(query);
-      this.logger.log(`Found ${searchResults.length} search results`);
+      this.logger.log(`找到 ${searchResults.length} 条搜索结果`);
       return searchResults
         .map((doc) => `来源: ${doc.metadata.url}\n内容: ${doc.pageContent}`)
         .join('\n\n');
@@ -146,7 +146,7 @@ export class AIChatService {
     searchContext: string;
     sources: Array<{ type: 'temp'; url: string }>;
   }> {
-    this.logger.log('Performing temp document search...');
+    this.logger.log('正在执行临时文档搜索...');
     onToken({ type: 'status', content: 'Searching temporary documents...' });
 
     let searchContext = '';
@@ -163,9 +163,7 @@ export class AIChatService {
       tempDocuments.length > 0 &&
       tempDocuments[0]?.pageContent
     ) {
-      this.logger.log(
-        `Found ${tempDocuments.length} temp documents with content`,
-      );
+      this.logger.log(`找到 ${tempDocuments.length} 个包含内容的临时文档`);
       onToken({
         type: 'status',
         content: `Found ${tempDocuments.length} temporary documents`,
@@ -186,9 +184,9 @@ export class AIChatService {
         }
       });
 
-      this.logger.log('Temp document search results added to context');
+      this.logger.log('临时文档搜索结果已添加到上下文');
     } else {
-      this.logger.log('No valid temp documents found');
+      this.logger.log('未找到有效的临时文档');
       onToken({ type: 'status', content: 'No temporary documents found' });
     }
 
@@ -203,7 +201,7 @@ export class AIChatService {
     searchContext: string;
     sources: Array<{ type: 'web'; url: string }>;
   }> {
-    this.logger.log('Performing web search...');
+    this.logger.log('正在执行网络搜索...');
     onToken({ type: 'status', content: 'Searching web resources...' });
 
     let searchContext = '';
@@ -216,7 +214,7 @@ export class AIChatService {
         webSearchResults
           .match(/来源: (.*?)\n/g)
           ?.map((match) => match.replace('来源: ', '').trim()) || [];
-      this.logger.log(`Found ${urls.length} web sources`);
+      this.logger.log(`找到 ${urls.length} 个网络来源`);
       onToken({
         type: 'status',
         content: `Found ${urls.length} web resources`,
@@ -226,7 +224,7 @@ export class AIChatService {
         sources.push({ type: 'web', url });
       });
       searchContext += '网络搜索结果：\n' + webSearchResults + '\n\n';
-      this.logger.log('Web search results added to context');
+      this.logger.log('网络搜索结果已添加到上下文');
     } else {
       onToken({ type: 'status', content: 'No web resources found' });
     }
@@ -243,7 +241,7 @@ export class AIChatService {
     searchContext: string;
     sources: Array<{ type: 'vector'; url: string }>;
   }> {
-    this.logger.log('Performing vector database search...');
+    this.logger.log('正在执行向量数据库搜索...');
     onToken({ type: 'status', content: 'Searching vector database...' });
 
     let searchContext = '';
@@ -252,9 +250,7 @@ export class AIChatService {
     const vectorSearchResults =
       await this.documentService.searchSimilarDocuments(clientId, message, 3);
     if (vectorSearchResults && vectorSearchResults.length > 0) {
-      this.logger.log(
-        `Found ${vectorSearchResults.length} vector search results`,
-      );
+      this.logger.log(`找到 ${vectorSearchResults.length} 条向量搜索结果`);
       onToken({
         type: 'status',
         content: `Found ${vectorSearchResults.length} documents in vector database`,
@@ -275,7 +271,7 @@ export class AIChatService {
           )
           .join('\n\n') +
         '\n\n';
-      this.logger.log('Vector search results added to context');
+      this.logger.log('向量搜索结果已添加到上下文');
     } else {
       onToken({
         type: 'status',
@@ -288,10 +284,10 @@ export class AIChatService {
 
   // 删除消息
   async deleteMessage(messageId: string): Promise<void> {
-    this.logger.log(`Deleting message with ID: ${messageId}`);
+    this.logger.log(`正在删除ID为 ${messageId} 的消息`);
     try {
       await this.messageService.deleteMessage(messageId);
-      this.logger.log('Message deleted successfully');
+      this.logger.log('消息删除成功');
     } catch (error) {
       this.logger.error('Delete message error:', error);
       throw error;
@@ -313,16 +309,16 @@ export class AIChatService {
     modelId: string = 'bytedance_deepseek_r1',
   ) {
     this.logger.log(
-      `Starting stream chat for session ${sessionId} and client ${clientId} using model ${modelId}`,
+      `正在为会话 ${sessionId} 和客户端 ${clientId} 使用模型 ${modelId} 启动流式聊天`,
     );
     try {
       // 获取或创建会话
       let session;
       if (!sessionId) {
-        this.logger.log('No sessionId provided, creating new session...');
+        this.logger.log('未提供会话ID，正在创建新会话...');
         session = await this.sessionService.createSession(clientId);
         sessionId = session.sessionId;
-        this.logger.log(`New session created with ID: ${sessionId}`);
+        this.logger.log(`已创建ID为 ${sessionId} 的新会话`);
       } else {
         session = await this.sessionService.getSessionMessages(
           sessionId,
@@ -331,13 +327,13 @@ export class AIChatService {
         session = session.session;
       }
 
-      this.logger.log('Loading chat history...');
+      this.logger.log('正在加载聊天历史...');
       const memory = await this.messageService.loadMemoryFromDatabase(
         sessionId,
         clientId,
       );
       const memoryVariables = await memory.loadMemoryVariables({});
-      this.logger.log('Chat history loaded successfully');
+      this.logger.log('聊天历史加载成功');
 
       // 构建搜索上下文
       let searchContext = '';
@@ -374,7 +370,7 @@ export class AIChatService {
       }
 
       // 保存用户消息
-      this.logger.log('Saving user message...');
+      this.logger.log('正在保存用户消息...');
       await this.messageService.saveMessage(
         'user',
         message,
@@ -382,10 +378,10 @@ export class AIChatService {
         sessionId,
         clientId,
       );
-      this.logger.log('User message saved successfully');
+      this.logger.log('用户消息保存成功');
 
       // 创建并执行聊天链
-      this.logger.log('Creating chat chain and starting stream...');
+      this.logger.log('正在创建聊天链并启动流...');
       const chain = this.prompt.pipe(this.getModel(modelId));
       const stream = await chain.stream({
         history: memoryVariables.history || [],
@@ -393,12 +389,12 @@ export class AIChatService {
         searchContext: searchContext || '没有找到相关的搜索结果',
         systemPrompt: session.systemPrompt || this.DEFAULT_SYSTEM_PROMPT,
       });
-      this.logger.log('Chat stream created successfully');
+      this.logger.log('聊天流创建成功');
 
       // 处理流式响应
       let fullResponse = '';
       let fullReasoning = '';
-      this.logger.log('Processing stream response...');
+      this.logger.log('正在处理流式响应...');
       for await (const chunk of stream) {
         if (chunk.content) {
           const content = chunk.content.toString();
@@ -419,20 +415,20 @@ export class AIChatService {
           });
         }
       }
-      this.logger.log('Stream response processing completed');
+      this.logger.log('流式响应处理完成');
 
       // 在所有内容传输完成后，发送来源信息
       if (sources.length > 0) {
-        this.logger.log(`Sending ${sources.length} sources...`);
+        this.logger.log(`正在发送 ${sources.length} 个来源...`);
         onToken({
           type: 'sources',
           content: JSON.stringify(sources),
         });
-        this.logger.log('Sources sent successfully');
+        this.logger.log('来源发送成功');
       }
 
       // 保存AI助手的回复
-      this.logger.log('Saving assistant response...');
+      this.logger.log('正在保存助手响应...');
       await this.messageService.saveMessage(
         'assistant',
         fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
@@ -440,7 +436,7 @@ export class AIChatService {
         sessionId,
         clientId,
       );
-      this.logger.log('Assistant response saved successfully');
+      this.logger.log('助手响应保存成功');
     } catch (error) {
       this.logger.error('Stream chat error:', error);
       throw error;

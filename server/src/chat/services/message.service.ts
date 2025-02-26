@@ -72,14 +72,14 @@ export class MessageService {
   }
 
   async deleteMessage(messageId: string): Promise<void> {
-    this.logger.log(`Deleting message with ID: ${messageId}`);
+    this.logger.log(`正在删除ID为 ${messageId} 的消息`);
     try {
       const result = await this.messageRepository.delete(messageId);
       if (result.affected === 0) {
-        this.logger.warn(`Message not found with ID: ${messageId}`);
+        this.logger.warn(`未找到ID为 ${messageId} 的消息`);
         throw new Error('Message not found');
       }
-      this.logger.log(`Successfully deleted message with ID: ${messageId}`);
+      this.logger.log(`成功删除ID为 ${messageId} 的消息`);
     } catch (error) {
       this.logger.error('Delete message error:', error);
       throw error;

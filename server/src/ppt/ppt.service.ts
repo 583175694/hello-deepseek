@@ -28,12 +28,12 @@ export class PPTService {
         apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
       },
     });
-    this.logger.log('PPT Service initialized with independent DeepSeek model');
+    this.logger.log('PPT服务已使用独立的DeepSeek模型初始化');
   }
 
   // 新的AI内容生成方法，完全独立于聊天模块
   private async generateAIContent(prompt: string): Promise<string> {
-    this.logger.log('Generating AI content for PPT with independent method');
+    this.logger.log('使用独立方法为PPT生成AI内容');
 
     try {
       // 创建简单的提示模板
@@ -67,14 +67,14 @@ export class PPTService {
         ? fullResponse.slice(2)
         : fullResponse;
 
-      this.logger.log('Successfully generated AI content for PPT');
+      this.logger.log('成功为PPT生成AI内容');
       return cleanedResponse;
     } catch (error) {
       this.logger.error('Error generating AI content for PPT:', error);
 
       // 重试一次
       try {
-        this.logger.log('Retrying AI content generation...');
+        this.logger.log('正在重试AI内容生成...');
 
         // 使用更简单的提示模板重试
         const retryPromptTemplate = ChatPromptTemplate.fromMessages([
@@ -95,7 +95,7 @@ export class PPTService {
           }
         }
 
-        this.logger.log('Successfully generated AI content on retry');
+        this.logger.log('重试成功生成AI内容');
         return retryResponse.startsWith('\n\n')
           ? retryResponse.slice(2)
           : retryResponse;
@@ -206,7 +206,7 @@ export class PPTService {
 
     try {
       // 直接使用独立的AI内容生成方法
-      this.logger.log(`Generating outline for PPT with title: ${title}`);
+      this.logger.log(`正在为标题为"${title}"的PPT生成大纲`);
       const outline = await this.generateAIContent(prompt);
 
       // 更新操作记录
@@ -277,7 +277,7 @@ ${outline}
 
     try {
       // 直接使用独立的AI内容生成方法
-      this.logger.log(`Generating content for PPT with title: ${title}`);
+      this.logger.log(`正在为标题为"${title}"的PPT生成内容`);
       const content = await this.generateAIContent(prompt);
 
       // 更新操作记录
