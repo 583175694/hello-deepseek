@@ -34,7 +34,24 @@ export function useAIChat() {
         createdAt: new Date().toISOString(),
         ...message,
       };
-      setMessages((prev) => [...prev, newMessage]);
+
+      // 确保不会添加重复的消息
+      setMessages((prev) => {
+        // 检查是否已经有相同角色和内容的消息
+        const isDuplicate = prev.some(
+          (msg) =>
+            msg.role === message.role &&
+            msg.content === message.content &&
+            msg.type === message.type
+        );
+
+        if (isDuplicate) {
+          return prev;
+        }
+
+        return [...prev, newMessage];
+      });
+
       return newMessage.id;
     },
     []
@@ -57,6 +74,14 @@ export function useAIChat() {
           return msg;
         })
       );
+    },
+    []
+  );
+
+  // 设置消息列表
+  const setMessageList = useCallback(
+    (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+      setMessages(newMessages);
     },
     []
   );
@@ -130,7 +155,7 @@ export function useAIChat() {
     error,
     isStreaming,
     sendStreamMessage,
-    setMessageList: setMessages,
+    setMessageList,
     abortStream,
   };
 }

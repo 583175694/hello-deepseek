@@ -115,10 +115,14 @@ export class ChatController {
   async getSessionMessages(
     @Headers('x-client-id') clientId: string,
     @Param('sessionId') sessionId: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
   ) {
     const sessionData = await this.sessionService.getSessionMessages(
       sessionId,
       clientId,
+      page ? Number(page) : 1,
+      pageSize ? Number(pageSize) : 20,
     );
     const tempFiles = await this.tempDocumentService.getSessionDocuments(
       sessionId,

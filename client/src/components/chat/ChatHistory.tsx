@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { ChatInput } from "./ChatInput";
@@ -20,8 +20,12 @@ export function ChatHistory() {
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef<HTMLDivElement>(null);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -45,29 +49,44 @@ export function ChatHistory() {
     return scrollTop + clientHeight >= scrollHeight - 40;
   };
 
+  // 是否接近顶部
+  const isNearTop = () => {
+    const scrollTop = messagesRef.current?.scrollTop || 0;
+    return scrollTop < 50;
+  };
+
   // 当消息列表更新时,滚动到最新消息
   useEffect(() => {
+    // 在以下情况滚动到底部：
+    // 1. 正在流式传输且用户接近底部
+    // 2. 不是在加载更多消息时（例如首次加载完成或切换会话）
     if (isStreaming && isNearBottom()) {
       scrollToBottom();
-    } else if (!isStreaming) {
+    } else if (!isStreaming && !isLoadingMore) {
+      // 当不是加载更多消息时，应该滚动到底部
+      // 这包括切换会话和首次加载完成的情况
       scrollToBottom();
     }
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, isLoadingMore]);
 
   // 加载会话消息历史
   useEffect(() => {
     const loadMessages = async () => {
       if (!currentSessionId) {
         setMessageList([]);
+        setCurrentPage(1);
+        setHasMore(true);
         return;
       }
 
       setIsLoading(true);
       try {
-        const data = await chatService.getSessionMessages(currentSessionId);
+        const data = await chatService.getSessionMessages(currentSessionId, 1);
         setMessageList(data.messages);
         setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
+        setCurrentPage(1);
+        setHasMore(data.pagination?.hasMore || false);
       } catch (error) {
         console.error("加载消息历史失败:", error);
       } finally {
@@ -79,6 +98,85 @@ export function ChatHistory() {
 
     loadMessages();
   }, [currentSessionId, setMessageList]);
+
+  // 加载更多消息
+  const loadMoreMessages = useCallback(async () => {
+    if (!currentSessionId || isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const data = await chatService.getSessionMessages(
+        currentSessionId,
+        nextPage
+      );
+
+      // 记录当前滚动位置
+      const scrollContainer = messagesRef.current;
+      const scrollPosition = scrollContainer?.scrollTop || 0;
+      const scrollHeight = scrollContainer?.scrollHeight || 0;
+
+      // 将新加载的消息添加到消息列表的前面，确保没有重复的消息ID
+      setMessageList((prevMessages) => {
+        // 创建一个Set来存储已有的消息ID
+        const existingIds = new Set(prevMessages.map((msg) => msg.id));
+
+        // 过滤掉已经存在的消息，避免重复key错误
+        const newMessages = data.messages.filter(
+          (msg) => !existingIds.has(msg.id)
+        );
+
+        return [...newMessages, ...prevMessages];
+      });
+
+      setCurrentPage(nextPage);
+      setHasMore(data.pagination?.hasMore || false);
+
+      // 在下一个渲染周期后恢复滚动位置
+      // 使用requestAnimationFrame确保DOM已更新
+      requestAnimationFrame(() => {
+        if (scrollContainer) {
+          // 计算新增内容的高度差
+          const newScrollHeight = scrollContainer.scrollHeight;
+          const heightDifference = newScrollHeight - scrollHeight;
+
+          // 调整滚动位置，保持相对位置不变
+          scrollContainer.scrollTop = scrollPosition + heightDifference;
+        }
+      });
+    } catch (error) {
+      console.error("加载更多消息失败:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentSessionId, currentPage, hasMore, isLoadingMore, setMessageList]);
+
+  // 监听滚动事件，检测是否需要加载更多消息
+  useEffect(() => {
+    const handleScroll = () => {
+      // 只有在非流式传输状态下才触发加载更多
+      if (
+        isNearTop() &&
+        hasMore &&
+        !isLoadingMore &&
+        !isLoading &&
+        !isStreaming
+      ) {
+        loadMoreMessages();
+      }
+    };
+
+    const messagesContainer = messagesRef.current;
+    if (messagesContainer) {
+      messagesContainer.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      if (messagesContainer) {
+        messagesContainer.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [hasMore, isLoadingMore, isLoading, isStreaming, loadMoreMessages]);
 
   // 处理文件上传
   const handleFileUpload = async (file: File) => {
@@ -202,13 +300,29 @@ export function ChatHistory() {
               </div>
             ) : (
               <div className="max-w-3xl w-full mx-auto px-4">
+                {isLoadingMore && (
+                  <div
+                    ref={loadingMoreRef}
+                    className="py-4 text-center text-sm text-muted-foreground"
+                  >
+                    加载更多消息...
+                  </div>
+                )}
+                {!isLoadingMore && hasMore && isStreaming && (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    AI 正在回复中，暂停加载历史消息
+                  </div>
+                )}
+                {!isLoadingMore && hasMore && !isStreaming && (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    上滑加载更多消息
+                  </div>
+                )}
                 {messages.map((message, index) => (
                   <ChatMessage
                     key={message.id}
                     message={message}
-                    isStreaming={
-                      isStreaming && index === messages.length - 1
-                    }
+                    isStreaming={isStreaming && index === messages.length - 1}
                     onDelete={() => handleMessageDelete(message.id)}
                   />
                 ))}

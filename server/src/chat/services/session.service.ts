@@ -85,9 +85,16 @@ export class SessionService {
     }
   }
 
-  async getSessionMessages(sessionId: string, clientId: string) {
+  async getSessionMessages(
+    sessionId: string,
+    clientId: string,
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
     try {
-      this.logger.log(`正在获取会话 ${sessionId} 的消息`);
+      this.logger.log(
+        `正在获取会话 ${sessionId} 的消息，页码: ${page}, 每页数量: ${pageSize}`,
+      );
       const session = await this.sessionRepository.findOne({
         where: { sessionId, clientId },
       });
@@ -97,13 +104,31 @@ export class SessionService {
         throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
       }
 
+      // 获取消息总数
+      const totalCount = await this.messageRepository.count({
+        where: { sessionId, clientId },
+      });
+
+      // 计算跳过的消息数量
+      const skip = (page - 1) * pageSize;
+
       const messages = await this.messageRepository.find({
         where: { sessionId, clientId },
-        order: { createdAt: 'ASC' },
+        order: { createdAt: 'DESC' }, // 按时间降序排列，最新的消息在前面
+        skip: skip,
+        take: pageSize,
         select: ['id', 'role', 'content', 'reasoning', 'createdAt'],
       });
 
-      this.logger.log(`为会话 ${sessionId} 找到 ${messages.length} 条消息`);
+      // 将结果按时间升序排列，以便前端显示
+      const sortedMessages = [...messages].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+
+      this.logger.log(
+        `为会话 ${sessionId} 找到 ${messages.length} 条消息，总数: ${totalCount}`,
+      );
       return {
         session: {
           id: session.id,
@@ -113,7 +138,13 @@ export class SessionService {
           roleName: session.roleName,
           systemPrompt: session.systemPrompt,
         },
-        messages: messages,
+        messages: sortedMessages,
+        pagination: {
+          total: totalCount,
+          page,
+          pageSize,
+          hasMore: skip + messages.length < totalCount,
+        },
       };
     } catch (error) {
       this.logger.error('Get session messages error:', error);

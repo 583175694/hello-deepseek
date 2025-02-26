@@ -21,7 +21,23 @@ export interface TempFile {
   createdAt: string;
 }
 
+export interface Pagination {
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
 export interface GetSessionMessagesResponse {
   messages: Message[];
   tempFiles?: TempFile[];
+  pagination?: Pagination;
+  session?: {
+    id: number;
+    sessionId: string;
+    createdAt: string;
+    updatedAt: string;
+    roleName?: string;
+    systemPrompt?: string;
+  };
 }

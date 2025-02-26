@@ -78,9 +78,17 @@ export const chatService = {
 
   // 获取会话消息历史
   async getSessionMessages(
-    sessionId: string
+    sessionId: string,
+    page: number = 1,
+    pageSize: number = 10
   ): Promise<GetSessionMessagesResponse> {
-    const response = await api.get(`/chat/sessions/${sessionId}/messages`);
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("pageSize", pageSize.toString());
+
+    const response = await api.get(`/chat/sessions/${sessionId}/messages`, {
+      params,
+    });
     return response.data;
   },
 
