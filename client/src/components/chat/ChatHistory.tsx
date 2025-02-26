@@ -299,7 +299,7 @@ export function ChatHistory() {
                 <span>开始新的对话</span>
               </div>
             ) : (
-              <div className="max-w-3xl w-full mx-auto px-4">
+              <div className="max-w-3xl w-full mx-auto px-4 py-8">
                 {isLoadingMore && (
                   <div
                     ref={loadingMoreRef}
