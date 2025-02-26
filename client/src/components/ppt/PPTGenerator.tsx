@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -223,6 +223,16 @@ export function PPTGenerator() {
   >([]);
   const [isChatGenerating, setIsChatGenerating] = useState(false);
 
+  // 控制界面显示的状态
+  const [showOutlineSection, setShowOutlineSection] = useState(false);
+  const [showContentSection, setShowContentSection] = useState(false);
+  const [showPPTIframe, setShowPPTIframe] = useState(false);
+
+  // 引用用于滚动的元素
+  const outlineSectionRef = useRef<HTMLDivElement>(null);
+  const contentSectionRef = useRef<HTMLDivElement>(null);
+  const iframeSectionRef = useRef<HTMLDivElement>(null);
+
   // 模拟进度条
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -259,6 +269,13 @@ export function PPTGenerator() {
       const outline = await pptService.generateOutline(title);
       setOutline(outline);
       setProgress(100);
+      // 显示大纲部分
+      setShowOutlineSection(true);
+
+      // 等待DOM更新后滚动到大纲部分
+      setTimeout(() => {
+        outlineSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } catch (error) {
       console.error("生成大纲失败:", error);
     } finally {
@@ -284,8 +301,15 @@ export function PPTGenerator() {
       console.log("解析后的幻灯片:", parsedSlides);
 
       setSlides(parsedSlides);
-
       setProgress(100);
+
+      // 显示内容预览部分
+      setShowContentSection(true);
+
+      // 等待DOM更新后滚动到内容部分
+      setTimeout(() => {
+        contentSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } catch (error) {
       console.error("生成内容失败:", error);
     } finally {
@@ -296,12 +320,20 @@ export function PPTGenerator() {
   };
 
   const handleGeneratePPT = async () => {
-    if (!title || !content || !isSDKReady) {
+    if (!title || !content) {
       return;
     }
 
     setIsGeneratingPPT(true);
     try {
+      // 显示iframe部分
+      setShowPPTIframe(true);
+
+      // 等待DOM更新后滚动到iframe部分
+      setTimeout(() => {
+        iframeSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+
       // 获取AIPPT授权码
       const { code } = await pptService.getAuthCode();
 
@@ -387,14 +419,57 @@ export function PPTGenerator() {
       <div className="w-full mx-auto p-6 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
         <h1 className="text-2xl font-bold mb-6">
           AI PPT 生成器{" "}
-          <span className="text-sm text-muted-foreground font-normal">
-            {isSDKReady ? "已初始化" : "正在初始化"}
+          <span className="text-sm text-muted-foreground font-normal inline-flex items-center ml-2">
+            {isSDKReady ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-green-500"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="animate-spin text-amber-500"
+              >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+              </svg>
+            )}
           </span>
         </h1>
         <div className="space-y-6">
           {/* 标题输入 */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">演示文稿主题/内容描述</label>
+            <div className="flex justify-between items-center sticky top-0 bg-white py-2 z-10">
+              <label className="text-sm font-medium">
+                演示文稿主题/内容描述
+              </label>
+              <div className="flex justify-end mt-2">
+                <Button
+                  onClick={handleGenerateOutline}
+                  disabled={!title || isGeneratingOutline}
+                >
+                  {isGeneratingOutline ? "生成中..." : "生成大纲"}
+                </Button>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Textarea
                 value={title}
@@ -402,14 +477,6 @@ export function PPTGenerator() {
                 placeholder="请输入演示文稿的主题、内容描述或任何相关信息，AI将帮您生成大纲..."
                 className="flex-1 min-h-[100px]"
               />
-            </div>
-            <div className="flex justify-end mt-2">
-              <Button
-                onClick={handleGenerateOutline}
-                disabled={!title || isGeneratingOutline}
-              >
-                {isGeneratingOutline ? "生成中..." : "生成大纲"}
-              </Button>
             </div>
             {isGeneratingOutline && (
               <div className="space-y-2 mt-2">
@@ -421,144 +488,140 @@ export function PPTGenerator() {
             )}
           </div>
 
-          {/* 大纲编辑 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">演示文稿大纲</label>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    AI对话优化大纲
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>与AI对话优化大纲</DialogTitle>
-                  </DialogHeader>
-                  <div className="max-h-[300px] overflow-y-auto p-4 bg-muted rounded-md mb-4">
-                    {chatHistory.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">
-                        告诉AI你想如何改进大纲，例如“增加一个关于市场分析的章节”
-                      </p>
-                    ) : (
-                      chatHistory.map((msg, i) => (
-                        <div
-                          key={i}
-                          className={`mb-4 ${
-                            msg.role === "user" ? "text-right" : ""
-                          }`}
+          {/* 大纲编辑 - 只在生成大纲后显示 */}
+          {showOutlineSection && (
+            <div className="space-y-2" ref={outlineSectionRef}>
+              <div className="flex items-center justify-between sticky top-0 bg-white py-2 z-10">
+                <label className="text-sm font-medium">演示文稿大纲</label>
+                <div className="flex gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="mr-2"
                         >
-                          <div
-                            className={`inline-block p-3 rounded-lg ${
-                              msg.role === "user"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted-foreground/20"
-                            }`}
-                          >
-                            {msg.content}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    {isChatGenerating && (
-                      <div className="mb-4">
-                        <div className="inline-block p-3 rounded-lg bg-muted-foreground/20">
-                          <div className="flex space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        AI对话优化大纲
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>与AI对话优化大纲</DialogTitle>
+                      </DialogHeader>
+                      <div className="max-h-[300px] overflow-y-auto p-4 bg-muted rounded-md mb-4">
+                        {chatHistory.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            告诉AI你想如何改进大纲，例如&quot;增加一个关于市场分析的章节&quot;
+                          </p>
+                        ) : (
+                          chatHistory.map((msg, i) => (
                             <div
-                              className="w-2 h-2 rounded-full bg-current animate-bounce"
-                              style={{ animationDelay: "0.2s" }}
-                            ></div>
-                            <div
-                              className="w-2 h-2 rounded-full bg-current animate-bounce"
-                              style={{ animationDelay: "0.4s" }}
-                            ></div>
+                              key={i}
+                              className={`mb-4 ${
+                                msg.role === "user" ? "text-right" : ""
+                              }`}
+                            >
+                              <div
+                                className={`inline-block p-3 rounded-lg ${
+                                  msg.role === "user"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted-foreground/20"
+                                }`}
+                              >
+                                {msg.content}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        {isChatGenerating && (
+                          <div className="mb-4">
+                            <div className="inline-block p-3 rounded-lg bg-muted-foreground/20">
+                              <div className="flex space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
+                                <div
+                                  className="w-2 h-2 rounded-full bg-current animate-bounce"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 rounded-full bg-current animate-bounce"
+                                  style={{ animationDelay: "0.4s" }}
+                                ></div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      value={chatPrompt}
-                      onChange={(e) => setChatPrompt(e.target.value)}
-                      placeholder="输入你的要求..."
-                      className="flex-1 min-h-[80px]"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.ctrlKey) {
-                          e.preventDefault();
-                          handleChatSubmit();
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={handleChatSubmit}
-                      disabled={isChatGenerating || !chatPrompt.trim()}
-                      className="mb-1"
-                    >
-                      发送
-                    </Button>
-                  </div>
-                  <DialogFooter className="mt-4">
-                    <DialogClose asChild>
-                      <Button variant="outline">关闭</Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <Textarea
-              value={outline}
-              onChange={(e) => setOutline(e.target.value)}
-              placeholder="生成的大纲将显示在这里，你可以进行编辑..."
-              className="min-h-[200px]"
-            />
-          </div>
+                      <div className="flex items-end gap-2">
+                        <Textarea
+                          value={chatPrompt}
+                          onChange={(e) => setChatPrompt(e.target.value)}
+                          placeholder="输入你的要求..."
+                          className="flex-1 min-h-[80px]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && e.ctrlKey) {
+                              e.preventDefault();
+                              handleChatSubmit();
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={handleChatSubmit}
+                          disabled={isChatGenerating || !chatPrompt.trim()}
+                          className="mb-1"
+                        >
+                          发送
+                        </Button>
+                      </div>
+                      <DialogFooter className="mt-4">
+                        <DialogClose asChild>
+                          <Button variant="outline">关闭</Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
-          {/* 生成按钮 */}
-          <div className="space-y-2">
-            <div className="flex justify-end">
-              <Button
-                onClick={handleGenerateContent}
-                disabled={!title || !outline || isGeneratingContent}
-                className="w-full sm:w-auto"
-              >
-                {isGeneratingContent ? "生成中..." : "生成内容"}
-              </Button>
-            </div>
-            {isGeneratingContent && (
-              <div className="space-y-2">
-                <Progress value={progress} className="w-full" />
-                <p className="text-sm text-muted-foreground text-center">
-                  正在生成内容 ({progress}%)
-                </p>
+                  <Button
+                    onClick={handleGenerateContent}
+                    disabled={!title || !outline || isGeneratingContent}
+                  >
+                    {isGeneratingContent ? "生成中..." : "生成内容"}
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
+              <Textarea
+                value={outline}
+                onChange={(e) => setOutline(e.target.value)}
+                placeholder="生成的大纲将显示在这里，你可以进行编辑..."
+                className="min-h-[200px]"
+              />
 
-          {/* 预览内容 */}
-          {slides.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              {isGeneratingContent && (
+                <div className="space-y-2 mt-4">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    正在生成内容 ({progress}%)
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 预览内容 - 只在生成内容后显示 */}
+          {showContentSection && slides.length > 0 && (
+            <div className="space-y-6" ref={contentSectionRef}>
+              <div className="flex items-center justify-between sticky top-0 bg-white py-2 z-10">
                 <h2 className="text-xl font-semibold">预览 PPT 内容</h2>
-                <Button
-                  onClick={handleGeneratePPT}
-                  disabled={isGeneratingPPT || !isSDKReady}
-                >
+                <Button onClick={handleGeneratePPT} disabled={isGeneratingPPT}>
                   {isGeneratingPPT ? "生成中..." : "使用AIPPT生成"}
                 </Button>
               </div>
@@ -587,10 +650,10 @@ export function PPTGenerator() {
             </div>
           )}
 
-          {/* 原始Markdown内容编辑 */}
-          {content && (
+          {/* 原始Markdown内容编辑 - 只在生成内容后显示 */}
+          {showContentSection && content && (
             <div className="space-y-2 mt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between sticky top-0 bg-white py-2 z-10">
                 <h3 className="text-lg font-semibold">编辑 Markdown 内容</h3>
                 <Button
                   variant="outline"
@@ -612,22 +675,68 @@ export function PPTGenerator() {
               />
               <p className="text-xs text-muted-foreground">
                 提示：直接编辑上方的 Markdown
-                内容，点击“更新预览”查看效果，编辑后的内容将直接用于生成PPT。
+                内容，点击&quot;更新预览&quot;查看效果，编辑后的内容将直接用于生成PPT。
               </p>
             </div>
           )}
 
-          {/* AIPPT iframe 容器 */}
+          {/* AIPPT iframe 容器 - 只在点击生成PPT后显示 */}
           <div
-            id="aippt-container"
-            className="w-full h-[600px] relative border rounded-lg mt-6"
+            ref={iframeSectionRef}
+            className={`w-full h-[600px] relative border rounded-lg mt-6 ${
+              showPPTIframe ? "" : "hidden"
+            }`}
             style={{ minHeight: "600px" }}
           >
             {/* 添加一个内部容器来确保 iframe 能正确填充高度 */}
-            <div className="absolute inset-0">
+            <div id="aippt-container" className="absolute inset-0">
               {/* iframe 将被 AIPPT SDK 插入到这里 */}
             </div>
           </div>
+
+          {/* 底部重置按钮 */}
+          {showPPTIframe && (
+            <div className="flex justify-center mt-8 pb-6">
+              <Button
+                variant="outline"
+                className="px-8"
+                onClick={() => {
+                  // 重置所有状态
+                  setTitle("");
+                  setOutline("");
+                  setContent("");
+                  setSlides([]);
+                  setChatPrompt("");
+                  setChatHistory([]);
+                  setShowOutlineSection(false);
+                  setShowContentSection(false);
+                  setShowPPTIframe(false);
+                  setProgress(0);
+                  setIsGeneratingOutline(false);
+                  setIsGeneratingContent(false);
+                  setIsGeneratingPPT(false);
+                  setIsChatGenerating(false);
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-2"
+                >
+                  <path d="M3 2v6h6"></path>
+                  <path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path>
+                </svg>
+                重置所有内容
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

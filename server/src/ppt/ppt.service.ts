@@ -1,46 +1,109 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AIChatService } from '../chat/services/ai-chat.service';
 import { ConfigService } from '@nestjs/config';
 import { PPTOperationService } from './services/ppt-operation.service';
 import { PPTOperationType } from './entities/ppt-operation.entity';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { ChatDeepSeek } from '@langchain/deepseek';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { models } from 'src/configs/models';
 
 @Injectable()
 export class PPTService {
   private readonly logger = new Logger(PPTService.name);
   private readonly baseUrl = 'https://co.aippt.cn';
+  private modelInstance: ChatDeepSeek;
 
   constructor(
-    private readonly chatService: AIChatService,
     private readonly configService: ConfigService,
     private readonly pptOperationService: PPTOperationService,
-  ) {}
-
-  private async getAIResponse(
-    prompt: string,
-    clientId: string,
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      let response = '';
-      this.chatService
-        .streamChat(
-          prompt,
-          clientId,
-          undefined,
-          (chunk) => {
-            if (chunk.type === 'content') {
-              response += chunk.content;
-            }
-          },
-          false,
-          false,
-          false,
-          'bytedance_deepseek_v3',
-        )
-        .then(() => resolve(response))
-        .catch(reject);
+  ) {
+    // 初始化DeepSeek模型实例
+    this.modelInstance = new ChatDeepSeek({
+      modelName: models.bytedance_deepseek_r1.modelName,
+      temperature: 0.7,
+      streaming: true,
+      configuration: {
+        baseURL: models.bytedance_deepseek_r1.baseURL,
+        apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+      },
     });
+    this.logger.log('PPT Service initialized with independent DeepSeek model');
+  }
+
+  // 新的AI内容生成方法，完全独立于聊天模块
+  private async generateAIContent(prompt: string): Promise<string> {
+    this.logger.log('Generating AI content for PPT with independent method');
+
+    try {
+      // 创建简单的提示模板
+      const promptTemplate = ChatPromptTemplate.fromMessages([
+        [
+          'system',
+          '你是一个专业的PPT内容生成专家，请根据用户的要求生成高质量的内容。',
+        ],
+        ['human', '{input}'],
+      ]);
+
+      // 创建聊天链
+      const chain = promptTemplate.pipe(this.modelInstance);
+
+      // 调用模型生成内容
+      let fullResponse = '';
+      const stream = await chain.stream({
+        input: prompt,
+      });
+
+      // 处理流式响应
+      for await (const chunk of stream) {
+        if (chunk.content) {
+          const content = chunk.content.toString();
+          fullResponse += content;
+        }
+      }
+
+      // 清理响应
+      const cleanedResponse = fullResponse.startsWith('\n\n')
+        ? fullResponse.slice(2)
+        : fullResponse;
+
+      this.logger.log('Successfully generated AI content for PPT');
+      return cleanedResponse;
+    } catch (error) {
+      this.logger.error('Error generating AI content for PPT:', error);
+
+      // 重试一次
+      try {
+        this.logger.log('Retrying AI content generation...');
+
+        // 使用更简单的提示模板重试
+        const retryPromptTemplate = ChatPromptTemplate.fromMessages([
+          ['system', '生成PPT内容，简洁明了。'],
+          ['human', '{input}'],
+        ]);
+
+        const retryChain = retryPromptTemplate.pipe(this.modelInstance);
+
+        let retryResponse = '';
+        const retryStream = await retryChain.stream({
+          input: prompt,
+        });
+
+        for await (const chunk of retryStream) {
+          if (chunk.content) {
+            retryResponse += chunk.content.toString();
+          }
+        }
+
+        this.logger.log('Successfully generated AI content on retry');
+        return retryResponse.startsWith('\n\n')
+          ? retryResponse.slice(2)
+          : retryResponse;
+      } catch (retryError) {
+        this.logger.error('Retry also failed:', retryError);
+        throw new Error('Failed to generate AI content for PPT after retry');
+      }
+    }
   }
 
   // AIPPT 相关功能
@@ -142,8 +205,9 @@ export class PPTService {
 请直接输出大纲内容，不要有任何额外的解释或说明。`;
 
     try {
-      // 获取 AI 响应
-      const outline = await this.getAIResponse(prompt, clientId);
+      // 直接使用独立的AI内容生成方法
+      this.logger.log(`Generating outline for PPT with title: ${title}`);
+      const outline = await this.generateAIContent(prompt);
 
       // 更新操作记录
       await this.pptOperationService.updateOperation(operation.id, {
@@ -212,8 +276,9 @@ ${outline}
 6. PPT页数不要超过30页`;
 
     try {
-      // 获取 AI 响应
-      const content = await this.getAIResponse(prompt, clientId);
+      // 直接使用独立的AI内容生成方法
+      this.logger.log(`Generating content for PPT with title: ${title}`);
+      const content = await this.generateAIContent(prompt);
 
       // 更新操作记录
       await this.pptOperationService.updateOperation(operation.id, {
