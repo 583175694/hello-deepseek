@@ -310,7 +310,7 @@ export function ChatMessage({
             </span>
             <div className="h-px flex-grow bg-muted-foreground/20"></div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {uniqueSources.map((source) => {
               if (source.type === "vector" || source.type === "temp") {
                 return source.url ? (
@@ -351,7 +351,7 @@ export function ChatMessage({
   // 渲染整个消息组件
   return (
     <>
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-2 mb-6">
         {/* 消息主体部分 */}
         <div
           className={cn(

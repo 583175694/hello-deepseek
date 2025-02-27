@@ -15,6 +15,7 @@ import { FileService } from './services/file.service';
 import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
+import { FileLoaderService } from './services/file-loader.service';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
     FileService,
     SessionFileService,
     TempDocumentService,
+    FileLoaderService,
     {
       provide: APP_INTERCEPTOR,
       useClass: ClientIdInterceptor,

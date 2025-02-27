@@ -1,11 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { Document } from '@langchain/core/documents';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DocumentService } from './document.service';
+import { FileLoaderService } from './file-loader.service';
 import { Buffer } from 'buffer';
 
 export interface FileInfo {
@@ -22,7 +19,10 @@ export class FileService {
   private readonly uploadBaseDir = path.join(process.cwd(), 'uploads');
   private init = false;
 
-  constructor(private documentService: DocumentService) {
+  constructor(
+    private documentService: DocumentService,
+    private fileLoaderService: FileLoaderService,
+  ) {
     // 确保上传基础目录存在
     if (!fs.existsSync(this.uploadBaseDir)) {
       fs.mkdirSync(this.uploadBaseDir, { recursive: true });
@@ -60,42 +60,24 @@ export class FileService {
               `正在处理客户端 ${clientId} 的现有文件: ${filename}`,
             );
 
-            // 根据文件类型选择合适的加载器
-            let loader;
-            if (filename.toLowerCase().endsWith('.pdf')) {
-              loader = new PDFLoader(filePath);
-            } else {
-              loader = new TextLoader(filePath);
-            }
-
             try {
-              // 加载文档
-              const docs = await loader.load();
+              // 使用 FileLoaderService 处理文件
+              const mimeType = filename.toLowerCase().endsWith('.pdf')
+                ? 'application/pdf'
+                : 'text/plain';
 
-              // 文本分割
-              const splitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 1000,
-                chunkOverlap: 200,
-              });
-
-              const splitDocs = await splitter.splitDocuments(docs);
-
-              // 为每个文档片段添加元数据
-              const processedDocs = splitDocs.map((doc) => {
-                return new Document({
-                  pageContent: doc.pageContent,
-                  metadata: {
-                    ...doc.metadata,
+              const { docs: processedDocs } =
+                await this.fileLoaderService.loadAndProcessFile(
+                  filePath,
+                  mimeType,
+                  {
                     filename: filename,
                     originalFilename: filename,
                     uploadedAt: stats.birthtime.toISOString(),
-                    mimeType: filename.toLowerCase().endsWith('.pdf')
-                      ? 'application/pdf'
-                      : 'text/plain',
+                    mimeType,
                     clientId,
                   },
-                });
-              });
+                );
 
               // 将文档添加到向量存储
               await this.documentService.addDocuments(clientId, processedDocs);
@@ -161,44 +143,20 @@ export class FileService {
       );
       fs.writeFileSync(finalFilePath, file.buffer);
 
-      // 根据文件类型选择合适的加载器
-      let loader;
-      if (file.mimetype === 'application/pdf') {
-        this.logger.log(`正在为文件 ${finalFileName} 使用PDF加载器`);
-        loader = new PDFLoader(finalFilePath);
-      } else {
-        this.logger.log(`正在为文件 ${finalFileName} 使用文本加载器`);
-        loader = new TextLoader(finalFilePath);
-      }
-
-      // 加载文档
-      this.logger.log(`正在从 ${finalFileName} 加载文档内容`);
-      const docs = await loader.load();
-
-      // 文本分割
-      this.logger.log(`正在将文档 ${finalFileName} 分割成块`);
-      const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize,
-        chunkOverlap: 200,
-      });
-
-      const splitDocs = await splitter.splitDocuments(docs);
-
-      // 为每个文档片段添加元数据
-      this.logger.log(`正在处理 ${finalFileName} 的 ${splitDocs.length} 个块`);
-      const processedDocs = splitDocs.map((doc) => {
-        return new Document({
-          pageContent: doc.pageContent,
-          metadata: {
-            ...doc.metadata,
+      // 使用 FileLoaderService 处理文件
+      const { docs: processedDocs } =
+        await this.fileLoaderService.loadAndProcessFile(
+          finalFilePath,
+          file.mimetype,
+          {
             filename: finalFileName,
             originalFilename: originalName,
             uploadedAt: new Date().toISOString(),
             mimeType: file.mimetype,
             clientId,
           },
-        });
-      });
+          chunkSize,
+        );
 
       // 将文档添加到向量存储
       this.logger.log(

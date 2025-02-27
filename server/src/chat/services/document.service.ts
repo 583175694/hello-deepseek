@@ -4,6 +4,7 @@ import { FaissStore } from '@langchain/community/vectorstores/faiss';
 import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/bytedance_doubao';
 import * as fs from 'fs';
 import * as path from 'path';
+import { embeddingModels } from 'src/configs/models';
 
 /**
  * 文档服务类
@@ -29,7 +30,7 @@ export class DocumentService {
   constructor() {
     this.embeddings = new ByteDanceDoubaoEmbeddings({
       apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
-      model: 'ep-20250215013011-6nd8j',
+      model: embeddingModels.doubao_embedding.modelName,
       verbose: true,
     });
   }

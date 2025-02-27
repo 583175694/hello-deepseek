@@ -2,7 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Send, Database, Globe, Paperclip, X, FileIcon } from "lucide-react";
+import {
+  Send,
+  Database,
+  Globe,
+  Paperclip,
+  X,
+  FileIcon,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 
@@ -54,6 +62,7 @@ export function ChatInput({
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
+  const [isUploading, setIsUploading] = useState(false); // 添加上传状态
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -102,10 +111,24 @@ export function ChatInput({
       }
 
       try {
+        setIsUploading(true);
+        // 先添加一个临时的文件对象来显示上传状态
+        setTempFiles([
+          {
+            filename: file.name,
+            type: file.type,
+            size: file.size,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+
         const uploadedFile = await onFileUpload(file);
-        setTempFiles([uploadedFile]); // 直接设置为新文件，而不是添加到数组
+        setTempFiles([uploadedFile]); // 更新为服务器返回的文件信息
       } catch (error) {
         console.error("文件上传失败:", error);
+        setTempFiles([]); // 如果上传失败，清空临时文件
+      } finally {
+        setIsUploading(false);
       }
     }
     // 重置文件输入框的值
@@ -142,17 +165,35 @@ export function ChatInput({
   return (
     <div className="flex flex-col gap-3">
       {/* 显示临时文件 */}
-      {tempFiles.length > 0 && (
-        <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
+      {(tempFiles.length > 0 || isUploading) && (
+        <div
+          className={cn(
+            "w-[320px] flex items-center gap-3 px-4 py-3 rounded-lg",
+            isUploading ? "bg-blue-500/10" : "bg-muted/50"
+          )}
+        >
           <div className="flex-shrink-0 w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-            <FileIcon className="w-5 h-5 text-blue-500" />
+            {isUploading ? (
+              <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            ) : (
+              <FileIcon className="w-5 h-5 text-blue-500" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">
-              {tempFiles[0].filename}
+              {tempFiles[0]?.filename || "正在上传..."}
             </div>
             <div className="text-xs text-muted-foreground">
-              {(tempFiles[0].size / 1024).toFixed(2)} KB
+              {isUploading ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-500">正在上传...</span>
+                  <div className="h-1 flex-1 bg-blue-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 w-1/2 animate-[progress_1s_ease-in-out_infinite]" />
+                  </div>
+                </div>
+              ) : (
+                `${((tempFiles[0]?.size || 0) / 1024).toFixed(2)} KB`
+              )}
             </div>
           </div>
           <Button
@@ -161,6 +202,7 @@ export function ChatInput({
             variant="ghost"
             className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
             onClick={handleFileRemove}
+            disabled={isUploading}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -194,7 +236,7 @@ export function ChatInput({
           id="file-upload"
           className="hidden"
           onChange={handleFileUpload}
-          accept=".pdf,.doc,.docx,.txt,.md"
+          accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,.ppt,.pptx"
           disabled={disabled || isLoading || tempFiles.length > 0}
           capture="environment"
         />

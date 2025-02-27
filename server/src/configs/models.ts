@@ -15,3 +15,10 @@ export const models = {
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
   },
 };
+
+export const embeddingModels = {
+  doubao_embedding: {
+    title: 'Bytedance Doubao Embedding',
+    modelName: 'ep-20250215013011-6nd8j',
+  },
+};

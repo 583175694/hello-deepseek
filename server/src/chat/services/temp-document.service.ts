@@ -8,9 +8,7 @@ import { Document } from '@langchain/core/documents';
 import { FaissStore } from '@langchain/community/vectorstores/faiss';
 import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/bytedance_doubao';
 import { SessionTempFile } from '../entities/session-temp-file.entity';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { FileLoaderService } from './file-loader.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -37,10 +35,12 @@ export class TempDocumentService {
   /**
    * 构造函数
    * @param sessionTempFileRepository 临时文件仓库
+   * @param fileLoaderService 文件加载服务
    */
   constructor(
     @InjectRepository(SessionTempFile)
     private sessionTempFileRepository: Repository<SessionTempFile>,
+    private fileLoaderService: FileLoaderService,
   ) {
     // 初始化字节跳动的嵌入模型
     this.embeddings = new ByteDanceDoubaoEmbeddings({
@@ -151,6 +151,7 @@ export class TempDocumentService {
     }[];
   }> {
     let finalFilePath: string;
+    let finalFileName: string;
 
     try {
       const sessionPath = this.getSessionPath(sessionId, clientId);
@@ -181,18 +182,26 @@ export class TempDocumentService {
         await this.sessionTempFileRepository.delete({ sessionId, clientId });
       }
 
-      // 处理文件名，确保正确的编码
-      const originalFilename = decodeURIComponent(file.originalname);
-      const safeFileName = this.handleFileName(originalFilename);
+      // 确保文件名是 UTF-8 编码
+      const originalName = Buffer.from(file.originalname, 'binary').toString(
+        'utf8',
+      );
+
+      // 处理文件名
+      const sanitizedFileName = this.handleFileName(originalName);
+      finalFileName = sanitizedFileName;
+      finalFilePath = path.join(sessionPath, sanitizedFileName);
 
       // 保存文件
-      finalFilePath = path.join(sessionPath, safeFileName);
+      this.logger.log(
+        `正在为会话 ${sessionId} 保存文件 ${finalFileName} 到 ${finalFilePath}`,
+      );
       fs.writeFileSync(finalFilePath, file.buffer);
 
       // 创建新的临时文件记录
       const tempFile = this.sessionTempFileRepository.create({
-        filename: safeFileName,
-        originalFilename: originalFilename, // 使用解码后的原始文件名
+        filename: finalFileName,
+        originalFilename: originalName,
         mimeType: file.mimetype,
         size: file.size,
         path: finalFilePath,
@@ -203,45 +212,21 @@ export class TempDocumentService {
       // 保存到数据库
       await this.sessionTempFileRepository.save(tempFile);
 
-      // 根据文件类型选择合适的加载器
-      let loader;
-      if (file.mimetype === 'application/pdf') {
-        this.logger.log(`正在为文件 ${safeFileName} 使用PDF加载器`);
-        loader = new PDFLoader(finalFilePath);
-      } else {
-        this.logger.log(`正在为文件 ${safeFileName} 使用文本加载器`);
-        loader = new TextLoader(finalFilePath);
-      }
-
-      // 加载文档
-      this.logger.log(`正在从 ${safeFileName} 加载文档内容`);
-      const docs = await loader.load();
-
-      // 文本分割
-      this.logger.log(`正在将文档 ${safeFileName} 分割成块`);
-      const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize,
-        chunkOverlap: 200,
-      });
-
-      const splitDocs = await splitter.splitDocuments(docs);
-
-      // 为每个文档片段添加元数据
-      this.logger.log(`正在处理 ${safeFileName} 的 ${splitDocs.length} 个块`);
-      const processedDocs = splitDocs.map((doc) => {
-        return new Document({
-          pageContent: doc.pageContent,
-          metadata: {
-            ...doc.metadata,
-            filename: originalFilename,
-            safeFilename: safeFileName,
+      // 使用 FileLoaderService 处理文件
+      const { docs: processedDocs } =
+        await this.fileLoaderService.loadAndProcessFile(
+          finalFilePath,
+          file.mimetype,
+          {
+            filename: finalFileName,
+            originalFilename: originalName,
             uploadedAt: new Date().toISOString(),
             mimeType: file.mimetype,
             sessionId,
             clientId,
           },
-        });
-      });
+          chunkSize,
+        );
 
       // 将文档添加到向量存储
       this.logger.log(`正在添加 ${processedDocs.length} 个块到向量存储`);
