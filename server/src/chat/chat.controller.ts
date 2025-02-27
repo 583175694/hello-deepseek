@@ -16,12 +16,10 @@ import {
   Headers,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { Document } from '@langchain/core/documents';
 import { SessionService } from './services/session.service';
 import { DocumentService } from './services/document.service';
 import { AIChatService } from './services/ai-chat.service';
 import { FileService, FileInfo } from './services/file.service';
-import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -36,7 +34,6 @@ export class ChatController {
     private readonly documentService: DocumentService,
     private readonly aiChatService: AIChatService,
     private readonly fileService: FileService,
-    private readonly sessionFileService: SessionFileService,
     private readonly tempDocumentService: TempDocumentService,
     private readonly messageService: MessageService,
   ) {}
@@ -144,34 +141,6 @@ export class ChatController {
     return await this.sessionService.deleteSession(sessionId, clientId);
   }
 
-  // 上传文档的接口
-  @Post('documents')
-  async uploadDocument(
-    @Headers('x-client-id') clientId: string,
-    @Body() data: { content: string; metadata?: any },
-  ) {
-    const document = new Document({
-      pageContent: data.content,
-      metadata: { ...data.metadata, clientId },
-    });
-    await this.documentService.addDocuments(clientId, [document]);
-    return { message: 'Document added successfully' };
-  }
-
-  // 搜索文档的接口
-  @Get('documents/search')
-  async searchDocuments(
-    @Headers('x-client-id') clientId: string,
-    @Query('query') query: string,
-    @Query('limit') limit?: number,
-  ) {
-    return await this.documentService.searchSimilarDocuments(
-      clientId,
-      query,
-      limit,
-    );
-  }
-
   // 上传文件端点
   @Post('files/upload')
   @UseInterceptors(
@@ -204,50 +173,6 @@ export class ChatController {
     @Param('filename') filename: string,
   ) {
     await this.fileService.deleteFile(filename, clientId);
-    return { message: 'File deleted successfully' };
-  }
-
-  // 上传会话文件端点
-  @Post('sessions/:sessionId/files')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadSessionFile(
-    @Headers('x-client-id') clientId: string,
-    @Param('sessionId') sessionId: string,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    const sessionFile = await this.sessionFileService.uploadFile(
-      file,
-      sessionId,
-      clientId,
-    );
-    return { message: 'File uploaded successfully', file: sessionFile };
-  }
-
-  // 获取会话文件列表端点
-  @Get('sessions/:sessionId/files')
-  async getSessionFiles(
-    @Headers('x-client-id') clientId: string,
-    @Param('sessionId') sessionId: string,
-  ) {
-    const files = await this.sessionFileService.getSessionFiles(
-      sessionId,
-      clientId,
-    );
-    return { files };
-  }
-
-  // 删除会话文件端点
-  @Delete('sessions/:sessionId/files/:fileId')
-  async deleteSessionFile(
-    @Headers('x-client-id') clientId: string,
-    @Param('sessionId') sessionId: string,
-    @Param('fileId') fileId: string,
-  ) {
-    await this.sessionFileService.deleteFile(
-      parseInt(fileId),
-      sessionId,
-      clientId,
-    );
     return { message: 'File deleted successfully' };
   }
 

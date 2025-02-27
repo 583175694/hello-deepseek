@@ -5,8 +5,7 @@ import { Session } from '../entities/session.entity';
 import { Message } from '../entities/message.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { SessionFile } from '../entities/session-file.entity';
-import { SessionDocument } from '../entities/session-document.entity';
+import { SessionTempFile } from '../entities/session-temp-file.entity';
 import { TempDocumentService } from '../services/temp-document.service';
 import * as fs from 'fs';
 
@@ -19,10 +18,8 @@ export class SessionService {
     private sessionRepository: Repository<Session>,
     @InjectRepository(Message)
     private messageRepository: Repository<Message>,
-    @InjectRepository(SessionFile)
-    private sessionFileRepository: Repository<SessionFile>,
-    @InjectRepository(SessionDocument)
-    private sessionDocumentRepository: Repository<SessionDocument>,
+    @InjectRepository(SessionTempFile)
+    private sessionTempFileRepository: Repository<SessionTempFile>,
     private tempDocumentService: TempDocumentService,
   ) {}
 
@@ -152,46 +149,9 @@ export class SessionService {
     }
   }
 
-  async deleteSession(sessionId: string, clientId: string) {
-    try {
-      this.logger.log(`正在尝试删除会话: ${sessionId}`);
-      const session = await this.sessionRepository.findOne({
-        where: { sessionId, clientId },
-      });
-
-      if (!session) {
-        this.logger.warn(`Session not found for deletion: ${sessionId}`);
-        throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
-      }
-
-      // 1. 删除临时文件
-      await this.tempDocumentService.cleanupSession(sessionId, clientId);
-
-      // 2. 删除会话文件
-      const sessionFiles = await this.sessionFileRepository.find({
-        where: { sessionId, clientId },
-      });
-      for (const file of sessionFiles) {
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-      }
-      await this.sessionFileRepository.delete({ sessionId, clientId });
-
-      // 3. 删除会话文档
-      await this.sessionDocumentRepository.delete({ sessionId, clientId });
-
-      // 4. 删除消息记录
-      await this.messageRepository.delete({ sessionId, clientId });
-
-      // 5. 删除会话
-      await this.sessionRepository.delete({ sessionId, clientId });
-
-      this.logger.log(`成功删除会话: ${sessionId}`);
-      return { message: 'Session deleted successfully' };
-    } catch (error) {
-      this.logger.error('Delete session error:', error);
-      throw error;
-    }
+  async deleteSession(sessionId: string, clientId: string): Promise<void> {
+    await this.messageRepository.delete({ sessionId, clientId });
+    await this.sessionTempFileRepository.delete({ sessionId, clientId });
+    await this.sessionRepository.delete({ sessionId, clientId });
   }
 }
