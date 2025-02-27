@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { pptService } from "@/lib/api";
-import Script from "next/script";
 import {
   Dialog,
   DialogContent,
@@ -410,8 +409,6 @@ export function PPTGenerator() {
 
   return (
     <div className="h-screen w-full overflow-y-auto">
-      <Script src="/js/aippt-iframe-sdk.js" />
-
       <div className="w-full mx-auto p-6 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
         <h1 className="text-2xl font-bold mb-6">AI PPT 生成器</h1>
         <div className="space-y-6">

@@ -16,11 +16,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="antialiased">
+        <SessionProvider>{children}</SessionProvider>
         <Script
           strategy="afterInteractive" // 推荐策略：页面加载完成后执行
           src="https://api-static.aippt.cn/aippt-iframe-sdk.js"
         />
-        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
