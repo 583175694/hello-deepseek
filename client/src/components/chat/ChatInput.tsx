@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Send, Database, Globe, Paperclip, X, FileIcon } from "lucide-react";
+import { Send, Database, Globe, Paperclip, X, FileIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 
@@ -54,6 +54,7 @@ export function ChatInput({
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
+  const [isUploading, setIsUploading] = useState(false); // 添加上传状态
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -95,20 +96,21 @@ export function ChatInput({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onFileUpload) {
-      // 如果已经有文件，先不允许上传
       if (tempFiles.length > 0) {
         e.target.value = "";
         return;
       }
 
+      setIsUploading(true); // 开始上传时设置状态
       try {
         const uploadedFile = await onFileUpload(file);
-        setTempFiles([uploadedFile]); // 直接设置为新文件，而不是添加到数组
+        setTempFiles([uploadedFile]);
       } catch (error) {
         console.error("文件上传失败:", error);
+      } finally {
+        setIsUploading(false); // 上传完成后重置状态
       }
     }
-    // 重置文件输入框的值
     e.target.value = "";
   };
 
@@ -164,6 +166,19 @@ export function ChatInput({
           >
             <X className="w-4 h-4" />
           </Button>
+        </div>
+      )}
+
+      {/* 显示上传状态 */}
+      {isUploading && (
+        <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg animate-pulse">
+          <div className="flex-shrink-0 w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="h-5 bg-muted-foreground/20 rounded w-3/4 mb-1"></div>
+            <div className="h-4 bg-muted-foreground/20 rounded w-1/4"></div>
+          </div>
         </div>
       )}
 
