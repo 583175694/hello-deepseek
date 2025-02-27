@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  FileIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -302,7 +303,7 @@ export function ChatMessage({
       ).map((url) => sources.find((source) => source.url === url)!);
 
       return (
-        <div className="flex flex-col gap-2 ml-11 mt-2">
+        <div className="flex flex-col gap-2 ml-11 mt-2 w-full">
           <div className="flex items-center gap-2">
             <div className="h-px flex-grow bg-muted-foreground/20"></div>
             <span className="text-xs font-medium text-muted-foreground/60">
@@ -348,132 +349,167 @@ export function ChatMessage({
     }
   };
 
+  // 渲染临时文件
+  const renderTempFiles = () => {
+    if (!message.tempFiles || message.tempFiles.length === 0) return null;
+
+    return (
+      <div className="flex flex-col gap-2 mb-2">
+        {message.tempFiles.map((file) => (
+          <div
+            key={file.filename}
+            className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg w-[320px] ml-auto"
+          >
+            <div className="flex-shrink-0 w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+              <FileIcon className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">
+                {file.filename}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {(file.size / 1024).toFixed(2)} KB
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // 渲染整个消息组件
   return (
     <>
       <div className="flex flex-col space-y-2">
         {/* 消息主体部分 */}
-        <div
-          className={cn(
-            "flex gap-3 group",
-            isAI ? "justify-start" : "justify-end"
-          )}
-        >
-          {/* AI 头像 */}
-          {isAI && (
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-5 h-5" />
-            </div>
-          )}
+        <div className="flex flex-col items-end gap-2">
+          {/* 如果是用户消息，显示临时文件 */}
+          {!isAI &&
+            message.tempFiles &&
+            message.tempFiles.length > 0 &&
+            renderTempFiles()}
+          <div
+            className={cn(
+              "flex gap-3 group w-full",
+              isAI ? "justify-start" : "justify-end"
+            )}
+          >
+            {/* AI 头像 */}
+            {isAI && (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5" />
+              </div>
+            )}
 
-          <div className="flex flex-col">
-            {/* 消息内容 */}
-            <div
-              className={cn(
-                "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
-                isAI
-                  ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
-                  : "bg-primary text-primary-foreground"
-              )}
-            >
-              {renderMessageContent()}
-            </div>
-
-            {/* 交互按钮组 */}
-            <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {/* 所有消息都显示的按钮 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleCopy}
-                disabled={isStreaming}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
+            <div className="flex flex-col">
+              {/* 消息内容 */}
+              <div
+                className={cn(
+                  "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
+                  isAI
+                    ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
+                    : "bg-primary text-primary-foreground"
                 )}
-              </Button>
-
-              {/* AI 消息特有的按钮 */}
-              {isAI && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleShare}
-                    disabled={isStreaming}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleDownload}
-                    disabled={isStreaming}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleLike}
-                    disabled={isStreaming}
-                  >
-                    <ThumbsUp
-                      className={cn(
-                        "h-4 w-4",
-                        liked && "stroke-[2.5] text-primary"
-                      )}
-                    />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleDislike}
-                    disabled={isStreaming}
-                  >
-                    <ThumbsDown
-                      className={cn(
-                        "h-4 w-4",
-                        disliked && "stroke-[2.5] text-primary"
-                      )}
-                    />
-                  </Button>
-                </>
-              )}
-
-              {/* 删除按钮 - 对所有消息都显示 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-foreground hover:text-foreground"
-                onClick={() => setDeleteDialogOpen(true)}
-                disabled={isStreaming}
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+                {renderMessageContent()}
+              </div>
+
+              {/* 交互按钮组 */}
+              <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {/* 所有消息都显示的按钮 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleCopy}
+                  disabled={isStreaming}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+
+                {/* AI 消息特有的按钮 */}
+                {isAI && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleShare}
+                      disabled={isStreaming}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleDownload}
+                      disabled={isStreaming}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleLike}
+                      disabled={isStreaming}
+                    >
+                      <ThumbsUp
+                        className={cn(
+                          "h-4 w-4",
+                          liked && "stroke-[2.5] text-primary"
+                        )}
+                      />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleDislike}
+                      disabled={isStreaming}
+                    >
+                      <ThumbsDown
+                        className={cn(
+                          "h-4 w-4",
+                          disliked && "stroke-[2.5] text-primary"
+                        )}
+                      />
+                    </Button>
+                  </>
+                )}
+
+                {/* 删除按钮 - 对所有消息都显示 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-foreground hover:text-foreground"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={isStreaming}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+
+            {/* 用户头像 */}
+            {!isAI && (
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+            )}
           </div>
 
-          {/* 用户头像 */}
-          {!isAI && (
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
-              <User className="w-5 h-5" />
-            </div>
-          )}
+          {/* 渲染消息来源 */}
+          {renderSources()}
         </div>
-
-        {/* 渲染消息来源 */}
-        {renderSources()}
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

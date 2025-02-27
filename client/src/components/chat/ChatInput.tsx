@@ -23,6 +23,7 @@ interface ChatInputProps {
       useVectorSearch?: boolean;
       useTempDocSearch?: boolean;
       modelId?: string;
+      tempFiles?: TempFile[];
     }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
@@ -31,7 +32,6 @@ interface ChatInputProps {
   onFileUpload?: (file: File) => Promise<TempFile>; // 修改为返回 Promise<TempFile>
   onFileRemove?: () => Promise<void>; // 添加文件删除回调
   sessionId?: string; // 添加会话ID
-  hasTempDocs?: boolean;
   tempDocs?: TempFile[];
 }
 
@@ -42,8 +42,6 @@ export function ChatInput({
   onAbort,
   onFileUpload,
   onFileRemove,
-  hasTempDocs = false,
-  tempDocs = [],
 }: ChatInputProps) {
   // 状态管理
   const [input, setInput] = useState(""); // 输入框内容
@@ -69,14 +67,16 @@ export function ChatInput({
     e.preventDefault();
     if (!input.trim() || disabled || isLoading) return;
 
-    // 发送消息，包含搜索选项
+    // 发送消息，包含搜索选项和临时文件
     onSend(input, {
       useWebSearch,
       useVectorSearch,
-      useTempDocSearch: hasTempDocs,
+      useTempDocSearch: tempFiles.length > 0,
       modelId: selectedModelId,
+      tempFiles: tempFiles, // 将当前的临时文件随消息一起发送
     });
     setInput(""); // 清空输入框
+    setTempFiles([]); // 清空临时文件状态
   };
 
   // 处理快捷键：Enter 发送，Shift + Enter 换行
@@ -103,7 +103,7 @@ export function ChatInput({
 
       try {
         const uploadedFile = await onFileUpload(file);
-        setTempFiles([uploadedFile]); // 直接设置为新文件，而不是添加到数组
+        setTempFiles([uploadedFile]); // 直接设置为新文件
       } catch (error) {
         console.error("文件上传失败:", error);
       }
@@ -117,7 +117,7 @@ export function ChatInput({
     if (onFileRemove) {
       try {
         await onFileRemove();
-        setTempFiles([]); // 直接清空文件列表
+        setTempFiles([]); // 清空文件列表
         // 重置文件输入框的值
         const fileInput = document.getElementById(
           "file-upload"
@@ -132,8 +132,9 @@ export function ChatInput({
   };
 
   useEffect(() => {
-    setTempFiles(tempDocs);
-  }, [tempDocs]);
+    // 不再从 tempDocs 更新 tempFiles
+    // 因为现在临时文件是跟随消息的，不是跟随会话的
+  }, []);
 
   const handleModelChange = (modelId: string) => {
     setSelectedModelId(modelId);

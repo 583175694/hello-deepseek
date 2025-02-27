@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useStreamChat } from "./useStreamChat";
-import type { Message } from "@/types/chat";
+import type { Message, TempFile } from "@/types/chat";
 import { nanoid } from "nanoid";
 
 interface StreamContent {
@@ -19,6 +19,8 @@ interface ChatOptions {
   useWebSearch?: boolean;
   useVectorSearch?: boolean;
   useTempDocSearch?: boolean;
+  modelId?: string;
+  tempFiles?: TempFile[];
 }
 
 export function useAIChat() {
@@ -92,11 +94,12 @@ export function useAIChat() {
       try {
         setError(null);
 
-        // 添加用户消息
+        // 添加用户消息，包含临时文件
         addMessage({
           role: "user",
           content,
           type: "content",
+          tempFiles: options.tempFiles,
         });
 
         // 添加 AI 消息占位

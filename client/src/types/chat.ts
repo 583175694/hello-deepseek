@@ -7,6 +7,14 @@ export interface Message {
   status?: string;
   createdAt: string;
   type: "content" | "reasoning" | "sources" | "temp" | "status";
+  tempFiles?: TempFile[];
+}
+
+export interface TempFile {
+  filename: string;
+  type: string;
+  size: number;
+  createdAt: string;
 }
 
 export interface Chat {

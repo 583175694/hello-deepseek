@@ -44,38 +44,6 @@ export const chatService = {
     return response.data;
   },
 
-  // 流式聊天
-  async streamChat(
-    message: string,
-    sessionId?: string,
-    useWebSearch?: boolean,
-    useVectorSearch?: boolean,
-    useTempDocSearch?: boolean,
-    modelId: string = "bytedance_deepseek_r1"
-  ) {
-    const params = new URLSearchParams();
-    params.append("message", message);
-    if (sessionId) {
-      params.append("sessionId", sessionId);
-    }
-    if (useWebSearch) {
-      params.append("useWebSearch", "true");
-    }
-    if (useVectorSearch) {
-      params.append("useVectorSearch", "true");
-    }
-    if (useTempDocSearch) {
-      params.append("useTempDocSearch", "true");
-    }
-    params.append("modelId", modelId);
-
-    const response = await api.get("/chat/stream", {
-      params,
-      responseType: "stream",
-    });
-    return response.data;
-  },
-
   // 获取会话消息历史
   async getSessionMessages(
     sessionId: string,
