@@ -10,6 +10,7 @@ export function KnowledgeBase() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
 
   // 加载文件列表
   const loadFiles = async () => {
@@ -45,11 +46,18 @@ export function KnowledgeBase() {
   // 删除文件
   const handleDeleteFile = async (filename: string) => {
     try {
+      setDeletingFiles((prev) => new Set(prev).add(filename));
       await fileService.deleteFile(filename);
       await loadFiles();
     } catch (err) {
       setError("删除文件失败");
       console.error(err);
+    } finally {
+      setDeletingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(filename);
+        return newSet;
+      });
     }
   };
 
@@ -114,8 +122,13 @@ export function KnowledgeBase() {
                         e.stopPropagation();
                         handleDeleteFile(file.filename);
                       }}
+                      disabled={deletingFiles.has(file.filename)}
                     >
-                      <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
+                      {deletingFiles.has(file.filename) ? (
+                        <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
+                      )}
                     </Button>
                   </div>
 

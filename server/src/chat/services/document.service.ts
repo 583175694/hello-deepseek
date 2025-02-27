@@ -145,4 +145,34 @@ export class DocumentService {
       );
     }
   }
+
+  /**
+   * 清理客户端的向量存储
+   * @param clientId 客户端ID
+   */
+  async clearVectorStore(clientId: string): Promise<void> {
+    try {
+      // 删除内存中的向量存储实例
+      this.vectorStores.delete(clientId);
+
+      // 删除文件系统中的向量存储
+      const vectorStorePath = this.getClientVectorStorePath(clientId);
+      if (fs.existsSync(vectorStorePath)) {
+        fs.rmSync(vectorStorePath, { recursive: true, force: true });
+      }
+
+      this.logger.log(
+        `Successfully cleared vector store for client ${clientId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to clear vector store for client ${clientId}:`,
+        error,
+      );
+      throw new HttpException(
+        'Failed to clear vector store',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

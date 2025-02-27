@@ -43,12 +43,21 @@ export class FileService {
   }
 
   // 处理已有文件的方法
-  private async processExistingFiles() {
+  private async processExistingFiles(targetClientId?: string) {
     try {
-      const clientDirs = fs.readdirSync(this.uploadBaseDir);
+      // 如果指定了clientId，只处理该客户端的文件
+      const clientDirs = targetClientId
+        ? [targetClientId]
+        : fs.readdirSync(this.uploadBaseDir);
+
       for (const clientId of clientDirs) {
         const clientDir = path.join(this.uploadBaseDir, clientId);
         if (!fs.statSync(clientDir).isDirectory()) continue;
+
+        // 如果是重新处理特定客户端的文件，先清理其向量存储
+        if (targetClientId) {
+          await this.documentService.clearVectorStore(clientId);
+        }
 
         const files = fs.readdirSync(clientDir);
         for (const filename of files) {
@@ -113,6 +122,9 @@ export class FileService {
       }
     } catch (error) {
       this.logger.error('Error processing existing files:', error);
+      if (targetClientId) {
+        throw error; // 如果是处理特定客户端的文件，需要抛出错误
+      }
     }
   }
 
@@ -266,6 +278,9 @@ export class FileService {
         fs.unlinkSync(filePath);
         this.logger.log(`成功删除客户端 ${clientId} 的文件 ${filename}`);
       }
+
+      // 重新处理该客户端的所有文件以更新向量库
+      await this.processExistingFiles(clientId);
     } catch (error) {
       this.logger.error(`Error deleting file ${filename}:`, error);
       throw error;

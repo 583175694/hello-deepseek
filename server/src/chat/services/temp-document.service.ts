@@ -96,37 +96,13 @@ export class TempDocumentService {
 
   /**
    * 处理文件名编码
-   * @param filename 原始文件名
+   * @param fileName 原始文件名
    * @returns 处理后的文件名
    */
-  private handleFileName(filename: string): string {
-    try {
-      // 如果文件名是 Buffer，转换为 UTF-8 字符串
-      if (Buffer.isBuffer(filename)) {
-        return Buffer.from(filename).toString('utf8');
-      }
-
-      // 确保文件名是正确的 UTF-8 编码
-      const decodedFilename = decodeURIComponent(filename);
-
-      // 移除不安全的文件名字符
-      const sanitizedFilename = decodedFilename.replace(
-        /[<>:"/\\|?*\x00-\x1F]/g,
-        '_',
-      );
-
-      // 生成带时间戳的唯一文件名
-      const ext = path.extname(sanitizedFilename);
-      const nameWithoutExt = path.basename(sanitizedFilename, ext);
-      const timestamp = Date.now();
-
-      return `${nameWithoutExt}_${timestamp}${ext}`;
-    } catch (error) {
-      this.logger.error(`Error handling filename: ${filename}`, error);
-      // 如果处理失败，生成一个基于时间戳的默认文件名
-      const ext = path.extname(filename) || '';
-      return `file_${Date.now()}${ext}`;
-    }
+  private sanitizeFileName(fileName: string): string {
+    const ext = path.extname(fileName);
+    const nameWithoutExt = path.basename(fileName, ext);
+    return `${nameWithoutExt}${ext}`;
   }
 
   /**
@@ -151,6 +127,7 @@ export class TempDocumentService {
     }[];
   }> {
     let finalFilePath: string;
+    let finalFileName: string;
 
     try {
       const sessionPath = this.getSessionPath(sessionId, clientId);
@@ -181,18 +158,37 @@ export class TempDocumentService {
         await this.sessionTempFileRepository.delete({ sessionId, clientId });
       }
 
-      // 处理文件名，确保正确的编码
-      const originalFilename = decodeURIComponent(file.originalname);
-      const safeFileName = this.handleFileName(originalFilename);
+      // 确保文件名是 UTF-8 编码
+      const originalName = Buffer.from(file.originalname, 'binary').toString(
+        'utf8',
+      );
+
+      // 处理文件名
+      const sanitizedFileName = this.sanitizeFileName(originalName);
+      finalFileName = sanitizedFileName;
+      finalFilePath = path.join(sessionPath, finalFileName);
+
+      // 检查文件是否已存在，如果存在则添加时间戳
+      if (fs.existsSync(finalFilePath)) {
+        const baseName = path.basename(
+          sanitizedFileName,
+          path.extname(sanitizedFileName),
+        );
+        const ext = path.extname(sanitizedFileName);
+        finalFileName = `${baseName}_${Date.now()}${ext}`;
+        finalFilePath = path.join(sessionPath, finalFileName);
+      }
 
       // 保存文件
-      finalFilePath = path.join(sessionPath, safeFileName);
+      this.logger.log(
+        `正在为会话 ${sessionId} 客户端 ${clientId} 保存文件 ${finalFileName} 到 ${finalFilePath}`,
+      );
       fs.writeFileSync(finalFilePath, file.buffer);
 
       // 创建新的临时文件记录
       const tempFile = this.sessionTempFileRepository.create({
-        filename: safeFileName,
-        originalFilename: originalFilename, // 使用解码后的原始文件名
+        filename: finalFileName,
+        originalFilename: originalName,
         mimeType: file.mimetype,
         size: file.size,
         path: finalFilePath,
@@ -206,19 +202,19 @@ export class TempDocumentService {
       // 根据文件类型选择合适的加载器
       let loader;
       if (file.mimetype === 'application/pdf') {
-        this.logger.log(`正在为文件 ${safeFileName} 使用PDF加载器`);
+        this.logger.log(`正在为文件 ${finalFileName} 使用PDF加载器`);
         loader = new PDFLoader(finalFilePath);
       } else {
-        this.logger.log(`正在为文件 ${safeFileName} 使用文本加载器`);
+        this.logger.log(`正在为文件 ${finalFileName} 使用文本加载器`);
         loader = new TextLoader(finalFilePath);
       }
 
       // 加载文档
-      this.logger.log(`正在从 ${safeFileName} 加载文档内容`);
+      this.logger.log(`正在从 ${finalFileName} 加载文档内容`);
       const docs = await loader.load();
 
       // 文本分割
-      this.logger.log(`正在将文档 ${safeFileName} 分割成块`);
+      this.logger.log(`正在将文档 ${finalFileName} 分割成块`);
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize,
         chunkOverlap: 200,
@@ -227,14 +223,14 @@ export class TempDocumentService {
       const splitDocs = await splitter.splitDocuments(docs);
 
       // 为每个文档片段添加元数据
-      this.logger.log(`正在处理 ${safeFileName} 的 ${splitDocs.length} 个块`);
+      this.logger.log(`正在处理 ${finalFileName} 的 ${splitDocs.length} 个块`);
       const processedDocs = splitDocs.map((doc) => {
         return new Document({
           pageContent: doc.pageContent,
           metadata: {
             ...doc.metadata,
-            filename: originalFilename,
-            safeFilename: safeFileName,
+            filename: finalFileName,
+            originalFilename: originalName,
             uploadedAt: new Date().toISOString(),
             mimeType: file.mimetype,
             sessionId,
