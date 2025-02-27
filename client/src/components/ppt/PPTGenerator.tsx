@@ -215,7 +215,6 @@ export function PPTGenerator() {
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isGeneratingPPT, setIsGeneratingPPT] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isSDKReady, setIsSDKReady] = useState(false);
   const [content, setContent] = useState("");
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatHistory, setChatHistory] = useState<
@@ -411,49 +410,10 @@ export function PPTGenerator() {
 
   return (
     <div className="h-screen w-full overflow-y-auto">
-      <Script
-        src="/js/aippt-iframe-sdk.js"
-        onLoad={() => setIsSDKReady(true)}
-      />
+      <Script src="/js/aippt-iframe-sdk.js" />
 
       <div className="w-full mx-auto p-6 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
-        <h1 className="text-2xl font-bold mb-6">
-          AI PPT 生成器{" "}
-          <span className="text-sm text-muted-foreground font-normal inline-flex items-center ml-2">
-            {isSDKReady ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-green-500"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="animate-spin text-amber-500"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-              </svg>
-            )}
-          </span>
-        </h1>
+        <h1 className="text-2xl font-bold mb-6">AI PPT 生成器</h1>
         <div className="space-y-6">
           {/* 标题输入 */}
           <div className="space-y-2">
