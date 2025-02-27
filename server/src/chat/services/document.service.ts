@@ -146,4 +146,28 @@ export class DocumentService {
       );
     }
   }
+
+  /**
+   * 清除客户端的所有文档向量存储
+   */
+  async clearDocuments(clientId: string): Promise<void> {
+    try {
+      // 删除向量存储实例
+      this.vectorStores.delete(clientId);
+
+      // 删除向量存储文件
+      const vectorStorePath = path.join(this.vectorStoreBasePath, clientId);
+      if (fs.existsSync(vectorStorePath)) {
+        fs.rmSync(vectorStorePath, { recursive: true, force: true });
+      }
+
+      this.logger.log(`已清除客户端 ${clientId} 的向量存储`);
+    } catch (error) {
+      this.logger.error(
+        `Error clearing documents for client ${clientId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
 }

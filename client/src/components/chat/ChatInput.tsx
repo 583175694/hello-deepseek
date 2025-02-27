@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
+import { KnowledgeBaseSelector } from "./KnowledgeBaseSelector";
 
 // 定义临时文件类型
 interface TempFile {
@@ -31,6 +32,7 @@ interface ChatInputProps {
       useVectorSearch?: boolean;
       useTempDocSearch?: boolean;
       modelId?: string;
+      knowledgeBaseId?: string;
     }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
@@ -63,6 +65,9 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
   const [isUploading, setIsUploading] = useState(false); // 添加上传状态
+  const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<
+    string | null
+  >(null);
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -78,14 +83,14 @@ export function ChatInput({
     e.preventDefault();
     if (!input.trim() || disabled || isLoading) return;
 
-    // 发送消息，包含搜索选项
     onSend(input, {
       useWebSearch,
       useVectorSearch,
       useTempDocSearch: hasTempDocs,
       modelId: selectedModelId,
+      knowledgeBaseId: selectedKnowledgeBaseId || undefined,
     });
-    setInput(""); // 清空输入框
+    setInput("");
   };
 
   // 处理快捷键：Enter 发送，Shift + Enter 换行
@@ -315,6 +320,13 @@ export function ChatInput({
             />
             {useVectorSearch && isLoading ? "搜索中..." : "我的知识库"}
           </Button>
+
+          {useVectorSearch && (
+            <KnowledgeBaseSelector
+              onKnowledgeBaseChange={setSelectedKnowledgeBaseId}
+              disabled={disabled || isLoading}
+            />
+          )}
 
           {/* 移动端文件上传按钮 */}
           <Button

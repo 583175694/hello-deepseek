@@ -11,6 +11,8 @@ import { SessionFile } from './chat/entities/session-file.entity';
 import { SessionDocument } from './chat/entities/session-document.entity';
 import { SessionTempFile } from './chat/entities/session-temp-file.entity';
 import { PPTOperation } from './ppt/entities/ppt-operation.entity';
+import { KnowledgeBase } from './chat/entities/knowledge-base.entity';
+import { KnowledgeDocument } from './chat/entities/knowledge-document.entity';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { PPTOperation } from './ppt/entities/ppt-operation.entity';
         SessionDocument,
         SessionTempFile,
         PPTOperation,
+        KnowledgeBase,
+        KnowledgeDocument,
       ],
       synchronize: true, // 仅在开发环境使用
     }),

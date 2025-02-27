@@ -7,6 +7,8 @@ import { Message } from './entities/message.entity';
 import { SessionFile } from './entities/session-file.entity';
 import { SessionDocument } from './entities/session-document.entity';
 import { SessionTempFile } from './entities/session-temp-file.entity';
+import { KnowledgeBase } from './entities/knowledge-base.entity';
+import { KnowledgeDocument } from './entities/knowledge-document.entity';
 import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
@@ -14,8 +16,10 @@ import { AIChatService } from './services/ai-chat.service';
 import { FileService } from './services/file.service';
 import { SessionFileService } from './services/session-file.service';
 import { TempDocumentService } from './services/temp-document.service';
+import { KnowledgeBaseService } from './services/knowledge-base.service';
 import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
 import { FileLoaderService } from './services/file-loader.service';
+import { KnowledgeBaseController } from './controllers/knowledge-base.controller';
 
 @Module({
   imports: [
@@ -25,9 +29,11 @@ import { FileLoaderService } from './services/file-loader.service';
       SessionFile,
       SessionDocument,
       SessionTempFile,
+      KnowledgeBase,
+      KnowledgeDocument,
     ]),
   ],
-  controllers: [ChatController],
+  controllers: [ChatController, KnowledgeBaseController],
   providers: [
     SessionService,
     MessageService,
@@ -36,6 +42,7 @@ import { FileLoaderService } from './services/file-loader.service';
     FileService,
     SessionFileService,
     TempDocumentService,
+    KnowledgeBaseService,
     FileLoaderService,
     {
       provide: APP_INTERCEPTOR,

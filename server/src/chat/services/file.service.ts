@@ -13,6 +13,10 @@ export interface FileInfo {
   type: string;
 }
 
+/**
+ * 文件服务类
+ * 用于处理文件的上传、存储、列表和删除等操作
+ */
 @Injectable()
 export class FileService {
   private readonly logger = new Logger(FileService.name);
@@ -34,6 +38,11 @@ export class FileService {
     }
   }
 
+  /**
+   * 获取客户端的上传目录路径
+   * @param clientId 客户端ID
+   * @returns 客户端专属的上传目录路径
+   */
   private getClientUploadDir(clientId: string): string {
     const clientDir = path.join(this.uploadBaseDir, clientId);
     if (!fs.existsSync(clientDir)) {
@@ -42,7 +51,10 @@ export class FileService {
     return clientDir;
   }
 
-  // 处理已有文件的方法
+  /**
+   * 处理已存在的文件
+   * 在服务启动时扫描并处理所有客户端目录中的文件
+   */
   private async processExistingFiles() {
     try {
       const clientDirs = fs.readdirSync(this.uploadBaseDir);
@@ -98,13 +110,23 @@ export class FileService {
     }
   }
 
-  // 添加文件名处理方法
+  /**
+   * 处理文件名，确保文件名的唯一性和安全性
+   * @param fileName 原始文件名
+   * @returns 处理后的安全文件名
+   */
   private sanitizeFileName(fileName: string): string {
     const ext = path.extname(fileName);
     const nameWithoutExt = path.basename(fileName, ext);
     return `${nameWithoutExt}_${Date.now()}${ext}`;
   }
 
+  /**
+   * 上传并处理文件
+   * @param file 上传的文件对象
+   * @param clientId 客户端ID
+   * @param chunkSize 文档分块大小，默认为1000
+   */
   async uploadAndProcessFile(
     file: Express.Multer.File,
     clientId: string,
@@ -185,6 +207,11 @@ export class FileService {
     }
   }
 
+  /**
+   * 列出指定客户端的所有文件
+   * @param clientId 客户端ID
+   * @returns 文件信息数组
+   */
   async listFiles(clientId: string): Promise<FileInfo[]> {
     try {
       const uploadDir = this.getClientUploadDir(clientId);
@@ -206,6 +233,11 @@ export class FileService {
     }
   }
 
+  /**
+   * 删除指定客户端的文件
+   * @param filename 文件名
+   * @param clientId 客户端ID
+   */
   async deleteFile(filename: string, clientId: string): Promise<void> {
     try {
       const uploadDir = this.getClientUploadDir(clientId);

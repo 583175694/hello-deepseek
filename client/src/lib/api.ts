@@ -51,7 +51,8 @@ export const chatService = {
     useWebSearch?: boolean,
     useVectorSearch?: boolean,
     useTempDocSearch?: boolean,
-    modelId: string = "bytedance_deepseek_r1"
+    modelId: string = "bytedance_deepseek_r1",
+    knowledgeBaseId?: string
   ) {
     const params = new URLSearchParams();
     params.append("message", message);
@@ -66,6 +67,9 @@ export const chatService = {
     }
     if (useTempDocSearch) {
       params.append("useTempDocSearch", "true");
+    }
+    if (knowledgeBaseId) {
+      params.append("knowledgeBaseId", knowledgeBaseId);
     }
     params.append("modelId", modelId);
 
@@ -106,29 +110,59 @@ export const chatService = {
 };
 
 export const fileService = {
-  // 上传文件
-  async uploadFile(file: File, chunkSize: number = 1000) {
+  // 创建知识库
+  async createKnowledgeBase(name: string) {
+    const response = await api.post("/knowledge-bases", { name });
+    return response.data;
+  },
+
+  // 获取知识库列表
+  async getKnowledgeBases() {
+    const response = await api.get("/knowledge-bases");
+    return response.data;
+  },
+
+  // 上传文件到知识库
+  async uploadFile(
+    file: File,
+    knowledgeBaseId: string,
+    chunkSize: number = 1000
+  ) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("chunkSize", chunkSize.toString());
 
-    const response = await api.post("/chat/files/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await api.post(
+      `/knowledge-bases/${knowledgeBaseId}/documents`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
     return response.data;
   },
 
-  // 获取文件列表
-  async getFiles() {
-    const response = await api.get("/chat/files");
+  // 获取知识库中的文件列表
+  async getFiles(knowledgeBaseId: string) {
+    const response = await api.get(
+      `/knowledge-bases/${knowledgeBaseId}/documents`
+    );
+    return { files: response.data };
+  },
+
+  // 删除知识库中的文件
+  async deleteFile(filename: string, knowledgeBaseId: string) {
+    const response = await api.delete(
+      `/knowledge-bases/${knowledgeBaseId}/documents/${filename}`
+    );
     return response.data;
   },
 
-  // 删除文件
-  async deleteFile(filename: string) {
-    const response = await api.delete(`/chat/files/${filename}`);
+  // 删除知识库
+  async deleteKnowledgeBase(knowledgeBaseId: string) {
+    const response = await api.delete(`/knowledge-bases/${knowledgeBaseId}`);
     return response.data;
   },
 

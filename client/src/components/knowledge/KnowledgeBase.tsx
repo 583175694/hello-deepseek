@@ -2,19 +2,48 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { FileText, Upload, Trash2, Loader2 } from "lucide-react";
+import { FileText, Upload, Trash2, Loader2, Plus } from "lucide-react";
 import { fileService } from "@/lib/api";
-import type { FileInfo } from "@/types/file";
+import type {
+  FileInfo,
+  KnowledgeBase as KnowledgeBaseType,
+} from "@/types/file";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function KnowledgeBase() {
+  const [bases, setBases] = useState<KnowledgeBaseType[]>([]);
+  const [selectedBase, setSelectedBase] = useState<KnowledgeBaseType | null>(
+    null
+  );
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingBase, setIsCreatingBase] = useState(false);
+  const [newBaseName, setNewBaseName] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // 加载知识库列表
+  const loadBases = async () => {
+    try {
+      const response = await fileService.getKnowledgeBases();
+      setBases(response);
+    } catch (err) {
+      setError("加载知识库列表失败");
+      console.error(err);
+    }
+  };
 
   // 加载文件列表
-  const loadFiles = async () => {
+  const loadFiles = async (baseId: string) => {
     try {
-      const response = await fileService.getFiles();
+      const response = await fileService.getFiles(baseId);
       setFiles(response.files);
     } catch (err) {
       setError("加载文件列表失败");
@@ -22,17 +51,45 @@ export function KnowledgeBase() {
     }
   };
 
+  // 创建知识库
+  const handleCreateBase = async () => {
+    if (!newBaseName.trim()) return;
+
+    try {
+      setIsCreatingBase(true);
+      await fileService.createKnowledgeBase(newBaseName);
+      await loadBases();
+      setNewBaseName("");
+      setIsDialogOpen(false);
+    } catch (err) {
+      setError("创建知识库失败");
+      console.error(err);
+    } finally {
+      setIsCreatingBase(false);
+    }
+  };
+
   // 上传文件
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+    if (!selectedBase) {
+      setError("请先选择知识库");
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (files.length >= 8) {
+      setError("每个知识库最多只能上传8个文档");
+      return;
+    }
+
     try {
       setIsUploading(true);
-      await fileService.uploadFile(file);
-      await loadFiles();
+      await fileService.uploadFile(file, selectedBase.id);
+      await loadFiles(selectedBase.id);
     } catch (err) {
       setError("上传文件失败");
       console.error(err);
@@ -43,45 +100,67 @@ export function KnowledgeBase() {
   };
 
   // 删除文件
-  const handleDeleteFile = async (filename: string) => {
+  const handleDeleteFile = async (documentId: string, baseId: string) => {
+    if (!selectedBase) return;
+
     try {
-      await fileService.deleteFile(filename);
-      await loadFiles();
+      await fileService.deleteFile(documentId, baseId);
+      await loadFiles(baseId);
     } catch (err) {
       setError("删除文件失败");
       console.error(err);
     }
   };
 
+  // 选择知识库
+  const handleSelectBase = (base: KnowledgeBaseType) => {
+    setSelectedBase(base);
+    loadFiles(base.id);
+  };
+
   useEffect(() => {
-    loadFiles();
+    loadBases();
   }, []);
 
   return (
     <div className="h-full p-4 lg:p-6 overflow-auto">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-lg lg:text-xl font-semibold ml-12 lg:ml-0">
-            知识库
-          </h1>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".pdf,.txt,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-              onChange={handleFileUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={isUploading}
-              capture="environment"
-            />
-            <Button disabled={isUploading} size="sm" className="lg:h-10">
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Upload className="w-4 h-4 mr-2" />
-              )}
-              上传文件
-            </Button>
-          </div>
+          <h1 className="text-lg lg:text-xl font-semibold">知识库</h1>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="lg:h-10">
+                <Plus className="w-4 h-4 mr-2" />
+                新建知识库
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>新建知识库</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Input
+                    placeholder="请输入知识库名称"
+                    value={newBaseName}
+                    onChange={(e) => setNewBaseName(e.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleCreateBase}
+                  disabled={isCreatingBase || !newBaseName.trim()}
+                >
+                  {isCreatingBase ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )}
+                  创建
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {error && (
@@ -90,51 +169,106 @@ export function KnowledgeBase() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:flex-wrap gap-3 lg:gap-4">
-          {files.length === 0 ? (
-            <div className="col-span-2 w-full flex flex-col items-center justify-center py-8 lg:py-12 text-muted-foreground">
-              <FileText className="w-8 h-8 lg:w-12 lg:h-12 mb-4" />
-              <p className="text-base lg:text-lg mb-2">知识库还是空的</p>
-              <p className="text-xs lg:text-sm">点击上方的上传按钮添加文件</p>
-            </div>
-          ) : (
-            files.map((file) => (
+        {/* 知识库列表 */}
+        <div className="mb-6">
+          <div className="text-sm font-medium mb-2">选择知识库</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {bases.map((base) => (
               <div
-                key={file.filename}
-                className="w-full lg:w-[200px] group rounded-lg border border-border hover:border-foreground/20 cursor-pointer transition-colors"
+                key={base.id}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedBase?.id === base.id
+                    ? "border-primary bg-primary/5"
+                    : "hover:border-foreground/20"
+                }`}
+                onClick={() => handleSelectBase(base)}
               >
-                <div className="p-3 lg:p-4 flex flex-col h-full">
-                  <div className="flex items-start justify-between">
-                    <FileText className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground shrink-0" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 lg:h-8 lg:w-8 lg:opacity-0 lg:group-hover:opacity-100 -mr-1 -mt-1 lg:-mr-2 lg:-mt-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFile(file.filename);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="mt-3 lg:mt-4 flex-1">
-                    <h3 className="font-medium text-sm lg:text-base line-clamp-2 mb-1">
-                      {file.filename}
-                    </h3>
-                    <div className="flex flex-col gap-1 text-xs lg:text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <span>大小：</span>
-                        <span>{(file.size / 1024).toFixed(2)} KB</span>
-                      </span>
-                    </div>
-                  </div>
+                <div className="font-medium mb-1">{base.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {base.documentsCount} 个文档
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
+
+        {/* 文件列表 */}
+        {selectedBase && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm font-medium">文档列表</div>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isUploading || files.length >= 8}
+                />
+                <Button
+                  disabled={isUploading || files.length >= 8}
+                  size="sm"
+                  className="lg:h-9"
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  上传文档
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:flex lg:flex-row lg:flex-wrap gap-3 lg:gap-4">
+              {files.length === 0 ? (
+                <div className="col-span-2 w-full flex flex-col items-center justify-center py-8 lg:py-12 text-muted-foreground">
+                  <FileText className="w-8 h-8 lg:w-12 lg:h-12 mb-4" />
+                  <p className="text-base lg:text-lg mb-2">知识库还是空的</p>
+                  <p className="text-xs lg:text-sm">
+                    点击上方的上传按钮添加文件
+                  </p>
+                </div>
+              ) : (
+                files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="w-full lg:w-[200px] group rounded-lg border border-border hover:border-foreground/20 cursor-pointer transition-colors"
+                  >
+                    <div className="p-3 lg:p-4 flex flex-col h-full">
+                      <div className="flex items-start justify-between">
+                        <FileText className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground shrink-0" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 lg:h-8 lg:w-8 lg:opacity-0 lg:group-hover:opacity-100 -mr-1 -mt-1 lg:-mr-2 lg:-mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file.id, file.knowledgeBaseId);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
+                        </Button>
+                      </div>
+
+                      <div className="mt-3 lg:mt-4 flex-1">
+                        <h3 className="font-medium text-sm lg:text-base line-clamp-2 mb-1">
+                          {file.originalFilename}
+                        </h3>
+                        <div className="flex flex-col gap-1 text-xs lg:text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <span>大小：</span>
+                            <span>{(file.size / 1024).toFixed(2)} KB</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
