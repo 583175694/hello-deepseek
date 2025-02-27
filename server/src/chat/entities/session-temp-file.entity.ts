@@ -3,9 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
   ManyToOne,
   JoinColumn,
-  DeleteDateColumn,
 } from 'typeorm';
 import { Session } from './session.entity';
 
@@ -35,8 +36,17 @@ export class SessionTempFile {
   @Column()
   clientId: string;
 
+  @Column({ nullable: true })
+  isShortDocument: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  fullContent: string;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @DeleteDateColumn()
   deletedAt: Date;

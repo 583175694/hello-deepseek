@@ -125,9 +125,14 @@ export class TempDocumentService {
       size: number;
       createdAt: Date;
     }[];
+    fullContent?: string;
+    isShortDocument?: boolean;
   }> {
     let finalFilePath: string;
     let finalFileName: string;
+
+    // 设置文档长度阈值（字符数）
+    const SHORT_DOCUMENT_THRESHOLD = 12000; // 可以根据需要调整这个值
 
     try {
       const sessionPath = this.getSessionPath(sessionId, clientId);
@@ -185,20 +190,6 @@ export class TempDocumentService {
       );
       fs.writeFileSync(finalFilePath, file.buffer);
 
-      // 创建新的临时文件记录
-      const tempFile = this.sessionTempFileRepository.create({
-        filename: finalFileName,
-        originalFilename: originalName,
-        mimeType: file.mimetype,
-        size: file.size,
-        path: finalFilePath,
-        sessionId,
-        clientId,
-      });
-
-      // 保存到数据库
-      await this.sessionTempFileRepository.save(tempFile);
-
       // 根据文件类型选择合适的加载器
       let loader;
       if (file.mimetype === 'application/pdf') {
@@ -212,6 +203,49 @@ export class TempDocumentService {
       // 加载文档
       this.logger.log(`正在从 ${finalFileName} 加载文档内容`);
       const docs = await loader.load();
+
+      // 计算总文档长度
+      const totalLength = docs.reduce(
+        (sum, doc) => sum + doc.pageContent.length,
+        0,
+      );
+
+      // 如果是短文档，直接返回完整内容
+      if (totalLength <= SHORT_DOCUMENT_THRESHOLD) {
+        this.logger.log(
+          `文档长度（${totalLength}字符）小于阈值（${SHORT_DOCUMENT_THRESHOLD}字符），跳过向量处理`,
+        );
+        const fullContent = docs.map((doc) => doc.pageContent).join('\n\n');
+
+        // 创建新的临时文件记录
+        const tempFile = this.sessionTempFileRepository.create({
+          filename: finalFileName,
+          originalFilename: originalName,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: finalFilePath,
+          sessionId,
+          clientId,
+          isShortDocument: true,
+          fullContent: fullContent,
+        });
+
+        // 保存到数据库
+        await this.sessionTempFileRepository.save(tempFile);
+
+        // 获取更新后的文件信息
+        const tempFiles = await this.getSessionDocuments(sessionId, clientId);
+
+        return {
+          filePath: finalFilePath,
+          tempFiles,
+          fullContent,
+          isShortDocument: true,
+        };
+      }
+
+      // 如果是长文档，继续进行向量处理
+      this.logger.log(`文档长度（${totalLength}字符）超过阈值，进行向量处理`);
 
       // 文本分割
       this.logger.log(`正在将文档 ${finalFileName} 分割成块`);
@@ -243,10 +277,30 @@ export class TempDocumentService {
       this.logger.log(`正在添加 ${processedDocs.length} 个块到向量存储`);
       await this.addDocuments(processedDocs, sessionId, clientId);
 
+      // 创建新的临时文件记录
+      const tempFile = this.sessionTempFileRepository.create({
+        filename: finalFileName,
+        originalFilename: originalName,
+        mimeType: file.mimetype,
+        size: file.size,
+        path: finalFilePath,
+        sessionId,
+        clientId,
+        isShortDocument: false,
+        fullContent: null,
+      });
+
+      // 保存到数据库
+      await this.sessionTempFileRepository.save(tempFile);
+
       // 获取更新后的文件信息
       const tempFiles = await this.getSessionDocuments(sessionId, clientId);
 
-      return { filePath: finalFilePath, tempFiles };
+      return {
+        filePath: finalFilePath,
+        tempFiles,
+        isShortDocument: false,
+      };
     } catch (error) {
       this.logger.error(
         `Failed to process uploaded file for session ${sessionId} and client ${clientId}:`,

@@ -12,6 +12,9 @@ import { SessionService } from './session.service';
 import { DocumentService } from './document.service';
 import { TempDocumentService } from './temp-document.service';
 import { models } from 'src/configs/models';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { SessionTempFile } from '../entities/session-temp-file.entity';
 
 // AI聊天服务类
 @Injectable()
@@ -29,6 +32,8 @@ export class AIChatService {
     private sessionService: SessionService,
     private documentService: DocumentService,
     private tempDocumentService: TempDocumentService,
+    @InjectRepository(SessionTempFile)
+    private sessionTempFileRepository: Repository<SessionTempFile>,
   ) {
     this.logger.log('正在初始化AI聊天服务...');
     this.initializeServices();
@@ -152,6 +157,39 @@ export class AIChatService {
     let searchContext = '';
     const sources: Array<{ type: 'temp'; url: string }> = [];
 
+    // 先尝试获取短文档内容
+    const tempFiles = await this.sessionTempFileRepository.find({
+      where: { sessionId, clientId },
+      withDeleted: false,
+    });
+
+    if (tempFiles && tempFiles.length > 0) {
+      // 检查是否有短文档标记
+      const shortDocs = tempFiles.filter((file) => file.isShortDocument);
+
+      if (shortDocs.length > 0) {
+        this.logger.log(`找到 ${shortDocs.length} 个短文档，直接使用完整内容`);
+        onToken({
+          type: 'status',
+          content: `Found ${shortDocs.length} short documents, using full content`,
+        });
+
+        // 直接使用短文档的完整内容
+        searchContext += '会话临时文档内容：\n';
+        for (const doc of shortDocs) {
+          searchContext += `来源: ${doc.originalFilename}\n内容: ${doc.fullContent}\n\n`;
+          sources.push({
+            type: 'temp',
+            url: doc.filename,
+          });
+        }
+
+        this.logger.log('短文档内容已添加到上下文');
+        return { searchContext, sources };
+      }
+    }
+
+    // 如果没有短文档，则执行向量搜索
     const tempDocuments = await this.tempDocumentService.searchSimilarDocuments(
       message,
       sessionId,
