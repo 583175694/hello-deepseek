@@ -20,11 +20,11 @@ export class PPTService {
   ) {
     // 初始化DeepSeek模型实例
     this.modelInstance = new ChatDeepSeek({
-      modelName: models.bytedance_deepseek_r1.modelName,
+      modelName: models.bytedance_deepseek_v3.modelName,
       temperature: 0.7,
       streaming: true,
       configuration: {
-        baseURL: models.bytedance_deepseek_r1.baseURL,
+        baseURL: models.bytedance_deepseek_v3.baseURL,
         apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
       },
     });

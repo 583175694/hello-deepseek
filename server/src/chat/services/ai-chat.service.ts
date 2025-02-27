@@ -79,6 +79,11 @@ export class AIChatService {
           baseURL: modelConfig.baseURL,
           apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
         },
+        maxTokens: 4096, // 添加最大token限制
+        maxRetries: 3, // 添加最大重试次数
+        modelKwargs: {
+          ignore_token_counting: true, // 忽略token计数
+        },
       });
       this.logger.log(`已初始化模型: ${modelId}`);
     });
@@ -118,6 +123,35 @@ export class AIChatService {
     } catch (error) {
       this.logger.error('Query optimization error:', error);
       return query; // 如果优化失败，返回原始查询
+    }
+  }
+
+  // 生成系统提示词
+  async generateSystemPrompt(
+    roleName: string,
+    modelId: string = 'bytedance_deepseek_v3',
+  ): Promise<string> {
+    this.logger.log(`正在为角色 "${roleName}" 生成系统提示词...`);
+
+    try {
+      const chain = ChatPromptTemplate.fromMessages([
+        [
+          'system',
+          '你是一个专业的AI提示词专家。你的任务是根据用户提供的角色名称，生成一个详细的、专业的系统提示词。' +
+            '这个提示词应该清晰地定义AI助手的角色、专业领域、行为准则和主要职责。' +
+            '提示词应该是中文的，并且要简洁有力。直接返回生成的提示词，不需要任何解释或额外的格式。',
+        ],
+        ['human', `请为"${roleName}"这个角色生成一个系统提示词。`],
+      ]).pipe(this.getModel(modelId));
+
+      const response = await chain.invoke({});
+      const systemPrompt = response.content.toString().trim();
+
+      this.logger.log(`系统提示词生成成功: ${systemPrompt}`);
+      return systemPrompt;
+    } catch (error) {
+      this.logger.error('生成系统提示词时出错:', error);
+      throw error;
     }
   }
 

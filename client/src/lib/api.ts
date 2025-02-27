@@ -25,10 +25,20 @@ interface CreateSessionParams {
   systemPrompt?: string;
 }
 
+interface GeneratePromptResponse {
+  systemPrompt: string;
+}
+
 export const chatService = {
   // 创建新会话
   async createSession(params?: CreateSessionParams) {
     const response = await api.post("/chat/session", params);
+    return response.data;
+  },
+
+  // 生成系统提示词
+  async generatePrompt(roleName: string): Promise<GeneratePromptResponse> {
+    const response = await api.post("/chat/generate-prompt", { roleName });
     return response.data;
   },
 

@@ -246,6 +246,25 @@ export class ChatController {
     }));
   }
 
+  // 生成系统提示词
+  @Post('generate-prompt')
+  async generatePrompt(
+    @Headers('x-client-id') clientId: string,
+    @Body('roleName') roleName: string,
+    @Body('modelId') modelId?: string,
+  ) {
+    if (!roleName) {
+      throw new HttpException('Role name is required', HttpStatus.BAD_REQUEST);
+    }
+
+    const systemPrompt = await this.aiChatService.generateSystemPrompt(
+      roleName,
+      modelId,
+    );
+
+    return { systemPrompt };
+  }
+
   // 删除消息
   @Post('messages/:messageId/delete')
   async deleteMessage(
