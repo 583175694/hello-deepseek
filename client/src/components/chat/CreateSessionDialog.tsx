@@ -40,6 +40,8 @@ export function CreateSessionDialog({
         systemPrompt: systemPrompt.trim(),
       });
     }
+    setRoleName("");
+    setSystemPrompt("");
     onOpenChange(false);
   };
 
@@ -63,7 +65,7 @@ export function CreateSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] w-[95%] max-h-[90vh] overflow-y-auto rounded-lg">
+      <DialogContent className="sm:max-w-[600px] w-[95%] max-h-[90vh] overflow-y-auto rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-lg">创建新会话</DialogTitle>
         </DialogHeader>
@@ -102,7 +104,7 @@ export function CreateSessionDialog({
             <Textarea
               id="systemPrompt"
               placeholder="可选，例如：你是一个专业的程序员，擅长编写高质量的代码和解决技术问题。"
-              className="sm:col-span-3 min-h-[80px] max-h-[160px]"
+              className="sm:col-span-3 min-h-[160px] max-h-[240px]"
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
             />
