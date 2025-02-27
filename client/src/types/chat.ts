@@ -8,6 +8,7 @@ export interface Message {
   createdAt: string;
   type: "content" | "reasoning" | "sources" | "temp" | "status";
   tempFiles?: TempFile[];
+  tempFilename?: string;
 }
 
 export interface TempFile {

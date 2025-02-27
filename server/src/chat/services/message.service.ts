@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DeepPartial } from 'typeorm';
 import { Message } from '../entities/message.entity';
 import { BufferWindowMemory } from 'langchain/memory';
 
@@ -28,30 +28,30 @@ export class MessageService {
     reasoning: string | null,
     sessionId: string,
     clientId: string,
+    tempFilename?: string,
   ): Promise<Message> {
-    const message = this.messageRepository.create({
+    const messageData = {
       role,
       content,
       reasoning,
       sessionId,
       clientId,
-    });
+      tempFilename,
+    };
+    const message = this.messageRepository.create(messageData);
     return await this.messageRepository.save(message);
   }
 
   async getSessionHistory(
     sessionId: string,
     clientId: string,
-  ): Promise<{ role: string; content: string; reasoning?: string }[]> {
+  ): Promise<Message[]> {
     const messages = await this.messageRepository.find({
       where: { sessionId, clientId },
       order: { createdAt: 'ASC' },
+      select: ['role', 'content', 'reasoning', 'tempFilename'],
     });
-    return messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-      reasoning: msg.reasoning,
-    }));
+    return messages;
   }
 
   async loadMemoryFromDatabase(sessionId: string, clientId: string) {

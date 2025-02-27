@@ -307,6 +307,7 @@ export class AIChatService {
     useVectorSearch: boolean = false,
     useTempDocSearch: boolean = false,
     modelId: string = 'bytedance_deepseek_r1',
+    tempFilename?: string,
   ) {
     this.logger.log(
       `正在为会话 ${sessionId} 和客户端 ${clientId} 使用模型 ${modelId} 启动流式聊天`,
@@ -377,6 +378,7 @@ export class AIChatService {
         null,
         sessionId,
         clientId,
+        tempFilename,
       );
       this.logger.log('用户消息保存成功');
 

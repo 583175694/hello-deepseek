@@ -61,6 +61,7 @@ export class ChatController {
     @Query('useVectorSearch') useVectorSearch?: string,
     @Query('useTempDocSearch') useTempDocSearch?: string,
     @Query('modelId') modelId: string = 'bytedance_deepseek_r1',
+    @Query('tempFilename') tempFilename?: string,
   ): Promise<Observable<MessageEvent>> {
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
@@ -90,6 +91,7 @@ export class ChatController {
           shouldUseVectorSearch,
           shouldUseTempDocSearch,
           modelId,
+          tempFilename,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });

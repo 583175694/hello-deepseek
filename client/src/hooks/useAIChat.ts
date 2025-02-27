@@ -122,7 +122,10 @@ export function useAIChat() {
         await streamChat(
           content,
           sessionId,
-          options,
+          {
+            tempFilename: options.tempFiles?.[0]?.filename,
+            ...options,
+          },
           (response: StreamContent) => {
             // 根据类型累积内容
             if (response.type === "content") {

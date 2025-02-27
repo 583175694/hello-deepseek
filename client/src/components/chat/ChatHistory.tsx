@@ -16,7 +16,6 @@ export function ChatHistory() {
   // 状态管理
   const { currentSessionId, createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [hasTempDocs, setHasTempDocs] = useState(false);
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,7 +82,6 @@ export function ChatHistory() {
       try {
         const data = await chatService.getSessionMessages(currentSessionId, 1);
         setMessageList(data.messages);
-        setHasTempDocs(Boolean(data.tempFiles?.length));
         setTempFiles(data.tempFiles || []);
         setCurrentPage(1);
         setHasMore(data.pagination?.hasMore || false);
@@ -198,7 +196,6 @@ export function ChatHistory() {
       createdAt: new Date().toISOString(),
     };
 
-    setHasTempDocs(true);
     setTempFiles([tempFile]);
 
     return {
@@ -212,19 +209,12 @@ export function ChatHistory() {
     if (!currentSessionId) return;
     try {
       await fileService.cleanupTempFiles(currentSessionId);
-      setHasTempDocs(false);
       setTempFiles([]);
     } catch (error) {
       console.error("文件删除失败:", error);
       throw error;
     }
   };
-
-  // 重置临时文档状态
-  useEffect(() => {
-    setHasTempDocs(false);
-    setTempFiles([]);
-  }, [currentSessionId]);
 
   // 处理消息删除
   const handleMessageDelete = (messageId: string) => {
@@ -318,14 +308,32 @@ export function ChatHistory() {
                     上滑加载更多消息
                   </div>
                 )}
-                {messages.map((message, index) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    isStreaming={isStreaming && index === messages.length - 1}
-                    onDelete={() => handleMessageDelete(message.id)}
-                  />
-                ))}
+                {messages.map((message) => {
+                  // 如果消息有 tempFilename，从 tempFiles 中找到对应的文件
+                  const tempFile = tempFiles.find(
+                    (file) => file.filename === message.tempFilename
+                  );
+
+                  // 如果找到了对应的文件，将其添加到消息的 tempFiles 数组中
+                  const messageWithFiles = tempFile
+                    ? {
+                        ...message,
+                        tempFiles: [tempFile],
+                      }
+                    : message;
+
+                  return (
+                    <ChatMessage
+                      key={message.id}
+                      message={messageWithFiles}
+                      isStreaming={
+                        isStreaming &&
+                        message.id === messages[messages.length - 1].id
+                      }
+                      onDelete={() => handleMessageDelete(message.id)}
+                    />
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -346,7 +354,6 @@ export function ChatHistory() {
                 onAbort={abortStream}
                 onFileUpload={handleFileUpload}
                 onFileRemove={handleFileRemove}
-                hasTempDocs={hasTempDocs}
                 tempDocs={tempFiles}
               />
             </div>

@@ -34,4 +34,7 @@ export class Message {
 
   @Column()
   sessionId: string;
+
+  @Column({ nullable: true })
+  tempFilename: string;
 }

@@ -114,7 +114,14 @@ export class SessionService {
         order: { createdAt: 'DESC' }, // 按时间降序排列，最新的消息在前面
         skip: skip,
         take: pageSize,
-        select: ['id', 'role', 'content', 'reasoning', 'createdAt'],
+        select: [
+          'id',
+          'role',
+          'content',
+          'reasoning',
+          'createdAt',
+          'tempFilename',
+        ] as (keyof Message)[],
       });
 
       // 将结果按时间升序排列，以便前端显示
