@@ -1,10 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from '@langchain/core/documents';
 import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+
+const execAsync = promisify(exec);
 
 export interface ProcessedDocument {
   docs: Document[];
@@ -14,7 +19,6 @@ export interface ProcessedDocument {
 @Injectable()
 export class FileLoaderService {
   private readonly logger = new Logger(FileLoaderService.name);
-
   /**
    * 根据文件类型和路径加载文档
    * @param filePath 文件路径
@@ -51,17 +55,17 @@ export class FileLoaderService {
           const workbook = XLSX.readFile(filePath);
           const excelContent = workbook.SheetNames.map((sheetName) => {
             const sheet = workbook.Sheets[sheetName];
-            return XLSX.utils.sheet_to_csv(sheet);
+            return `Sheet: ${sheetName}\n${XLSX.utils.sheet_to_csv(sheet)}`;
           }).join('\n\n');
           docs = [new Document({ pageContent: excelContent })];
           break;
 
         case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
         case 'application/vnd.ms-powerpoint':
-          this.logger.log(`正在使用PowerPoint加载器处理文件: ${filePath}`);
-          const pptLoader = new TextLoader(filePath);
-          docs = await pptLoader.load();
-          break;
+          throw new HttpException(
+            '暂不支持PPT文件格式',
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+          );
 
         case 'text/markdown':
           this.logger.log(`正在使用Markdown加载器处理文件: ${filePath}`);
@@ -79,15 +83,42 @@ export class FileLoaderService {
       this.logger.log(`正在将文档分割成块`);
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize,
-        chunkOverlap: 200,
+        chunkOverlap: Math.min(200, chunkSize * 0.1), // 重叠部分设为块大小的10%，但不超过200
         separators: ['\n\n', '\n', ' ', '', '。', '？', '！', '；', '：', '，'],
       });
 
       const splitDocs = await splitter.splitDocuments(docs);
 
+      // 如果分块太多，增加块大小重新分割
+      if (splitDocs.length > 1000) {
+        this.logger.log(`文档块数过多 (${splitDocs.length})，正在重新分割...`);
+        const newChunkSize = Math.ceil(chunkSize * (splitDocs.length / 1000));
+        const newSplitter = new RecursiveCharacterTextSplitter({
+          chunkSize: newChunkSize,
+          chunkOverlap: Math.min(200, newChunkSize * 0.1),
+          separators: [
+            '\n\n',
+            '\n',
+            ' ',
+            '',
+            '。',
+            '？',
+            '！',
+            '；',
+            '：',
+            '，',
+          ],
+        });
+        const newSplitDocs = await newSplitter.splitDocuments(docs);
+        this.logger.log(`重新分割后的块数: ${newSplitDocs.length}`);
+        docs = newSplitDocs;
+      } else {
+        docs = splitDocs;
+      }
+
       // 为每个文档片段添加元数据
-      this.logger.log(`正在处理 ${splitDocs.length} 个块`);
-      const processedDocs = splitDocs.map((doc) => {
+      this.logger.log(`正在处理 ${docs.length} 个块`);
+      const processedDocs = docs.map((doc) => {
         return new Document({
           pageContent: doc.pageContent,
           metadata: {

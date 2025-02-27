@@ -281,19 +281,27 @@ export class TempDocumentService {
       }
 
       let vectorStore: FaissStore;
-      if (fs.existsSync(indexPath) && fs.existsSync(docStorePath)) {
-        vectorStore = await FaissStore.load(vectorStorePath, this.embeddings);
-      } else {
-        const initialDocument = new Document({
-          pageContent: 'Initial document to initialize vector store',
-          metadata: { source: 'initialization', sessionId, clientId },
-        });
 
-        vectorStore = await FaissStore.fromDocuments(
-          [initialDocument],
-          this.embeddings,
-        );
-        await vectorStore.save(vectorStorePath);
+      // 检查是否存在现有的向量存储
+      if (fs.existsSync(indexPath) && fs.existsSync(docStorePath)) {
+        try {
+          vectorStore = await FaissStore.load(vectorStorePath, this.embeddings);
+        } catch (loadError) {
+          this.logger.error(
+            '加载现有向量存储失败，创建新的向量存储',
+            loadError,
+          );
+          // 如果加载失败，删除现有文件并创建新的
+          fs.unlinkSync(indexPath);
+          fs.unlinkSync(docStorePath);
+          vectorStore = await this.createNewVectorStore(sessionId, clientId);
+        }
+      } else {
+        vectorStore = await this.createNewVectorStore(sessionId, clientId);
+      }
+
+      if (!vectorStore) {
+        throw new Error('向量存储初始化失败');
       }
 
       this.sessionVectorStores.set(storeKey, vectorStore);
@@ -308,6 +316,28 @@ export class TempDocumentService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  /**
+   * 创建新的向量存储
+   */
+  private async createNewVectorStore(
+    sessionId: string,
+    clientId: string,
+  ): Promise<FaissStore> {
+    const vectorStorePath = this.getSessionVectorStorePath(sessionId, clientId);
+
+    // 创建一个空的向量存储
+    const vectorStore = await FaissStore.fromTexts(
+      ['Initialize vector store'],
+      [{ source: 'initialization', sessionId, clientId }],
+      this.embeddings,
+    );
+
+    // 保存向量存储
+    await vectorStore.save(vectorStorePath);
+
+    return vectorStore;
   }
 
   /**
@@ -339,15 +369,34 @@ export class TempDocumentService {
     clientId: string,
   ): Promise<void> {
     try {
+      // 确保向量存储已初始化
       const vectorStore = await this.getSessionVectorStore(sessionId, clientId);
-      const documentsWithClientId = documents.map((doc) => ({
-        ...doc,
-        metadata: { ...doc.metadata, clientId },
-      }));
-      await vectorStore.addDocuments(documentsWithClientId);
-      await vectorStore.save(
-        this.getSessionVectorStorePath(sessionId, clientId),
-      );
+      if (!vectorStore) {
+        this.logger.error('向量存储初始化失败');
+        throw new Error('向量存储初始化失败');
+      }
+
+      // 分批处理文档，每批100个
+      const batchSize = 100;
+      for (let i = 0; i < documents.length; i += batchSize) {
+        const batch = documents.slice(i, i + batchSize);
+        const documentsWithClientId = batch.map((doc) => ({
+          ...doc,
+          metadata: { ...doc.metadata, clientId },
+        }));
+
+        this.logger.log(
+          `正在处理第 ${i + 1} 到 ${i + batch.length} 个文档（共 ${documents.length} 个）`,
+        );
+        await vectorStore.addDocuments(documentsWithClientId);
+
+        // 每批次处理完后保存一次
+        await vectorStore.save(
+          this.getSessionVectorStorePath(sessionId, clientId),
+        );
+      }
+
+      this.logger.log(`成功添加 ${documents.length} 个文档到向量存储`);
     } catch (error) {
       this.logger.error(
         `Failed to add documents for session ${sessionId} and client ${clientId}:`,

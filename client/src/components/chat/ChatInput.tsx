@@ -236,7 +236,7 @@ export function ChatInput({
           id="file-upload"
           className="hidden"
           onChange={handleFileUpload}
-          accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,.ppt,.pptx"
+          accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx"
           disabled={disabled || isLoading || tempFiles.length > 0}
           capture="environment"
         />
