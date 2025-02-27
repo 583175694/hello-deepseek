@@ -302,7 +302,7 @@ export function ChatMessage({
       ).map((url) => sources.find((source) => source.url === url)!);
 
       return (
-        <div className="flex flex-col gap-2 ml-11 mt-2">
+        <div className="flex flex-col gap-2 ml-11 mt-2 mb-8">
           <div className="flex items-center gap-2">
             <div className="h-px flex-grow bg-muted-foreground/20"></div>
             <span className="text-xs font-medium text-muted-foreground/60">
@@ -351,7 +351,7 @@ export function ChatMessage({
   // 渲染整个消息组件
   return (
     <>
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-2 mt-6">
         {/* 消息主体部分 */}
         <div
           className={cn(
