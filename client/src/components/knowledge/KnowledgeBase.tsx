@@ -67,7 +67,7 @@ export function KnowledgeBase() {
 
   return (
     <div className="h-full p-4 lg:p-6 overflow-auto max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">知识库</h1>
+      <h1 className="text-2xl font-bold mb-6 pl-16 sm:pl-0">知识库</h1>
       <div className="flex justify-between items-center mb-6">
         <div className="relative">
           <input

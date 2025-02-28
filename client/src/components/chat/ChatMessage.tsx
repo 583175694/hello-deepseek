@@ -253,7 +253,7 @@ export function ChatMessage({
               className={cn(
                 "transition-all duration-200 overflow-hidden",
                 isReasoningExpanded
-                  ? "max-h-[1200px] opacity-100"
+                  ? "max-h-[1600px] opacity-100"
                   : "max-h-0 opacity-0"
               )}
             >
@@ -370,7 +370,7 @@ export function ChatMessage({
             {/* 消息内容 */}
             <div
               className={cn(
-                "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-8rem)] md:max-w-[45rem]",
+                "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-5rem)] md:max-w-[45rem]",
                 isAI
                   ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
                   : "bg-primary text-primary-foreground"

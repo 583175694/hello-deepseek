@@ -409,8 +409,8 @@ export function PPTGenerator() {
 
   return (
     <div className="h-screen w-full overflow-y-auto">
-      <div className="w-full mx-auto p-6 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
-        <h1 className="text-2xl font-bold mb-6">AI PPT 生成器</h1>
+      <div className="w-full mx-auto p-4 max-w-4xl scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent">
+        <h1 className="text-2xl font-bold mb-6 pl-16 sm:pl-0">AI PPT</h1>
         <div className="space-y-6">
           {/* 标题输入 */}
           <div className="space-y-2">

@@ -53,16 +53,17 @@ export function AgentMarket() {
 
   return (
     <div className="h-full p-4 lg:p-6 overflow-auto max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">发现 AI 智能体</h1>
+      <h1 className="text-2xl font-bold mb-6 pl-16 sm:pl-0">智能体</h1>
       <div className="py-6">
         {/* 搜索和分类区域 */}
-        <div className="flex flex-row justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center mb-6">
           {/* 分类标签 */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {categories.map((category) => (
               <Button
                 key={category.id}
                 variant="outline"
+                size="sm"
                 className={`border ${
                   category.id === activeCategory
                     ? "bg-black text-white hover:bg-black/90 hover:text-white border-black"
@@ -76,9 +77,12 @@ export function AgentMarket() {
           </div>
 
           {/* 搜索框 */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-            <Input className="pl-10 bg-muted/50" placeholder="搜索智能体" />
+            <Input
+              className="pl-10 bg-muted/50 w-full"
+              placeholder="搜索智能体"
+            />
           </div>
         </div>
 

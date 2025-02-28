@@ -3,11 +3,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { QuestionMarkCircledIcon, Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import wx_qrcode from "@/assets/images/wx_qrcode.png";
 
@@ -24,22 +24,27 @@ export function HelpButton() {
             <QuestionMarkCircledIcon className="h-6 w-6" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[825px] p-6">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="sr-only text-2xl font-bold">
+        <DialogContent className="sm:max-w-[825px] p-4 sm:p-6 h-[90vh] sm:h-auto overflow-y-auto">
+          <div className="absolute top-2 right-2">
+            <DialogTitle className="sr-only text-xl font-bold">
               使用说明
             </DialogTitle>
-            <DialogDescription asChild>
-              <span className="sr-only">量子皮皮虾平台功能介绍和联系方式</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-8">
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Cross2Icon className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
+          <DialogDescription className="sr-only">
+            量子皮皮虾平台功能介绍和联系方式
+          </DialogDescription>
+          <div className="space-y-6">
             <div className="space-y-4">
-              <h3 className="font-semibold text-xl">功能介绍</h3>
+              <h3 className="font-semibold text-lg">功能介绍</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 量子皮皮虾是一个强大的AI助手平台，集成了多种智能功能：
               </p>
-              <ul className="grid grid-cols-2 gap-4 mt-4">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <li className="space-y-2 p-4 rounded-lg bg-muted/30">
                   <span className="font-medium text-base inline-flex items-center gap-2">
                     ⭐️ AI对话
@@ -53,6 +58,9 @@ export function HelpButton() {
                     </li>
                     <li className="list-disc">支持 DeepSeek-R1/V3满血版</li>
                     <li className="list-disc">支持文件上传和智能分析功能</li>
+                    <li className="list-disc">
+                      一键生成专业角色Prompt，快速定制AI人设
+                    </li>
                   </ul>
                 </li>
                 <li className="space-y-2 p-4 rounded-lg bg-muted/30">
@@ -64,14 +72,14 @@ export function HelpButton() {
                       创建专属知识库，训练定制化AI助手
                     </li>
                     <li className="list-disc">
-                      支持PDF、Word、Excel等多种文档格式导入
+                      智能向量搜索，精准匹配相关内容
                     </li>
                     <li className="list-disc">
-                      智能向量搜索，精准匹配相关内容
+                      支持PDF、Word、Excel、Markdown等多种文档格式导入
                     </li>
                   </ul>
                 </li>
-                <li className="space-y-2 p-4 rounded-lg bg-muted/30 col-span-2 sm:col-span-1">
+                <li className="space-y-2 p-4 rounded-lg bg-muted/30">
                   <span className="font-medium text-base inline-flex items-center gap-2">
                     ⭐️ AI PPT生成
                   </span>
@@ -85,9 +93,9 @@ export function HelpButton() {
               </ul>
             </div>
             <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-xl">联系方式</h3>
-              <div className="flex flex-row justify-between gap-6 items-start">
-                <div className="flex flex-col gap-3">
+              <h3 className="font-semibold text-lg">联系方式</h3>
+              <div className="flex flex-col sm:flex-row justify-between gap-4 sm:gap-6 items-start">
+                <div className="flex flex-col gap-3 w-full sm:w-auto">
                   <p className="text-sm text-muted-foreground">
                     如有任何问题或建议，欢迎通过以下方式联系我：
                   </p>
@@ -103,7 +111,7 @@ export function HelpButton() {
                     </li>
                   </ul>
                 </div>
-                <div className="relative">
+                <div className="relative mx-auto sm:mx-0">
                   <Image
                     src={wx_qrcode}
                     alt="qrcode"
