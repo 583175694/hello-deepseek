@@ -12,7 +12,7 @@ import logo from "@/assets/images/logo.png";
 import Image from "next/image";
 import { PPTGenerator } from "@/components/ppt/PPTGenerator";
 
-export function ChatLayout() {
+export function Layout() {
   const router = useRouter();
   const pathname = usePathname();
   const isChat = pathname === "/" || pathname === "/chat";

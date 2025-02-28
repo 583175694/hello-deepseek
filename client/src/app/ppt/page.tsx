@@ -1,5 +1,5 @@
-import { ChatLayout } from "@/components/layouts/ChatLayout";
+import { Layout } from "@/components/layouts/Layout";
 
 export default function PPTPage() {
-  return <ChatLayout />;
+  return <Layout />;
 }
