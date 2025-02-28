@@ -75,7 +75,7 @@ export function KnowledgeBase() {
           <div className="relative">
             <input
               type="file"
-              accept=".pdf,.txt,.md,.doc,.docx"
+              accept=".pdf,.txt,.md,.doc,.docx,.csv,.xlsx,.xls"
               onChange={handleFileUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               disabled={isUploading}

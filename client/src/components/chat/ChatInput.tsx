@@ -2,7 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Send, Database, Globe, Paperclip, X, FileIcon, Loader2 } from "lucide-react";
+import {
+  Send,
+  Database,
+  Globe,
+  Paperclip,
+  X,
+  FileIcon,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 
@@ -209,7 +217,7 @@ export function ChatInput({
           id="file-upload"
           className="hidden"
           onChange={handleFileUpload}
-          accept=".pdf,.doc,.docx,.txt,.md"
+          accept=".pdf,.doc,.docx,.txt,.md,.csv,.xlsx,.xls"
           disabled={disabled || isLoading || tempFiles.length > 0}
           capture="environment"
         />

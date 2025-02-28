@@ -62,7 +62,7 @@ const ChatItem = ({
           {format(new Date(session.createdAt), "MM/dd HH:mm")}
         </span>
         <span className="text-sm font-medium truncate">
-          {session.roleName || "⭐️ 默认助手"}
+          {session.roleName || "默认助手"}
         </span>
       </div>
       <Button

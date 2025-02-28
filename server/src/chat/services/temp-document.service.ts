@@ -10,9 +10,11 @@ import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/byted
 import { SessionTempFile } from '../entities/session-temp-file.entity';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as XLSX from 'xlsx';
 
 /**
  * 临时文档服务
@@ -192,17 +194,89 @@ export class TempDocumentService {
 
       // 根据文件类型选择合适的加载器
       let loader;
+      let docs;
+      const fileExt = path.extname(finalFileName).toLowerCase();
+
       if (file.mimetype === 'application/pdf') {
         this.logger.log(`正在为文件 ${finalFileName} 使用PDF加载器`);
         loader = new PDFLoader(finalFilePath);
+        docs = await loader.load();
+      } else if (fileExt === '.md' || file.mimetype === 'text/markdown') {
+        this.logger.log(`正在为文件 ${finalFileName} 使用Markdown加载器`);
+        loader = new TextLoader(finalFilePath);
+        docs = await loader.load();
+      } else if (
+        fileExt === '.xlsx' ||
+        fileExt === '.xls' ||
+        file.mimetype ===
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.mimetype === 'application/vnd.ms-excel'
+      ) {
+        this.logger.log(`正在为文件 ${finalFileName} 使用Excel加载器`);
+        // 直接从buffer读取Excel文件
+        const workbook = XLSX.read(file.buffer, {
+          type: 'buffer',
+          cellDates: true, // 将日期转换为JS日期对象
+          cellNF: false, // 不保留数字格式
+          cellText: false, // 不保留文本格式
+        });
+        const sheets = workbook.SheetNames;
+
+        // 将所有sheet的内容合并成文档
+        docs = sheets.map((sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+
+          // 将sheet转换为JSON对象数组，并处理格式
+          const jsonData = XLSX.utils.sheet_to_json<string[]>(sheet, {
+            raw: false, // 返回格式化的字符串
+            defval: '', // 空单元格的默认值
+            header: 1, // 使用数组格式，避免中文列名可能的编码问题
+            blankrows: false, // 跳过空行
+          });
+
+          // 获取列名（第一行）
+          const headers = (jsonData[0] || []) as string[];
+          // 获取数据行（剩余行）
+          const dataRows = jsonData.slice(1) as string[][];
+
+          // 将数据转换为易读的文本格式
+          const textContent = dataRows
+            .map((row: any[]) => {
+              return row
+                .map((cell, index) => {
+                  const header = headers[index] || `Column${index + 1}`;
+                  // 处理单元格的值，确保是字符串
+                  const value =
+                    cell === null || cell === undefined
+                      ? ''
+                      : String(cell).trim();
+                  return `${header}: ${value}`;
+                })
+                .filter((item) => item.endsWith(': ') === false)
+                .join(' | ');
+            })
+            .filter((line) => line.length > 0)
+            .join('\n');
+
+          return new Document({
+            pageContent: textContent || '空白表格',
+            metadata: {
+              source: finalFileName,
+              sheet: sheetName,
+              rowCount: dataRows.length,
+              columnCount: headers.length,
+            },
+          });
+        });
+      } else if (fileExt === '.csv' || file.mimetype === 'text/csv') {
+        this.logger.log(`正在为文件 ${finalFileName} 使用CSV加载器`);
+        loader = new CSVLoader(finalFilePath);
+        docs = await loader.load();
       } else {
         this.logger.log(`正在为文件 ${finalFileName} 使用文本加载器`);
         loader = new TextLoader(finalFilePath);
+        docs = await loader.load();
       }
-
-      // 加载文档
-      this.logger.log(`正在从 ${finalFileName} 加载文档内容`);
-      const docs = await loader.load();
 
       // 计算总文档长度
       const totalLength = docs.reduce(

@@ -33,6 +33,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/serve-static": "^5.0.3",
     "@nestjs/typeorm": "^11.0.0",
+    "@types/xlsx": "^0.0.35",
     "axios": "^1.7.9",
     "cohere-ai": "^7.15.4",
     "exa-js": "^1.4.10",
@@ -43,7 +44,8 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20",
-    "uuid": "^11.0.5"
+    "uuid": "^11.0.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
