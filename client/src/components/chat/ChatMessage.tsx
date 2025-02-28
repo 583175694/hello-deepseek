@@ -1,5 +1,11 @@
 // 导入必要的依赖
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  copyToClipboard,
+  downloadAsFile,
+  generateTimestampFilename,
+  formatUrlHostname,
+} from "@/lib/utils";
 import type { Message } from "@/types/chat";
 import {
   Bot,
@@ -15,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -33,6 +40,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // 添加代码块组件
@@ -44,9 +57,11 @@ function CodeBlock({
   language: string;
 }) {
   const [isCopied, setIsCopied] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const code = String(children).replace(/\n$/, "");
+  const isHtml = language.toLowerCase() === "html";
 
   const handleCopyCode = () => {
-    const code = String(children).replace(/\n$/, "");
     try {
       const textarea = document.createElement("textarea");
       textarea.value = code;
@@ -65,18 +80,51 @@ function CodeBlock({
     }
   };
 
+  // HTML 预览弹窗
+  const HtmlPreviewDialog = () => {
+    if (!isHtml) return null;
+
+    return (
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-[800px] w-[90vw] max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>HTML 预览</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full h-[70vh] border rounded-md overflow-hidden">
+            <iframe
+              srcDoc={code}
+              className="absolute inset-0 w-full h-full"
+              sandbox="allow-scripts"
+              title="HTML Preview"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="relative group">
-      <button
-        onClick={handleCopyCode}
-        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
-      >
-        {isCopied ? (
-          <Check className="w-4 h-4" />
-        ) : (
-          <Copy className="w-4 h-4" />
+      <div className="absolute right-2 top-2 flex gap-2">
+        <button
+          onClick={handleCopyCode}
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
+        >
+          {isCopied ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+        {isHtml && (
+          <button
+            onClick={() => setIsPreviewOpen(true)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
+          >
+            <Play className="w-4 h-4" />
+          </button>
         )}
-      </button>
+      </div>
       <div className="max-w-full overflow-x-auto">
         <SyntaxHighlighter
           language={language}
@@ -88,9 +136,10 @@ function CodeBlock({
             padding: "1rem",
           }}
         >
-          {String(children).replace(/\n$/, "")}
+          {code}
         </SyntaxHighlighter>
       </div>
+      <HtmlPreviewDialog />
     </div>
   );
 }
@@ -123,7 +172,7 @@ export function ChatMessage({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // 处理复制消息内容
-  const handleCopy = () => {
+  const handleCopy = async () => {
     // 构建要复制的文本
     let textToCopy = "";
 
@@ -137,22 +186,10 @@ export function ChatMessage({
       textToCopy = message.content;
     }
 
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = textToCopy;
-      textarea.style.position = "fixed";
-      textarea.style.left = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
+    const success = await copyToClipboard(textToCopy);
+    if (success) {
       setCopied(true);
-      toast.success("已复制到剪贴板");
-      // 1.5秒后重置复制状态
       setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("复制失败:", err);
-      toast.error("复制失败");
     }
   };
 
@@ -189,34 +226,8 @@ export function ChatMessage({
     }
     content += message.content;
 
-    // 生成时间戳
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}_${now
-      .getHours()
-      .toString()
-      .padStart(2, "0")}${now.getMinutes().toString().padStart(2, "0")}${now
-      .getSeconds()
-      .toString()
-      .padStart(2, "0")}`;
-
-    // 创建Blob对象
-    const blob = new Blob([content], {
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
-
-    // 创建下载链接
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ai-response_${timestamp}.docx`;
-    document.body.appendChild(a);
-    a.click();
-
-    // 清理
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    const filename = generateTimestampFilename("ai-response", "docx");
+    downloadAsFile(content, filename);
   };
 
   // 处理删除消息
@@ -338,9 +349,7 @@ export function ChatMessage({
                   className="bg-secondary/50 hover:bg-secondary/70 text-secondary-foreground px-3 py-1 rounded-md text-xs flex items-center gap-1.5 transition-colors"
                 >
                   <Globe className="w-3 h-3" />
-                  {source.url
-                    ? new URL(source.url).hostname.replace(/^www\./, "")
-                    : "未知来源"}
+                  {source.url ? formatUrlHostname(source.url) : "未知来源"}
                 </a>
               );
             })}
@@ -352,6 +361,91 @@ export function ChatMessage({
       toast.error("解析引用来源失败");
       return null;
     }
+  };
+
+  // 渲染交互按钮组
+  const renderInteractionButtons = () => {
+    return (
+      <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {/* 所有消息都显示的按钮 */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleCopy}
+          disabled={isStreaming}
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+        </Button>
+
+        {/* AI 消息特有的按钮 */}
+        {isAI && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleShare}
+              disabled={isStreaming}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleDownload}
+              disabled={isStreaming}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleLike}
+              disabled={isStreaming}
+            >
+              <ThumbsUp
+                className={cn("h-4 w-4", liked && "stroke-[2.5] text-primary")}
+              />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleDislike}
+              disabled={isStreaming}
+            >
+              <ThumbsDown
+                className={cn(
+                  "h-4 w-4",
+                  disliked && "stroke-[2.5] text-primary"
+                )}
+              />
+            </Button>
+          </>
+        )}
+
+        {/* 删除按钮 - 对所有消息都显示 */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-foreground hover:text-foreground"
+          onClick={() => setDeleteDialogOpen(true)}
+          disabled={isStreaming}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
   };
 
   // 渲染整个消息组件
@@ -373,7 +467,6 @@ export function ChatMessage({
           )}
 
           <div className="flex flex-col">
-            {/* 消息内容 */}
             <div
               className={cn(
                 "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-5rem)] md:max-w-[45rem]",
@@ -382,92 +475,12 @@ export function ChatMessage({
                   : "bg-primary text-primary-foreground"
               )}
             >
+              {/* 消息内容 */}
               {renderMessageContent()}
             </div>
 
             {/* 交互按钮组 */}
-            <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {/* 所有消息都显示的按钮 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleCopy}
-                disabled={isStreaming}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-
-              {/* AI 消息特有的按钮 */}
-              {isAI && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleShare}
-                    disabled={isStreaming}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleDownload}
-                    disabled={isStreaming}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleLike}
-                    disabled={isStreaming}
-                  >
-                    <ThumbsUp
-                      className={cn(
-                        "h-4 w-4",
-                        liked && "stroke-[2.5] text-primary"
-                      )}
-                    />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={handleDislike}
-                    disabled={isStreaming}
-                  >
-                    <ThumbsDown
-                      className={cn(
-                        "h-4 w-4",
-                        disliked && "stroke-[2.5] text-primary"
-                      )}
-                    />
-                  </Button>
-                </>
-              )}
-
-              {/* 删除按钮 - 对所有消息都显示 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-foreground hover:text-foreground"
-                onClick={() => setDeleteDialogOpen(true)}
-                disabled={isStreaming}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {renderInteractionButtons()}
           </div>
 
           {/* 用户头像 */}
