@@ -31,17 +31,6 @@ const ChatItem = ({
   handleOpenDeleteDialog,
 }: ChatItemProps) => {
   const handleClick = () => {
-    // 立即更新视觉状态
-    const clickedElement = document.querySelector(
-      `[data-session-id="${session.sessionId}"]`
-    );
-    if (clickedElement) {
-      const allItems = document.querySelectorAll("[data-session-id]");
-      allItems.forEach((item) =>
-        item.classList.remove("bg-muted", "shadow-sm")
-      );
-      clickedElement.classList.add("bg-muted", "shadow-sm");
-    }
     setCurrentSessionId(session.sessionId);
   };
 
