@@ -53,7 +53,7 @@ export function AgentMarket() {
 
   return (
     <div className="h-full p-4 lg:p-6 overflow-auto max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 pl-16 sm:pl-0">智能体</h1>
+      <h1 className="text-2xl font-bold mb-6 pl-16 lg:pl-0">智能体</h1>
       <div className="py-6">
         {/* 搜索和分类区域 */}
         <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center mb-6">
