@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { chatService } from "@/lib/api";
+import { toast } from "sonner";
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -58,6 +59,7 @@ export function CreateSessionDialog({
       setSystemPrompt(generatedPrompt);
     } catch (error) {
       console.error("生成系统提示词失败:", error);
+      toast.error("生成系统提示词失败");
     } finally {
       setIsGenerating(false);
     }

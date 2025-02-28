@@ -2,6 +2,7 @@ import axios, { InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "@/config";
 import { getClientIdHeader } from "./clientId";
 import type { GetSessionMessagesResponse } from "@/types/api";
+import { toast } from "sonner";
 
 // 将baseURL改为从配置中导入
 export const baseURL = API_BASE_URL;
@@ -19,6 +20,44 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   });
   return config;
 });
+
+// 添加响应拦截器，处理错误
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // 获取错误信息
+    const errorMessage =
+      error.response?.data?.message || error.message || "请求失败";
+
+    // 根据状态码显示不同的错误提示
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          toast.error("未授权，请重新登录");
+          break;
+        case 403:
+          toast.error("拒绝访问");
+          break;
+        case 404:
+          toast.error("请求的资源不存在");
+          break;
+        case 500:
+          toast.error("服务器错误");
+          break;
+        default:
+          toast.error(errorMessage);
+      }
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      toast.error("网络错误，请检查网络连接");
+    } else {
+      // 请求配置出错
+      toast.error(errorMessage);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 interface CreateSessionParams {
   roleName?: string;

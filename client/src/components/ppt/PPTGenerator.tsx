@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 // 解析 markdown 格式的 PPT 内容
 interface ParsedSlide {
@@ -276,6 +277,7 @@ export function PPTGenerator() {
       }, 100);
     } catch (error) {
       console.error("生成大纲失败:", error);
+      toast.error("生成大纲失败");
     } finally {
       setTimeout(() => {
         setIsGeneratingOutline(false);
@@ -310,6 +312,7 @@ export function PPTGenerator() {
       }, 100);
     } catch (error) {
       console.error("生成内容失败:", error);
+      toast.error("生成内容失败");
     } finally {
       setTimeout(() => {
         setIsGeneratingContent(false);
@@ -359,12 +362,14 @@ export function PPTGenerator() {
             case "error":
               // 处理错误事件
               console.error("PPT生成失败", data);
+              toast.error("PPT生成失败");
               break;
           }
         },
       });
     } catch (error) {
       console.error("生成 PPT 失败:", error);
+      toast.error("PPT生成失败");
     } finally {
       setIsGeneratingPPT(false);
     }
@@ -398,6 +403,7 @@ export function PPTGenerator() {
       setOutline(newOutline);
     } catch (error) {
       console.error("AI对话失败:", error);
+      toast.error("AI对话失败");
       setChatHistory((prev) => [
         ...prev,
         { role: "assistant", content: "抱歉，生成大纲时出现了错误。" },

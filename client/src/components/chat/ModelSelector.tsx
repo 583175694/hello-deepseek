@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { chatService } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Model {
   id: string;
@@ -35,6 +36,7 @@ export function ModelSelector({ onModelChange, disabled }: ModelSelectorProps) {
       })
       .catch((error) => {
         console.error("Failed to fetch models:", error);
+        toast.error("加载模型列表失败");
       });
   }, []);
 

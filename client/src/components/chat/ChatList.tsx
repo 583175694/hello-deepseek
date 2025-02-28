@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { toast } from "sonner";
 
 interface ChatItemProps {
   session: Session;
@@ -95,8 +96,10 @@ export function ChatList() {
       await deleteSession(sessionId);
       setDeleteDialogOpen(false);
       setSessionToDelete(null);
+      toast.success("对话已删除");
     } catch (error) {
       console.error("删除对话失败:", error);
+      toast.error("删除对话失败");
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useEventSource } from "./useEventSource";
 import { baseURL } from "@/lib/api";
+import { toast } from "sonner";
 
 interface StreamResponse {
   content: string;
@@ -52,6 +53,7 @@ export function useStreamChat() {
         },
         onError: (error) => {
           console.error("Stream chat error:", error);
+          toast.error("AI对话失败");
           setIsStreaming(false);
         },
         onClose: () => {

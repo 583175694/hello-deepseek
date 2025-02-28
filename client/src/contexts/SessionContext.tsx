@@ -10,6 +10,7 @@ import {
 } from "react";
 import { chatService } from "@/lib/api";
 import type { Session } from "@/types/chat";
+import { toast } from "sonner";
 
 type SessionContextType = {
   sessions: Session[];
@@ -39,6 +40,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSessions(sessions);
     } catch (error) {
       console.error("加载会话列表失败:", error);
+      toast.error("加载会话列表失败");
     }
   }, []);
 
@@ -53,6 +55,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return session;
       } catch (error) {
         console.error("创建会话失败:", error);
+        toast.error("创建会话失败");
         throw error;
       }
     },
@@ -71,6 +74,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("删除会话失败:", error);
+        toast.error("删除会话失败");
         throw error;
       }
     },

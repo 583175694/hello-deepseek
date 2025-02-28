@@ -11,6 +11,7 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
+import { toast } from "sonner";
 
 export function ChatHistory() {
   // 状态管理
@@ -89,6 +90,7 @@ export function ChatHistory() {
         setHasMore(data.pagination?.hasMore || false);
       } catch (error) {
         console.error("加载消息历史失败:", error);
+        toast.error("加载消息历史失败");
       } finally {
         setIsLoading(false);
         // 在消息加载完成后滚动到底部
@@ -146,6 +148,7 @@ export function ChatHistory() {
       });
     } catch (error) {
       console.error("加载更多消息失败:", error);
+      toast.error("加载更多消息失败");
     } finally {
       setIsLoadingMore(false);
     }
@@ -216,6 +219,7 @@ export function ChatHistory() {
       setTempFiles([]);
     } catch (error) {
       console.error("文件删除失败:", error);
+      toast.error("文件删除失败");
       throw error;
     }
   };

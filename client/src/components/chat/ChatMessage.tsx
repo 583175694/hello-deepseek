@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 // 添加代码块组件
 function CodeBlock({
@@ -56,9 +57,11 @@ function CodeBlock({
       document.execCommand("copy");
       document.body.removeChild(textarea);
       setIsCopied(true);
+      toast.success("已复制到剪贴板");
       setTimeout(() => setIsCopied(false), 1500);
     } catch (err) {
       console.error("Failed to copy code:", err);
+      toast.error("复制失败");
     }
   };
 
@@ -144,10 +147,12 @@ export function ChatMessage({
       document.execCommand("copy");
       document.body.removeChild(textarea);
       setCopied(true);
+      toast.success("已复制到剪贴板");
       // 1.5秒后重置复制状态
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error("复制失败:", err);
+      toast.error("复制失败");
     }
   };
 
@@ -160,7 +165,7 @@ export function ChatMessage({
       });
     } catch {
       await navigator.clipboard.writeText(message.content);
-      alert("已复制到剪贴板");
+      toast.success("已复制到剪贴板");
     }
   };
 
@@ -344,6 +349,7 @@ export function ChatMessage({
       );
     } catch (error) {
       console.error("Failed to parse sources:", error);
+      toast.error("解析引用来源失败");
       return null;
     }
   };

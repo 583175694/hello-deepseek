@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
+import { toast } from "sonner";
 
 // 定义临时文件类型
 interface TempFile {
@@ -115,6 +116,7 @@ export function ChatInput({
         setTempFiles([uploadedFile]);
       } catch (error) {
         console.error("文件上传失败:", error);
+        toast.error("文件上传失败");
       } finally {
         setIsUploading(false); // 上传完成后重置状态
       }
@@ -137,6 +139,7 @@ export function ChatInput({
         }
       } catch (error) {
         console.error("文件删除失败:", error);
+        toast.error("文件删除失败");
       }
     }
   };
