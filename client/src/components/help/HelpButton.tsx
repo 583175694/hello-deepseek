@@ -42,7 +42,7 @@ export function HelpButton() {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">功能介绍</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                量子皮皮虾是一个强大的AI助手平台，集成了多种智能功能：
+                量子皮皮虾是一个智能化的AI助手平台，为您提供全方位的AI解决方案：
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <li className="space-y-2 p-4 rounded-lg bg-muted/30">
@@ -50,17 +50,16 @@ export function HelpButton() {
                     ⭐️ AI对话
                   </span>
                   <ul className="pl-4 space-y-1.5 text-sm text-muted-foreground">
+                    <li className="list-disc">强大的DeepSeek-R1/V3模型支持</li>
+                    <li className="list-disc">实时联网搜索，获取最新资讯</li>
                     <li className="list-disc">
-                      支持联网实时搜索，获取最新信息
+                      可视化思维链，让AI决策过程更透明
                     </li>
+                    <li className="list-disc">智能文件解析与深度分析</li>
                     <li className="list-disc">
-                      展示AI的思考过程，提供透明的推理过程
+                      专业角色模板库，一键定制AI助手
                     </li>
-                    <li className="list-disc">支持 DeepSeek-R1/V3满血版</li>
-                    <li className="list-disc">支持文件上传和智能分析功能</li>
-                    <li className="list-disc">
-                      一键生成专业角色Prompt，快速定制AI人设
-                    </li>
+                    <li className="list-disc">支持 HTML 预览与渲染</li>
                   </ul>
                 </li>
                 <li className="space-y-2 p-4 rounded-lg bg-muted/30">
@@ -69,13 +68,13 @@ export function HelpButton() {
                   </span>
                   <ul className="pl-4 space-y-1.5 text-sm text-muted-foreground">
                     <li className="list-disc">
-                      创建专属知识库，训练定制化AI助手
+                      打造专属AI知识库，实现智能问答
                     </li>
                     <li className="list-disc">
-                      智能向量搜索，精准匹配相关内容
+                      基于向量的语义搜索，精准定位信息
                     </li>
                     <li className="list-disc">
-                      支持PDF、Word、Excel、Markdown等多种文档格式导入
+                      全格式文档支持：PDF、Office、Markdown等
                     </li>
                   </ul>
                 </li>
@@ -84,10 +83,10 @@ export function HelpButton() {
                     ⭐️ AI PPT生成
                   </span>
                   <ul className="pl-4 space-y-1.5 text-sm text-muted-foreground">
-                    <li className="list-disc">一键生成专业PPT大纲</li>
-                    <li className="list-disc">AI智能优化内容和结构</li>
-                    <li className="list-disc">支持实时预览和编辑</li>
-                    <li className="list-disc">集成AIPPT，生成精美幻灯片</li>
+                    <li className="list-disc">智能生成专业PPT框架</li>
+                    <li className="list-disc">AI辅助内容优化与结构调整</li>
+                    <li className="list-disc">所见即所得的实时编辑体验</li>
+                    <li className="list-disc">一键生成精美演示幻灯片</li>
                   </ul>
                 </li>
               </ul>
