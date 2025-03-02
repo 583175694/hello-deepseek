@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { useRef, useEffect, useState } from "react";
 import type { Session } from "@/types/chat";
@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Input } from "../ui/input";
 import { toast } from "sonner";
 
 interface ChatItemProps {
@@ -23,6 +25,7 @@ interface ChatItemProps {
   currentSessionId: string;
   setCurrentSessionId: (id: string) => void;
   handleOpenDeleteDialog: (e: React.MouseEvent, sessionId: string) => void;
+  onRename: (sessionId: string, newName: string) => void;
 }
 
 const ChatItem = ({
@@ -30,9 +33,23 @@ const ChatItem = ({
   currentSessionId,
   setCurrentSessionId,
   handleOpenDeleteDialog,
+  onRename,
 }: ChatItemProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState(session.roleName || "默认助手");
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   const handleClick = () => {
     setCurrentSessionId(session.sessionId);
+  };
+
+  const handleRename = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newName.trim()) {
+      onRename(session.sessionId, newName.trim());
+      setIsEditing(false);
+      setPopoverOpen(false);
+    }
   };
 
   return (
@@ -55,29 +72,93 @@ const ChatItem = ({
           {session.roleName || "默认助手"}
         </span>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="opacity-0 group-hover:opacity-100 ml-2 shrink-0 transition-all duration-200 hover:bg-destructive/10"
-        onClick={(e) => handleOpenDeleteDialog(e, session.sessionId)}
-      >
-        <Trash2 className="w-3.5 h-3.5 text-muted-foreground [.hover\:bg-destructive\/10_&]:text-destructive transition-colors duration-200" />
-      </Button>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="opacity-0 group-hover:opacity-100 ml-2 shrink-0 transition-all duration-200"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-52 p-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isEditing ? (
+            <form onSubmit={handleRename} className="space-y-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="输入新名称"
+                className="h-8"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setNewName(session.roleName || "默认助手");
+                  }}
+                >
+                  取消
+                </Button>
+                <Button type="submit" size="sm">
+                  保存
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-col">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onClick={() => setIsEditing(true)}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                重命名
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  handleOpenDeleteDialog(e, session.sessionId);
+                  setPopoverOpen(false);
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                删除
+              </Button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
 
 export function ChatList() {
-  const { sessions, currentSessionId, setCurrentSessionId, deleteSession } =
-    useSessionManager();
+  const {
+    sessions,
+    currentSessionId,
+    setCurrentSessionId,
+    deleteSession,
+    updateSession,
+  } = useSessionManager();
   const listRef = useRef<HTMLDivElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(currentSessionId);
 
   const handleSessionClick = (sessionId: string) => {
-    setSelectedId(sessionId); // 立即更新选中状态
-    setCurrentSessionId(sessionId); // 触发实际的会话切换
+    setSelectedId(sessionId);
+    setCurrentSessionId(sessionId);
   };
 
   const handleOpenDeleteDialog = (e: React.MouseEvent, sessionId: string) => {
@@ -86,7 +167,16 @@ export function ChatList() {
     setDeleteDialogOpen(true);
   };
 
-  // 当 currentSessionId 从外部更新时，同步更新 selectedId
+  const handleRename = async (sessionId: string, newName: string) => {
+    try {
+      await updateSession(sessionId, { roleName: newName });
+      toast.success("会话名称已更新");
+    } catch (error) {
+      console.error("更新会话名称失败:", error);
+      toast.error("更新会话名称失败");
+    }
+  };
+
   useEffect(() => {
     setSelectedId(currentSessionId);
   }, [currentSessionId]);
@@ -123,6 +213,7 @@ export function ChatList() {
                   currentSessionId={selectedId || ""}
                   setCurrentSessionId={handleSessionClick}
                   handleOpenDeleteDialog={handleOpenDeleteDialog}
+                  onRename={handleRename}
                 />
               </div>
             ))}

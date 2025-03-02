@@ -23,6 +23,10 @@ type SessionContextType = {
     systemPrompt: string;
   }) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
+  updateSession: (
+    sessionId: string,
+    updates: Partial<Session>
+  ) => Promise<void>;
   hasTempDocs: boolean;
   setHasTempDocs: (value: boolean) => void;
 };
@@ -81,6 +85,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [currentSessionId]
   );
 
+  const updateSession = useCallback(
+    async (sessionId: string, updates: Partial<Session>) => {
+      try {
+        await chatService.updateSession(sessionId, updates);
+        setSessions((prev) =>
+          prev.map((session) =>
+            session.sessionId === sessionId
+              ? { ...session, ...updates }
+              : session
+          )
+        );
+      } catch (error) {
+        console.error("更新会话失败:", error);
+        toast.error("更新会话失败");
+        throw error;
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
@@ -95,6 +119,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         loadSessions,
         createNewSession,
         deleteSession,
+        updateSession,
         hasTempDocs,
         setHasTempDocs,
       }}

@@ -142,6 +142,20 @@ export class ChatController {
     return await this.sessionService.deleteSession(sessionId, clientId);
   }
 
+  // 更新会话
+  @Post('sessions/:sessionId/update')
+  async updateSession(
+    @Headers('x-client-id') clientId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() updates: any,
+  ) {
+    return await this.sessionService.updateSession(
+      sessionId,
+      clientId,
+      updates,
+    );
+  }
+
   // 上传文档的接口
   @Post('documents')
   async uploadDocument(

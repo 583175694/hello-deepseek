@@ -194,4 +194,47 @@ export class SessionService {
       throw error;
     }
   }
+
+  async updateSession(
+    sessionId: string,
+    clientId: string,
+    updates: Partial<Session>,
+  ) {
+    try {
+      this.logger.log(`正在更新会话: ${sessionId}`);
+      const session = await this.sessionRepository.findOne({
+        where: { sessionId, clientId },
+      });
+
+      if (!session) {
+        this.logger.warn(`Session not found for update: ${sessionId}`);
+        throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
+      }
+
+      // 只允许更新特定字段
+      const allowedUpdates = ['roleName', 'systemPrompt'];
+      const filteredUpdates = Object.keys(updates).reduce((acc, key) => {
+        if (allowedUpdates.includes(key)) {
+          acc[key] = updates[key];
+        }
+        return acc;
+      }, {});
+
+      // 更新会话
+      await this.sessionRepository.update(
+        { sessionId, clientId },
+        filteredUpdates,
+      );
+
+      const updatedSession = await this.sessionRepository.findOne({
+        where: { sessionId, clientId },
+      });
+
+      this.logger.log(`成功更新会话: ${sessionId}`);
+      return updatedSession;
+    } catch (error) {
+      this.logger.error('Update session error:', error);
+      throw error;
+    }
+  }
 }

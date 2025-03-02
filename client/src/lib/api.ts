@@ -81,6 +81,15 @@ export const chatService = {
     return response.data;
   },
 
+  // 更新会话
+  async updateSession(sessionId: string, updates: any) {
+    const response = await api.post(
+      `/chat/sessions/${sessionId}/update`,
+      updates
+    );
+    return response.data;
+  },
+
   // 删除会话
   async deleteSession(sessionId: string) {
     const response = await api.post(`/chat/sessions/${sessionId}/delete`);
