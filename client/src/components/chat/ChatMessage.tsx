@@ -14,7 +14,6 @@ import {
   Database,
   Globe,
   Check,
-  Share2,
   ThumbsUp,
   ThumbsDown,
   Download,
@@ -97,18 +96,6 @@ const MessageActions = React.memo(
       }
     };
 
-    const handleShare = async () => {
-      try {
-        await navigator.share({
-          title: "AI 对话分享",
-          text: message.content,
-        });
-      } catch {
-        await navigator.clipboard.writeText(message.content);
-        toast.success("已复制到剪贴板");
-      }
-    };
-
     const handleLike = () => {
       if (disliked) setDisliked(false);
       setLiked(!liked);
@@ -159,16 +146,6 @@ const MessageActions = React.memo(
 
           {isAI && (
             <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleShare}
-                disabled={isStreaming}
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-
               <Button
                 variant="ghost"
                 size="icon"
