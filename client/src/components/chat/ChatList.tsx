@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
+import { format, isToday, subDays, subMonths, isThisYear } from "date-fns";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSessionManager } from "@/contexts/SessionContext";
 import { useRef, useEffect, useState } from "react";
@@ -19,6 +19,64 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Input } from "../ui/input";
 import { toast } from "sonner";
+
+// 定义时间区间类型
+type TimeInterval =
+  | "today"
+  | "withinWeek"
+  | "withinMonth"
+  | "thisYear"
+  | "earlier";
+
+// 按时间区间对会话进行分组
+const groupSessionsByTimeInterval = (sessions: Session[]) => {
+  const groups: Record<TimeInterval, Session[]> = {
+    today: [],
+    withinWeek: [],
+    withinMonth: [],
+    thisYear: [],
+    earlier: [],
+  };
+
+  const now = new Date();
+  const oneWeekAgo = subDays(now, 7);
+  const oneMonthAgo = subMonths(now, 1);
+
+  sessions.forEach((session) => {
+    const date = new Date(session.createdAt);
+    if (isToday(date)) {
+      groups.today.push(session);
+    } else if (date >= oneWeekAgo) {
+      groups.withinWeek.push(session);
+    } else if (date >= oneMonthAgo) {
+      groups.withinMonth.push(session);
+    } else if (isThisYear(date)) {
+      groups.thisYear.push(session);
+    } else {
+      groups.earlier.push(session);
+    }
+  });
+
+  return groups;
+};
+
+// 获取时间区间的显示名称
+const getIntervalLabel = (interval: TimeInterval): string => {
+  switch (interval) {
+    case "today":
+      return "今天";
+    case "withinWeek":
+      return "一周内";
+    case "withinMonth":
+      return "一个月内";
+    case "thisYear":
+      return "今年";
+    case "earlier":
+      return "更早";
+    default:
+      return "";
+  }
+};
 
 interface ChatItemProps {
   session: Session;
@@ -143,6 +201,46 @@ const ChatItem = ({
   );
 };
 
+// 时间区间分组组件
+const TimeIntervalGroup = ({
+  interval,
+  sessions,
+  currentSessionId,
+  setCurrentSessionId,
+  handleOpenDeleteDialog,
+  onRename,
+}: {
+  interval: TimeInterval;
+  sessions: Session[];
+  currentSessionId: string;
+  setCurrentSessionId: (id: string) => void;
+  handleOpenDeleteDialog: (e: React.MouseEvent, sessionId: string) => void;
+  onRename: (sessionId: string, newName: string) => void;
+}) => {
+  if (sessions.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <div className="px-3 py-1 text-xs font-medium text-muted-foreground">
+        {getIntervalLabel(interval)}
+      </div>
+      <div className="space-y-1">
+        {sessions.map((session) => (
+          <div key={session.sessionId} data-session-id={session.sessionId}>
+            <ChatItem
+              session={session}
+              currentSessionId={currentSessionId}
+              setCurrentSessionId={setCurrentSessionId}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={onRename}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export function ChatList() {
   const {
     sessions,
@@ -155,6 +253,9 @@ export function ChatList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(currentSessionId);
+
+  // 按时间区间对会话进行分组
+  const groupedSessions = groupSessionsByTimeInterval(sessions);
 
   const handleSessionClick = (sessionId: string) => {
     setSelectedId(sessionId);
@@ -206,17 +307,47 @@ export function ChatList() {
             ref={listRef}
             className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-border/80 scrollbar-track-transparent py-1"
           >
-            {sessions.map((session) => (
-              <div key={session.sessionId} data-session-id={session.sessionId}>
-                <ChatItem
-                  session={session}
-                  currentSessionId={selectedId || ""}
-                  setCurrentSessionId={handleSessionClick}
-                  handleOpenDeleteDialog={handleOpenDeleteDialog}
-                  onRename={handleRename}
-                />
-              </div>
-            ))}
+            {/* 按时间区间显示分组会话 */}
+            <TimeIntervalGroup
+              interval="today"
+              sessions={groupedSessions.today}
+              currentSessionId={selectedId || ""}
+              setCurrentSessionId={handleSessionClick}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={handleRename}
+            />
+            <TimeIntervalGroup
+              interval="withinWeek"
+              sessions={groupedSessions.withinWeek}
+              currentSessionId={selectedId || ""}
+              setCurrentSessionId={handleSessionClick}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={handleRename}
+            />
+            <TimeIntervalGroup
+              interval="withinMonth"
+              sessions={groupedSessions.withinMonth}
+              currentSessionId={selectedId || ""}
+              setCurrentSessionId={handleSessionClick}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={handleRename}
+            />
+            <TimeIntervalGroup
+              interval="thisYear"
+              sessions={groupedSessions.thisYear}
+              currentSessionId={selectedId || ""}
+              setCurrentSessionId={handleSessionClick}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={handleRename}
+            />
+            <TimeIntervalGroup
+              interval="earlier"
+              sessions={groupedSessions.earlier}
+              currentSessionId={selectedId || ""}
+              setCurrentSessionId={handleSessionClick}
+              handleOpenDeleteDialog={handleOpenDeleteDialog}
+              onRename={handleRename}
+            />
           </div>
           <AlertDialog
             open={deleteDialogOpen}
