@@ -93,8 +93,6 @@ export function ChatHistory() {
         toast.error("加载消息历史失败");
       } finally {
         setIsLoading(false);
-        // 在消息加载完成后滚动到底部
-        setTimeout(scrollToBottom, 0);
       }
     };
 
@@ -190,8 +188,6 @@ export function ChatHistory() {
     if (tempFiles.length > 0) {
       throw new Error("已有上传的文件");
     }
-
-    console.log("handleFileUpload", file);
 
     const result = await fileService.uploadTempFile(currentSessionId, file);
     const tempFile = {
