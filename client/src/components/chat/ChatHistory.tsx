@@ -12,6 +12,7 @@ import { ChatList } from "@/components/chat/ChatList";
 import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
 import { toast } from "sonner";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 
 export function ChatHistory() {
   // 状态管理
@@ -27,6 +28,7 @@ export function ChatHistory() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef<HTMLDivElement>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 从 AI 聊天 hook 获取状态和方法
   const {
@@ -236,30 +238,64 @@ export function ChatHistory() {
       {/* 左侧列表区域 */}
       <div
         className={`
-        lg:block lg:w-[280px] lg:relative
+        lg:block lg:relative
         fixed inset-y-0 left-0
-        w-[280px] h-full
+        h-full
         bg-background border-r border-border
-        transform transition-transform duration-300 ease-in-out
+        transform transition-all duration-300 ease-in-out
         ${
           isMobileListOpen
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
         }
+        ${isSidebarCollapsed ? "lg:w-0 lg:border-r-0" : "lg:w-[280px]"}
+        w-[280px]
         z-50
+        overflow-hidden
       `}
       >
-        <div className="p-4 border-b border-border">
+        <div
+          className={`p-4 border-b border-border ${
+            isSidebarCollapsed ? "lg:hidden" : ""
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">对话</h2>
-            <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              新建会话
+            <h2 className="text-lg font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+              对话
+            </h2>
+            {/* 添加侧边栏收起/展开按钮 - 仅在大屏幕上显示 */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            >
+              <PanelRightOpen className="h-4 w-4" />
             </Button>
           </div>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="w-full mt-2 bg-primary/90 hover:bg-primary transition-colors"
+          >
+            <PlusIcon className="mr-2 h-4 w-4" />
+            新建会话
+          </Button>
         </div>
-        <ChatList />
+        <div className={isSidebarCollapsed ? "lg:hidden" : ""}>
+          <ChatList />
+        </div>
       </div>
+      {isSidebarCollapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 ml-4 mt-4"
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        >
+          <PanelRightClose className="h-4 w-4" />
+        </Button>
+      )}
 
       {currentSessionId ? (
         <div className="flex-1 flex flex-col h-full">

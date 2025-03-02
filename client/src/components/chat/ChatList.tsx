@@ -65,10 +65,10 @@ const ChatItem = ({
       onClick={handleClick}
     >
       <div className="flex flex-col flex-1 min-w-0 gap-0.5">
-        <span className="text-[0.7rem] text-muted-foreground flex items-center gap-2">
+        <span className="text-[0.7rem] text-muted-foreground flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis">
           {format(new Date(session.createdAt), "MM/dd HH:mm")}
         </span>
-        <span className="text-sm font-medium truncate">
+        <span className="text-sm font-medium truncate whitespace-nowrap overflow-hidden text-ellipsis">
           {session.roleName || "默认助手"}
         </span>
       </div>
