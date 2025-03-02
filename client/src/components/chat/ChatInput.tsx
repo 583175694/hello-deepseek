@@ -222,7 +222,6 @@ export function ChatInput({
           onChange={handleFileUpload}
           accept=".pdf,.doc,.docx,.txt,.md,.csv,.xlsx,.xls"
           disabled={disabled || isLoading || tempFiles.length > 0}
-          capture="environment"
         />
         <Button
           type="button"
