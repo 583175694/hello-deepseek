@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Worker, Viewer, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import {
   thumbnailPlugin,
@@ -14,7 +15,7 @@ interface PDFViewerProps {
   fileUrl: string;
 }
 
-export function PDFViewer({ fileUrl }: PDFViewerProps) {
+export const PDFViewer = React.memo(({ fileUrl }: PDFViewerProps) => {
   // 创建默认布局插件实例
   const thumbnailPluginInstance = thumbnailPlugin({
     thumbnailWidth: 100,
@@ -38,4 +39,6 @@ export function PDFViewer({ fileUrl }: PDFViewerProps) {
       </div>
     </Worker>
   );
-}
+});
+
+PDFViewer.displayName = "PDFViewer";

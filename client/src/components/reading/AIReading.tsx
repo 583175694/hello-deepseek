@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, FileUp, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -15,7 +15,10 @@ export function AIReading() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(55); // 初始宽度比例为60%
+  const [isResizing, setIsResizing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 处理文件上传
   const handleFileChange = (file: File | null) => {
@@ -73,6 +76,46 @@ export function AIReading() {
       fileInputRef.current.value = "";
     }
   };
+
+  // 处理拖动调整大小
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const handleResizeMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+
+      // 计算左侧面板宽度百分比，限制在20%到80%之间
+      let newWidth = (mouseX / containerWidth) * 100;
+      newWidth = Math.max(20, Math.min(80, newWidth));
+
+      setLeftPanelWidth(newWidth);
+    },
+    [isResizing]
+  );
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // 添加和移除全局事件监听器
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", handleResizeMove);
+      window.addEventListener("mouseup", handleResizeEnd);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleResizeMove);
+      window.removeEventListener("mouseup", handleResizeEnd);
+    };
+  }, [isResizing, handleResizeMove, handleResizeEnd]);
 
   return (
     <div className="flex flex-col h-full p-4 md:p-6 md:pb-0 overflow-hidden">
@@ -136,11 +179,24 @@ export function AIReading() {
             </Button>
           </div>
 
-          <div className="flex flex-row h-full">
-            <div className="rounded-lg overflow-hidden w-3/5 mr-4">
+          <div ref={containerRef} className="flex flex-row h-full relative">
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ width: `${leftPanelWidth}%` }}
+            >
               {pdfUrl && <PDFViewer fileUrl={pdfUrl} />}
             </div>
-            <div className="flex flex-col w-2/5">
+
+            {/* 可拖动分隔线 */}
+            <div
+              className={`w-1 bg-border hover:bg-primary cursor-col-resize active:bg-primary transition-all`}
+              onMouseDown={handleResizeStart}
+            />
+
+            <div
+              className="flex flex-col pl-4"
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
               <div className="flex flex-col">
                 <h2 className="text-xl font-bold">AI阅读</h2>
               </div>
