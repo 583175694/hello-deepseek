@@ -11,12 +11,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAIReading } from "@/hooks/useAIReading";
 import { readerService } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { ArticleSummary } from "./ArticleSummary";
 
 // 定义历史文件类型
 interface HistoryFile {
@@ -380,29 +380,7 @@ export function AIReading() {
               className="flex flex-col pl-4 overflow-y-auto scrollbar-none pb-6"
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
-              <div className="flex flex-col">
-                <h2 className="text-xl font-bold mb-4">文章摘要</h2>
-
-                {isLoading && !summary && (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <span className="ml-2">正在生成摘要...</span>
-                  </div>
-                )}
-
-                {isLoading && summary && (
-                  <div className="flex items-center mb-4">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                    <span className="text-sm">正在生成摘要...</span>
-                  </div>
-                )}
-
-                {summary && (
-                  <div className="prose prose-sm dark:prose-invert max-w-none overflow-auto">
-                    <ReactMarkdown>{summary}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
+              <ArticleSummary isLoading={isLoading} summary={summary} />
             </div>
           </div>
         </div>
