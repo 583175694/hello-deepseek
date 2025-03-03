@@ -3,7 +3,13 @@
 import { ChatHistory } from "@/components/chat/ChatHistory";
 import { KnowledgeBase } from "@/components/knowledge/KnowledgeBase";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Database, Presentation, Bot } from "lucide-react";
+import {
+  MessageSquare,
+  Database,
+  Presentation,
+  Bot,
+  FileText,
+} from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSessionManager } from "@/contexts/SessionContext";
@@ -12,6 +18,7 @@ import logo from "@/assets/images/logo.png";
 import Image from "next/image";
 import { PPTGenerator } from "@/components/ppt/PPTGenerator";
 import { AgentMarket } from "@/components/agent/AgentMarket";
+import { AIReading } from "@/components/reading/AIReading";
 
 export function Layout() {
   const router = useRouter();
@@ -20,6 +27,7 @@ export function Layout() {
   const isKnowledge = pathname === "/knowledge";
   const isPPT = pathname === "/ppt";
   const isAgent = pathname === "/agent";
+  const isReading = pathname === "/reading";
   const { createNewSession } = useSessionManager();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -125,6 +133,19 @@ export function Layout() {
           <Bot className="w-5 h-5" />
           <span>智能体</span>
         </Button>
+        <Button
+          variant="ghost"
+          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
+            isReading ? "bg-accent" : "hover:bg-accent/50"
+          }`}
+          onClick={() => {
+            router.push("/reading");
+            setIsMobileMenuOpen(false);
+          }}
+        >
+          <FileText className="w-5 h-5" />
+          <span>AI阅读</span>
+        </Button>
       </div>
 
       {/* 右侧内容区域 */}
@@ -137,6 +158,8 @@ export function Layout() {
           <PPTGenerator />
         ) : isAgent ? (
           <AgentMarket />
+        ) : isReading ? (
+          <AIReading />
         ) : null}
       </div>
 

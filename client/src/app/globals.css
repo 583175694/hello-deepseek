@@ -81,3 +81,23 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* 针对 Viewer 的滚动条 */
+.rpv-core__inner-pages {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.rpv-core__inner-pages::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* 针对缩略图区域的滚动条 */
+.rpv-thumbnail__list {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.rpv-thumbnail__list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
