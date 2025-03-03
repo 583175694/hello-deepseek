@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatDeepSeek } from '@langchain/deepseek';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import * as fs from 'fs';
-import * as path from 'path';
 import { models } from 'src/configs/models';
-import { Observable } from 'rxjs';
 
 @Injectable()
 export class ReaderService {
@@ -90,7 +87,7 @@ export class ReaderService {
 3. 重要的数据和证据
 4. 结论和建议
 
-请以清晰、简洁的方式组织摘要，使用markdown格式，包括适当的标题、列表和强调。确保摘要全面涵盖文章的重要内容，但长度控制在原文的20%以内。
+请以清晰、简洁的方式组织摘要，包括适当的标题、列表和强调。确保摘要全面涵盖文章的重要内容，但长度控制在原文的20%以内。
 
 以下是文章内容：
 
@@ -155,7 +152,7 @@ ${text}
    - 可能存在的局限或不足
    - 未来研究的方向建议
 
-请以结构化的方式组织分析内容，使用markdown格式，包括适当的标题、列表和强调。确保分析深入且有见地，帮助读者更好地理解和把握文章的精髓。
+请以结构化的方式组织分析内容，包括适当的标题、列表和强调。确保分析深入且有见地，帮助读者更好地理解和把握文章的精髓。
 
 以下是文章内容：
 

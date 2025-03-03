@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import { CodeBlock } from "../chat/ChatMessage";
+import remarkGfm from "remark-gfm";
 
 interface ArticleDeepReadingProps {
   isLoading: boolean;
@@ -20,16 +22,26 @@ export function ArticleDeepReading({
         </div>
       )}
 
-      {isLoading && deepReading && (
-        <div className="flex items-center mb-4">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-          <span className="text-sm">正在生成精读分析...</span>
-        </div>
-      )}
-
       {deepReading && (
         <div className="prose prose-sm dark:prose-invert max-w-none overflow-auto">
-          <ReactMarkdown>{deepReading}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code(props) {
+                const { children, className, ...rest } = props;
+                const match = /language-(\w+)/.exec(className || "");
+                return match ? (
+                  <CodeBlock language={match[1]}>{String(children)}</CodeBlock>
+                ) : (
+                  <code {...rest} className={className}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {deepReading}
+          </ReactMarkdown>
         </div>
       )}
     </div>

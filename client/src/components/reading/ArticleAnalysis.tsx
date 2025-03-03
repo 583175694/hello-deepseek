@@ -50,15 +50,17 @@ export function ArticleAnalysis({
       </div>
 
       <div className="mt-4 pb-4 h-full overflow-y-auto scrollbar-none">
-        <div className={activeTab === "summary" ? "block" : "hidden"}>
+        {activeTab === "summary" && (
           <ArticleSummary isLoading={isLoading} summary={summary} />
-        </div>
-        <div className={activeTab === "deepReading" ? "block" : "hidden"}>
+        )}
+        {activeTab === "deepReading" && (
           <ArticleDeepReading isLoading={isLoading} deepReading={deepReading} />
-        </div>
-        <div className={activeTab === "mindMap" ? "block h-full" : "hidden"}>
-          <ArticleMindMap isLoading={isLoading} mindMap={mindMap} />
-        </div>
+        )}
+        {activeTab === "mindMap" && (
+          <div className="h-full">
+            <ArticleMindMap isLoading={isLoading} mindMap={mindMap} />
+          </div>
+        )}
       </div>
     </div>
   );

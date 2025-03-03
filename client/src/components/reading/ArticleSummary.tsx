@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import { CodeBlock } from "../chat/ChatMessage";
+import remarkGfm from "remark-gfm";
 
 // 定义文章摘要组件的Props接口
 interface ArticleSummaryProps {
@@ -19,16 +21,26 @@ export function ArticleSummary({ isLoading, summary }: ArticleSummaryProps) {
         </div>
       )}
 
-      {isLoading && summary && (
-        <div className="flex items-center mb-4">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-          <span className="text-sm">正在生成摘要...</span>
-        </div>
-      )}
-
       {summary && (
         <div className="prose prose-sm dark:prose-invert max-w-none overflow-auto">
-          <ReactMarkdown>{summary}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code(props) {
+                const { children, className, ...rest } = props;
+                const match = /language-(\w+)/.exec(className || "");
+                return match ? (
+                  <CodeBlock language={match[1]}>{String(children)}</CodeBlock>
+                ) : (
+                  <code {...rest} className={className}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {summary}
+          </ReactMarkdown>
         </div>
       )}
     </div>

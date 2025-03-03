@@ -203,5 +203,8 @@ export function useAIReading() {
     deleteFile,
     uploadAndGenerateSummary,
     closeConnection: close,
+    setDeepReading,
+    setMindMap,
+    setSummary,
   };
 }

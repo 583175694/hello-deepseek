@@ -54,6 +54,9 @@ export function AIReading() {
     generateSummary,
     generateDeepReading,
     generateMindMap,
+    setDeepReading,
+    setMindMap,
+    setSummary,
   } = useAIReading();
 
   // 加载历史文件列表
@@ -133,6 +136,9 @@ export function AIReading() {
 
     // 清理本地状态
     setPdfFile(null);
+    setDeepReading("");
+    setMindMap("");
+    setSummary("");
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);

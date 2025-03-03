@@ -282,7 +282,7 @@ const MessageSources = React.memo(({ sources }: { sources?: string }) => {
 MessageSources.displayName = "MessageSources";
 
 // 添加代码块组件
-const CodeBlock = React.memo(
+export const CodeBlock = React.memo(
   ({ children, language }: { children: string; language: string }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
