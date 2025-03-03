@@ -56,7 +56,7 @@ export function ArticleAnalysis({
         <div className={activeTab === "deepReading" ? "block" : "hidden"}>
           <ArticleDeepReading isLoading={isLoading} deepReading={deepReading} />
         </div>
-        <div className={activeTab === "mindMap" ? "block" : "hidden"}>
+        <div className={activeTab === "mindMap" ? "block h-full" : "hidden"}>
           <ArticleMindMap isLoading={isLoading} mindMap={mindMap} />
         </div>
       </div>
