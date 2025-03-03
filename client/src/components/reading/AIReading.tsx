@@ -16,7 +16,7 @@ import { useAIReading } from "@/hooks/useAIReading";
 import { readerService } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { ArticleSummary } from "./ArticleSummary";
+import { ArticleAnalysis } from "./ArticleAnalysis";
 
 // 定义历史文件类型
 interface HistoryFile {
@@ -47,9 +47,13 @@ export function AIReading() {
   const {
     isLoading,
     summary,
+    deepReading,
+    mindMap,
     uploadAndGenerateSummary,
     closeConnection,
     generateSummary,
+    generateDeepReading,
+    generateMindMap,
   } = useAIReading();
 
   // 加载历史文件列表
@@ -157,7 +161,10 @@ export function AIReading() {
       });
       setPdfFile(tempFile);
 
-      generateSummary(filename);
+      // 串行生成所有分析内容
+      await generateSummary(filename);
+      await generateDeepReading(filename);
+      await generateMindMap(filename);
     } catch (error) {
       console.error("加载历史文件失败:", error);
       toast.error("加载历史文件失败");
@@ -341,47 +348,51 @@ export function AIReading() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <span className="font-medium mr-2">{pdfFile.name}</span>
-              <span className="text-sm text-muted-foreground">
-                ({Math.round(pdfFile.size / 1024)} KB)
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReturnFile}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              返回
-            </Button>
-          </div>
+        <div
+          ref={containerRef}
+          className="flex flex-1 gap-4 overflow-hidden"
+          style={{ cursor: isResizing ? "col-resize" : "auto" }}
+        >
+          {/* 左侧PDF预览 */}
           <div
-            ref={containerRef}
-            className="flex flex-row flex-1 relative overflow-y-auto"
+            style={{ width: `${leftPanelWidth}%` }}
+            className="relative h-full overflow-hidden"
           >
-            <div
-              className="rounded-lg overflow-hidden"
-              style={{ width: `${leftPanelWidth}%` }}
-            >
-              {pdfUrl && <PDFViewer fileUrl={pdfUrl} />}
+            <div className="absolute inset-0 flex flex-col">
+              <div className="flex items-center gap-2 mb-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleReturnFile}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="truncate">{pdfFile.name}</div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {pdfUrl && <PDFViewer fileUrl={pdfUrl} />}
+              </div>
             </div>
+          </div>
 
-            {/* 可拖动分隔线 */}
-            <div
-              className={`w-1 bg-border hover:bg-primary cursor-col-resize active:bg-primary transition-all`}
-              onMouseDown={handleResizeStart}
+          {/* 拖动调整大小的把手 */}
+          <div
+            className="w-1 bg-border cursor-col-resize hover:bg-primary/50 active:bg-primary"
+            onMouseDown={handleResizeStart}
+          />
+
+          {/* 右侧分析区域 */}
+          <div
+            style={{ width: `${100 - leftPanelWidth}%` }}
+            className="h-full overflow-auto"
+          >
+            <ArticleAnalysis
+              isLoading={isLoading}
+              summary={summary}
+              deepReading={deepReading}
+              mindMap={mindMap}
             />
-
-            <div
-              className="flex flex-col pl-4 overflow-y-auto scrollbar-none pb-6"
-              style={{ width: `${100 - leftPanelWidth}%` }}
-            >
-              <ArticleSummary isLoading={isLoading} summary={summary} />
-            </div>
           </div>
         </div>
       )}

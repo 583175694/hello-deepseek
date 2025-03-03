@@ -194,4 +194,64 @@ export class ReaderController {
       throw new HttpException('获取文件失败', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // 生成PDF精读的流式接口
+  @Sse('deep-reading')
+  async streamDeepReading(
+    @Headers('x-client-id') clientId: string,
+    @Query('filename') filename: string,
+    @Query('modelId') modelId: string = 'bytedance_deepseek_v3',
+  ): Promise<Observable<{ data: string | Object }>> {
+    if (!filename) {
+      throw new HttpException('文件名是必需的', HttpStatus.BAD_REQUEST);
+    }
+
+    const filePath = this.fileStorageService.getFilePath(filename);
+
+    return new Observable<{ data: string | Object }>((subscriber) => {
+      this.readerService
+        .streamDeepReading(
+          filePath,
+          (response) => subscriber.next({ data: response }),
+          modelId,
+        )
+        .then(() => {
+          subscriber.next({ data: '[DONE]' });
+          subscriber.complete();
+        })
+        .catch((error) => {
+          subscriber.error(error);
+        });
+    });
+  }
+
+  // 生成PDF脑图的流式接口
+  @Sse('mind-map')
+  async streamMindMap(
+    @Headers('x-client-id') clientId: string,
+    @Query('filename') filename: string,
+    @Query('modelId') modelId: string = 'bytedance_deepseek_v3',
+  ): Promise<Observable<{ data: string | Object }>> {
+    if (!filename) {
+      throw new HttpException('文件名是必需的', HttpStatus.BAD_REQUEST);
+    }
+
+    const filePath = this.fileStorageService.getFilePath(filename);
+
+    return new Observable<{ data: string | Object }>((subscriber) => {
+      this.readerService
+        .streamMindMap(
+          filePath,
+          (response) => subscriber.next({ data: response }),
+          modelId,
+        )
+        .then(() => {
+          subscriber.next({ data: '[DONE]' });
+          subscriber.complete();
+        })
+        .catch((error) => {
+          subscriber.error(error);
+        });
+    });
+  }
 }

@@ -113,4 +113,129 @@ ${text}
       throw error;
     }
   }
+
+  // 生成文章精读的流式处理
+  async streamDeepReading(
+    filePath: string,
+    onToken: (response: { content: string }) => void,
+    modelId: string = 'bytedance_deepseek_v3',
+  ): Promise<void> {
+    try {
+      this.logger.log(`开始为文件 ${filePath} 生成精读分析`);
+
+      // 提取PDF文本
+      const text = await this.extractTextFromPDF(filePath);
+
+      // 获取模型实例
+      const model = this.getModel(modelId);
+
+      // 构建提示词
+      const prompt = `
+你是一个专业的文章精读分析专家。请对以下文章内容进行深入分析，包括：
+
+1. 文章结构分析
+   - 文章的组织方式和逻辑框架
+   - 各部分内容的衔接和过渡
+
+2. 核心内容解析
+   - 主要观点的详细阐述
+   - 论据的有效性和说服力分析
+   - 重要概念和术语的解释
+
+3. 创新点和亮点
+   - 独特的研究方法或视角
+   - 新颖的发现或见解
+
+4. 应用价值
+   - 理论意义和实践价值
+   - 潜在的应用场景和影响
+
+5. 批判性思考
+   - 论证的完整性和严密性
+   - 可能存在的局限或不足
+   - 未来研究的方向建议
+
+请以结构化的方式组织分析内容，使用markdown格式，包括适当的标题、列表和强调。确保分析深入且有见地，帮助读者更好地理解和把握文章的精髓。
+
+以下是文章内容：
+
+${text}
+`;
+
+      // 调用模型生成精读分析
+      const stream = await model.stream(prompt);
+
+      // 处理流式响应
+      for await (const chunk of stream) {
+        if (chunk.content) {
+          onToken({ content: chunk.content.toString() });
+        }
+      }
+
+      this.logger.log(`成功完成文件 ${filePath} 的精读分析生成`);
+    } catch (error) {
+      this.logger.error(`生成精读分析失败:`, error);
+      throw error;
+    }
+  }
+
+  // 生成文章脑图的流式处理
+  async streamMindMap(
+    filePath: string,
+    onToken: (response: { content: string }) => void,
+    modelId: string = 'bytedance_deepseek_v3',
+  ): Promise<void> {
+    try {
+      this.logger.log(`开始为文件 ${filePath} 生成脑图`);
+
+      // 提取PDF文本
+      const text = await this.extractTextFromPDF(filePath);
+
+      // 获取模型实例
+      const model = this.getModel(modelId);
+
+      // 构建提示词
+      const prompt = `
+你是一个专业的脑图生成专家。请将以下文章内容转换为结构化的脑图格式，要求：
+
+1. 使用markdown格式，主要使用标题、列表来表现层级结构
+2. 从中心主题开始，向外延伸各级分支
+3. 每个分支应该简洁明了，使用关键词或短语
+4. 保持层级结构清晰，一般不超过4级
+5. 合理使用缩进来表示层级关系
+6. 对重要概念或关键词进行适当标注或解释
+
+示例格式：
+
+# 中心主题
+## 一级分支1
+- 二级分支1.1
+  - 三级分支1.1.1
+  - 三级分支1.1.2
+- 二级分支1.2
+  - 三级分支1.2.1
+## 一级分支2
+...
+
+请基于以下文章内容生成脑图：
+
+${text}
+`;
+
+      // 调用模型生成脑图
+      const stream = await model.stream(prompt);
+
+      // 处理流式响应
+      for await (const chunk of stream) {
+        if (chunk.content) {
+          onToken({ content: chunk.content.toString() });
+        }
+      }
+
+      this.logger.log(`成功完成文件 ${filePath} 的脑图生成`);
+    } catch (error) {
+      this.logger.error(`生成脑图失败:`, error);
+      throw error;
+    }
+  }
 }
