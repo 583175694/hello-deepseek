@@ -44,7 +44,6 @@ export class AIChatService {
     this.logger.log('正在初始化DeepSeek模型...');
     // 初始化所有可用的模型实例
     this.initializeAllModels();
-    this.logger.log('DeepSeek模型初始化成功');
 
     this.logger.log('正在初始化Exa客户端和检索器...');
     // 初始化Exa客户端和检索器
@@ -52,7 +51,6 @@ export class AIChatService {
     this.retriever = new ExaRetriever({
       client: this.exa,
     });
-    this.logger.log('Exa客户端和检索器初始化成功');
 
     this.logger.log('正在设置聊天提示模板...');
     // 设置聊天提示模板
@@ -68,6 +66,7 @@ export class AIChatService {
     this.logger.log('服务初始化完成');
   }
 
+  // 初始化所有模型
   private initializeAllModels() {
     // 初始化所有配置中的模型
     Object.entries(models).forEach(([modelId, modelConfig]) => {
@@ -96,34 +95,6 @@ export class AIChatService {
       throw new Error(`Model ${modelId} not found in configuration`);
     }
     return model;
-  }
-
-  // 优化搜索查询
-  private async optimizeSearchQuery(
-    query: string,
-    modelId: string,
-  ): Promise<string> {
-    this.logger.log(`正在优化搜索查询: ${query}`);
-    try {
-      const chain = ChatPromptTemplate.fromMessages([
-        [
-          'system',
-          '你是一个搜索优化专家。你的任务是将用户的问题重新组织成更适合搜索的形式。保持核心含义不变，但要使其更加清晰、准确和易于检索。只返回优化后的问题，不要有任何解释。',
-        ],
-        ['human', '{input}'],
-      ]).pipe(this.getModel(modelId));
-
-      const response = await chain.invoke({
-        input: query,
-      });
-
-      const optimizedQuery = response.content.toString();
-      this.logger.log(`查询已优化为: ${optimizedQuery}`);
-      return optimizedQuery;
-    } catch (error) {
-      this.logger.error('Query optimization error:', error);
-      return query; // 如果优化失败，返回原始查询
-    }
   }
 
   // 生成系统提示词
@@ -159,11 +130,6 @@ export class AIChatService {
   private async performExaSearch(query: string): Promise<string> {
     this.logger.log(`正在使用查询执行Exa搜索: ${query}`);
     try {
-      // 优化搜索查询（暂时不使用）
-      // const optimizedQuery = await this.optimizeSearchQuery(query);
-      // this.logger.log(`Original query: ${query}`);
-      // this.logger.log(`Optimized query: ${optimizedQuery}`);
-
       const searchResults = await this.retriever.getRelevantDocuments(query);
       this.logger.log(`找到 ${searchResults.length} 条搜索结果`);
       return searchResults
@@ -405,7 +371,6 @@ export class AIChatService {
         clientId,
       );
       const memoryVariables = await memory.loadMemoryVariables({});
-      this.logger.log('聊天历史加载成功');
 
       // 构建搜索上下文
       let searchContext = '';
@@ -442,7 +407,6 @@ export class AIChatService {
       }
 
       // 保存用户消息
-      this.logger.log('正在保存用户消息...');
       await this.messageService.saveMessage(
         'user',
         message,
@@ -450,10 +414,8 @@ export class AIChatService {
         sessionId,
         clientId,
       );
-      this.logger.log('用户消息保存成功');
 
       // 创建并执行聊天链
-      this.logger.log('正在创建聊天链并启动流...');
       const chain = this.prompt.pipe(this.getModel(modelId));
       const stream = await chain.stream({
         history: memoryVariables.history || [],
@@ -461,12 +423,10 @@ export class AIChatService {
         searchContext: searchContext || '没有找到相关的搜索结果',
         systemPrompt: session.systemPrompt || this.DEFAULT_SYSTEM_PROMPT,
       });
-      this.logger.log('聊天流创建成功');
 
       // 处理流式响应
       let fullResponse = '';
       let fullReasoning = '';
-      this.logger.log('正在处理流式响应...');
       for await (const chunk of stream) {
         if (chunk.content) {
           const content = chunk.content.toString();
