@@ -30,6 +30,7 @@ export function useAIReading() {
     (filename: string, modelId: string = "bytedance_deepseek_v3") => {
       setIsLoading(true);
       setSummary("");
+      setUploadedFilename(filename);
 
       const url = `${baseURL}/reader/summary?filename=${filename}&modelId=${modelId}`;
 
@@ -76,10 +77,20 @@ export function useAIReading() {
   const uploadAndGenerateSummary = useCallback(
     async (file: File, modelId: string = "bytedance_deepseek_v3") => {
       try {
+        // 如果是已经上传的文件（从历史记录中选择的）
+        if (file.size === 0 && file.name) {
+          setUploadedFilename(file.name);
+          generateSummary(file.name, modelId);
+          return { filename: file.name };
+        }
+
+        // 正常上传新文件
         const result = await uploadPDF(file);
         generateSummary(result.filename, modelId);
+        return result;
       } catch (error) {
         console.error("处理文件错误:", error);
+        throw error;
       }
     },
     [uploadPDF, generateSummary]
@@ -89,6 +100,7 @@ export function useAIReading() {
     isLoading,
     summary,
     uploadedFilename,
+    setUploadedFilename,
     uploadPDF,
     generateSummary,
     deleteFile,

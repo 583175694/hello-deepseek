@@ -10,6 +10,7 @@ import { Session } from './chat/entities/session.entity';
 import { Message } from './chat/entities/message.entity';
 import { SessionTempFile } from './chat/entities/session-temp-file.entity';
 import { PPTOperation } from './ppt/entities/ppt-operation.entity';
+import { PDFFile } from './reader/entities/pdf-file.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { PPTOperation } from './ppt/entities/ppt-operation.entity';
       username: process.env.DB_USERNAME || 'root',
       password: process.env.DB_PASSWORD || 'root',
       database: process.env.DB_DATABASE || 'chat',
-      entities: [Session, Message, SessionTempFile, PPTOperation],
+      entities: [Session, Message, SessionTempFile, PPTOperation, PDFFile],
       synchronize: true, // 仅在开发环境使用
     }),
     ChatModule,

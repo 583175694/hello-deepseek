@@ -10,16 +10,10 @@ import { Observable } from 'rxjs';
 export class ReaderService {
   private readonly logger = new Logger(ReaderService.name);
   private modelInstances: Record<string, ChatDeepSeek> = {}; // 存储所有模型实例
-  private readonly uploadDir = path.join(process.cwd(), 'reader-uploads');
 
   constructor() {
     this.logger.log('正在初始化Reader服务...');
     this.initializeAllModels();
-
-    // 确保上传目录存在
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
   }
 
   // 初始化所有可用的模型实例
@@ -37,15 +31,10 @@ export class ReaderService {
             baseURL: modelConfig.baseURL,
             apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
           },
-          maxTokens: 4096,
-          maxRetries: 3,
-          modelKwargs: {
-            ignore_token_counting: true,
-          },
         });
         this.logger.log(`成功初始化模型: ${modelId}`);
       } catch (error) {
-        this.logger.error(`初始化模型 ${modelId} 失败:`, error);
+        this.logger.error(`初始化模型失败: ${modelId}`, error);
       }
     });
   }
@@ -121,23 +110,6 @@ ${text}
       this.logger.log(`成功完成文件 ${filePath} 的摘要生成`);
     } catch (error) {
       this.logger.error(`生成摘要失败:`, error);
-      throw error;
-    }
-  }
-
-  // 删除上传的PDF文件
-  async deleteFile(filename: string): Promise<void> {
-    try {
-      const filePath = path.join(this.uploadDir, filename);
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        this.logger.log(`成功删除文件: ${filename}`);
-      } else {
-        this.logger.warn(`文件不存在，无法删除: ${filename}`);
-      }
-    } catch (error) {
-      this.logger.error(`删除文件失败:`, error);
       throw error;
     }
   }

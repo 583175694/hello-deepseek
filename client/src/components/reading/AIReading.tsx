@@ -2,11 +2,29 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileUp, Trash2 } from "lucide-react";
+import {
+  Upload,
+  FileUp,
+  Trash2,
+  Clock,
+  FileText,
+  ArrowLeft,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAIReading } from "@/hooks/useAIReading";
+import { readerService } from "@/lib/api";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+
+// 定义历史文件类型
+interface HistoryFile {
+  filename: string;
+  originalName?: string;
+  size: number;
+  uploadedAt: string;
+}
 
 // 使用动态导入避免服务器端渲染问题
 const PDFViewer = dynamic(
@@ -20,6 +38,8 @@ export function AIReading() {
   const [isDragging, setIsDragging] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(55); // 初始宽度比例为55%
   const [isResizing, setIsResizing] = useState(false);
+  const [historyFiles, setHistoryFiles] = useState<HistoryFile[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +50,27 @@ export function AIReading() {
     uploadAndGenerateSummary,
     deleteFile,
     closeConnection,
+    generateSummary,
   } = useAIReading();
+
+  // 加载历史文件列表
+  const loadHistoryFiles = useCallback(async () => {
+    try {
+      setIsLoadingHistory(true);
+      const response = await readerService.getUploadedFiles();
+      setHistoryFiles(response.files || []);
+    } catch (error) {
+      console.error("加载历史文件失败:", error);
+      toast.error("加载历史文件失败");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  // 组件加载时获取历史文件
+  useEffect(() => {
+    loadHistoryFiles();
+  }, [loadHistoryFiles]);
 
   // 处理文件上传
   const handleFileChange = async (file: File | null) => {
@@ -48,6 +88,9 @@ export function AIReading() {
 
       // 上传文件到服务器并生成摘要
       await uploadAndGenerateSummary(file);
+
+      // 重新加载历史文件列表
+      loadHistoryFiles();
     }
   };
 
@@ -93,6 +136,55 @@ export function AIReading() {
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+
+    // 重新加载历史文件列表
+    loadHistoryFiles();
+  };
+
+  // 处理历史文件点击
+  const handleHistoryFileClick = async (filename: string) => {
+    try {
+      // 创建一个URL以供预览
+      const fileUrl = `${
+        process.env.NEXT_PUBLIC_API_URL || ""
+      }/reader-uploads/${filename}`;
+      setPdfUrl(fileUrl);
+
+      // 设置一个临时的File对象
+      const tempFile = new File([], filename, { type: "application/pdf" });
+      setPdfFile(tempFile);
+
+      generateSummary(filename);
+    } catch (error) {
+      console.error("加载历史文件失败:", error);
+      toast.error("加载历史文件失败");
+    }
+  };
+
+  // 处理历史文件删除
+  const handleDeleteHistoryFile = async (
+    e: React.MouseEvent,
+    filename: string
+  ) => {
+    e.stopPropagation(); // 阻止事件冒泡，避免触发点击文件的事件
+
+    try {
+      await readerService.deletePDF(filename);
+      toast.success("文件已删除");
+      // 重新加载历史文件列表
+      loadHistoryFiles();
+
+      // 如果当前正在查看的是被删除的文件，则清除当前文件
+      if (
+        pdfUrl ===
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/reader-uploads/${filename}`
+      ) {
+        handleClearFile();
+      }
+    } catch (error) {
+      console.error("删除历史文件失败:", error);
+      toast.error("删除文件失败，请重试");
     }
   };
 
@@ -143,6 +235,13 @@ export function AIReading() {
     };
   }, [closeConnection]);
 
+  // 格式化文件大小
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
   return (
     <div className="flex flex-col h-full p-4 md:p-6 md:pb-0 overflow-hidden">
       <div className="flex items-center justify-between mb-6">
@@ -150,44 +249,105 @@ export function AIReading() {
       </div>
 
       {!pdfFile ? (
-        <div
-          className={`
-            flex flex-col items-center justify-center
-            border-2 border-dashed rounded-lg
-            p-8 md:p-12
-            cursor-pointer
-            transition-colors
-            ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50 hover:bg-accent/50"
-            }
-            flex-1
-          `}
-          onClick={handleUploadClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleInputChange}
-            accept="application/pdf"
-            className="hidden"
-          />
-          <Upload className="w-16 h-16 mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-medium mb-2">上传PDF文件</h3>
-          <p className="text-muted-foreground text-center mb-4">
-            拖放文件到此处，或点击上传
-          </p>
-          <Button className="gap-2">
-            <FileUp className="w-4 h-4" />
-            选择文件
-          </Button>
+        <div className="flex flex-col h-full gap-6">
+          <div
+            className={`
+              flex flex-col items-center justify-center
+              border-2 border-dashed rounded-lg
+              p-6 md:p-8
+              cursor-pointer
+              transition-colors
+              ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-accent/50"
+              }
+              h-1/2
+            `}
+            onClick={handleUploadClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleInputChange}
+              accept="application/pdf"
+              className="hidden"
+            />
+            <Upload className="w-12 h-12 mb-3 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">上传PDF文件</h3>
+            <p className="text-muted-foreground text-center text-sm mb-3">
+              拖放文件到此处，或点击上传
+            </p>
+            <Button size="sm" className="gap-2">
+              <FileUp className="w-4 h-4" />
+              选择文件
+            </Button>
+          </div>
+
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium">历史上传</h3>
+            </div>
+
+            <div className="border rounded-lg flex-1 overflow-y-auto mb-24">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : historyFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
+                  <FileText className="w-8 h-8 mb-2 opacity-50" />
+                  <p>暂无历史文件</p>
+                </div>
+              ) : (
+                <ul className="divide-y">
+                  {historyFiles.map((file) => (
+                    <li
+                      key={file.filename}
+                      className="p-3 hover:bg-accent/50 cursor-pointer transition-colors"
+                      onClick={() => handleHistoryFileClick(file.filename)}
+                    >
+                      <div className="flex items-center">
+                        <FileText className="w-5 h-5 text-muted-foreground mr-3" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {file.originalName || file.filename}
+                          </p>
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <span>{formatFileSize(file.size)}</span>
+                            <span className="mx-2">•</span>
+                            <span>
+                              {formatDistanceToNow(new Date(file.uploadedAt), {
+                                addSuffix: true,
+                                locale: zhCN,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) =>
+                            handleDeleteHistoryFile(e, file.filename)
+                          }
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full overflow-hidden pb-16">
+        <div className="flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <span className="font-medium mr-2">{pdfFile.name}</span>
@@ -197,14 +357,18 @@ export function AIReading() {
             </div>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               onClick={handleClearFile}
-              className="text-destructive hover:text-destructive"
+              className="gap-2"
             >
-              <Trash2 className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
+              返回
             </Button>
           </div>
-          <div ref={containerRef} className="flex flex-row h-full relative">
+          <div
+            ref={containerRef}
+            className="flex flex-row flex-1 relative overflow-y-auto"
+          >
             <div
               className="rounded-lg overflow-hidden"
               style={{ width: `${leftPanelWidth}%` }}
@@ -219,7 +383,7 @@ export function AIReading() {
             />
 
             <div
-              className="flex flex-col pl-4 overflow-y-auto scrollbar-none"
+              className="flex flex-col pl-4 overflow-y-auto scrollbar-none pb-6"
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div className="flex flex-col">

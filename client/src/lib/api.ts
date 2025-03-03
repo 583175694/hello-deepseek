@@ -257,4 +257,10 @@ export const readerService = {
     const response = await api.delete(`/reader/file/${filename}`);
     return response.data;
   },
+
+  // 获取上传的PDF文件列表
+  async getUploadedFiles() {
+    const response = await api.get("/reader/files");
+    return response.data;
+  },
 };
