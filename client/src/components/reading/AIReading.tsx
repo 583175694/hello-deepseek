@@ -4,6 +4,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, FileUp, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
+import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
+import { useAIReading } from "@/hooks/useAIReading";
 
 // 使用动态导入避免服务器端渲染问题
 const PDFViewer = dynamic(
@@ -15,17 +18,26 @@ export function AIReading() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(55); // 初始宽度比例为60%
+  const [leftPanelWidth, setLeftPanelWidth] = useState(55); // 初始宽度比例为55%
   const [isResizing, setIsResizing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 使用 AI 阅读 hook
+  const {
+    isLoading,
+    summary,
+    uploadAndGenerateSummary,
+    deleteFile,
+    closeConnection,
+  } = useAIReading();
+
   // 处理文件上传
-  const handleFileChange = (file: File | null) => {
+  const handleFileChange = async (file: File | null) => {
     if (file) {
       // 检查文件类型
       if (file.type !== "application/pdf") {
-        alert("请上传PDF文件");
+        toast.error("请上传PDF文件");
         return;
       }
 
@@ -33,6 +45,9 @@ export function AIReading() {
       // 创建URL以供预览
       const fileUrl = URL.createObjectURL(file);
       setPdfUrl(fileUrl);
+
+      // 上传文件到服务器并生成摘要
+      await uploadAndGenerateSummary(file);
     }
   };
 
@@ -66,7 +81,11 @@ export function AIReading() {
   };
 
   // 清除已上传的文件
-  const handleClearFile = () => {
+  const handleClearFile = async () => {
+    // 删除服务器上的文件
+    await deleteFile();
+
+    // 清理本地状态
     setPdfFile(null);
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
@@ -117,6 +136,13 @@ export function AIReading() {
     };
   }, [isResizing, handleResizeMove, handleResizeEnd]);
 
+  // 组件卸载时关闭 SSE 连接
+  useEffect(() => {
+    return () => {
+      closeConnection();
+    };
+  }, [closeConnection]);
+
   return (
     <div className="flex flex-col h-full p-4 md:p-6 md:pb-0 overflow-hidden">
       <div className="flex items-center justify-between mb-6">
@@ -161,7 +187,7 @@ export function AIReading() {
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden pb-16">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <span className="font-medium mr-2">{pdfFile.name}</span>
@@ -178,7 +204,6 @@ export function AIReading() {
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
-
           <div ref={containerRef} className="flex flex-row h-full relative">
             <div
               className="rounded-lg overflow-hidden"
@@ -194,11 +219,31 @@ export function AIReading() {
             />
 
             <div
-              className="flex flex-col pl-4"
+              className="flex flex-col pl-4 overflow-y-auto scrollbar-none"
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div className="flex flex-col">
-                <h2 className="text-xl font-bold">AI阅读</h2>
+                <h2 className="text-xl font-bold mb-4">文章摘要</h2>
+
+                {isLoading && !summary && (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-2">正在生成摘要...</span>
+                  </div>
+                )}
+
+                {isLoading && summary && (
+                  <div className="flex items-center mb-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    <span className="text-sm">正在生成摘要...</span>
+                  </div>
+                )}
+
+                {summary && (
+                  <div className="prose prose-sm dark:prose-invert max-w-none overflow-auto">
+                    <ReactMarkdown>{summary}</ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           </div>

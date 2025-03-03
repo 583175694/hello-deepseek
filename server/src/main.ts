@@ -7,8 +7,12 @@ async function bootstrap() {
   // 添加全局路由前缀
   app.setGlobalPrefix('api');
 
-  // 启用 CORS
-  app.enableCors();
+  // 配置CORS
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
   await app.listen(3030);
 }

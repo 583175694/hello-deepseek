@@ -236,3 +236,25 @@ export const pptService = {
     return response.data;
   },
 };
+
+// 添加 Reader 服务
+export const readerService = {
+  // 上传 PDF 文件
+  async uploadPDF(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await api.post("/reader/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  // 删除 PDF 文件
+  async deletePDF(filename: string) {
+    const response = await api.delete(`/reader/file/${filename}`);
+    return response.data;
+  },
+};
