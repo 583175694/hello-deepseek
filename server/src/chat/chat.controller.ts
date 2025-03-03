@@ -19,7 +19,7 @@ import { Observable } from 'rxjs';
 import { Document } from '@langchain/core/documents';
 import { SessionService } from './services/session.service';
 import { DocumentService } from './services/document.service';
-import { AIChatService } from './services/ai-chat.service';
+import { AIChatService } from './chat.service';
 import { FileService, FileInfo } from './services/file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { FileInterceptor } from '@nestjs/platform-express';

@@ -7,14 +7,14 @@ import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
-import { MessageService } from './message.service';
-import { SessionService } from './session.service';
-import { DocumentService } from './document.service';
-import { TempDocumentService } from './temp-document.service';
+import { MessageService } from './services/message.service';
+import { SessionService } from './services/session.service';
+import { DocumentService } from './services/document.service';
+import { TempDocumentService } from './services/temp-document.service';
 import { models } from 'src/configs/models';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { SessionTempFile } from '../entities/session-temp-file.entity';
+import { SessionTempFile } from './entities/session-temp-file.entity';
 
 // AI聊天服务类
 @Injectable()

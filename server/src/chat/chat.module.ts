@@ -8,7 +8,7 @@ import { SessionTempFile } from './entities/session-temp-file.entity';
 import { SessionService } from './services/session.service';
 import { MessageService } from './services/message.service';
 import { DocumentService } from './services/document.service';
-import { AIChatService } from './services/ai-chat.service';
+import { AIChatService } from './chat.service';
 import { FileService } from './services/file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
