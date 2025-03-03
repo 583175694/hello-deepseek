@@ -300,7 +300,7 @@ export function AIReading() {
               <h3 className="text-lg font-medium">历史上传</h3>
             </div>
 
-            <div className="border rounded-lg flex-1 overflow-y-auto mb-24">
+            <div className="border rounded-lg flex-1 overflow-y-auto mb-4">
               {isLoadingHistory ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
