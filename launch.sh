@@ -3,7 +3,7 @@ git pull
 # 客户端
 cd client
 # 重新安装依赖
-npm install --legacy-peer-deps
+npm install
 # 重新构建
 npm run build
 # 重启服务
