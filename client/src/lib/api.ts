@@ -263,4 +263,12 @@ export const readerService = {
     const response = await api.get("/reader/files");
     return response.data;
   },
+
+  // 获取PDF文件内容
+  async getPDFFile(filename: string) {
+    const response = await api.get(`/reader/file/${filename}`, {
+      responseType: "blob",
+    });
+    return response.data;
+  },
 };

@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Get,
   Inject,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -148,5 +149,49 @@ export class ReaderController {
         uploadedAt: file.createdAt,
       })),
     };
+  }
+
+  // 获取PDF文件内容
+  @Get('file/:filename')
+  async getFile(
+    @Headers('x-client-id') clientId: string,
+    @Param('filename') filename: string,
+    @Res() res,
+  ) {
+    try {
+      // 检查文件是否存在于数据库中
+      const fileExists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!fileExists) {
+        throw new HttpException('文件不存在或无权访问', HttpStatus.NOT_FOUND);
+      }
+
+      // 获取文件路径
+      const filePath = this.fileStorageService.getFilePath(filename);
+
+      // 检查文件是否存在于文件系统中
+      const fs = require('fs');
+      if (!fs.existsSync(filePath)) {
+        throw new HttpException('文件不存在', HttpStatus.NOT_FOUND);
+      }
+
+      // 设置响应头并发送文件
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${encodeURIComponent(filename)}"`,
+      );
+
+      // 创建文件流并发送
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException('获取文件失败', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }

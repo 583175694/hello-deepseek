@@ -74,4 +74,18 @@ export class PDFFileService {
       throw error;
     }
   }
+
+  // 检查文件是否存在且属于指定客户端
+  async checkFileExists(filename: string, clientId: string): Promise<boolean> {
+    try {
+      console.log(filename, clientId);
+      const file = await this.pdfFileRepository.findOne({
+        where: { filename, clientId },
+      });
+      return !!file;
+    } catch (error) {
+      this.logger.error('检查文件存在性失败:', error);
+      throw error;
+    }
+  }
 }

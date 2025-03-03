@@ -48,7 +48,6 @@ export function AIReading() {
     isLoading,
     summary,
     uploadAndGenerateSummary,
-    deleteFile,
     closeConnection,
     generateSummary,
   } = useAIReading();
@@ -123,10 +122,10 @@ export function AIReading() {
     fileInputRef.current?.click();
   };
 
-  // 清除已上传的文件
-  const handleClearFile = async () => {
-    // 删除服务器上的文件
-    await deleteFile();
+  // 返回历史文件
+  const handleReturnFile = async () => {
+    // 确保关闭SSE连接
+    closeConnection();
 
     // 清理本地状态
     setPdfFile(null);
@@ -145,14 +144,17 @@ export function AIReading() {
   // 处理历史文件点击
   const handleHistoryFileClick = async (filename: string) => {
     try {
-      // 创建一个URL以供预览
-      const fileUrl = `${
-        process.env.NEXT_PUBLIC_API_URL || ""
-      }/reader-uploads/${filename}`;
+      // 使用API获取文件内容
+      const fileBlob = await readerService.getPDFFile(filename);
+
+      // 创建URL以供预览
+      const fileUrl = URL.createObjectURL(fileBlob);
       setPdfUrl(fileUrl);
 
       // 设置一个临时的File对象
-      const tempFile = new File([], filename, { type: "application/pdf" });
+      const tempFile = new File([fileBlob], filename, {
+        type: "application/pdf",
+      });
       setPdfFile(tempFile);
 
       generateSummary(filename);
@@ -174,14 +176,6 @@ export function AIReading() {
       toast.success("文件已删除");
       // 重新加载历史文件列表
       loadHistoryFiles();
-
-      // 如果当前正在查看的是被删除的文件，则清除当前文件
-      if (
-        pdfUrl ===
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/reader-uploads/${filename}`
-      ) {
-        handleClearFile();
-      }
     } catch (error) {
       console.error("删除历史文件失败:", error);
       toast.error("删除文件失败，请重试");
@@ -244,26 +238,26 @@ export function AIReading() {
 
   return (
     <div className="flex flex-col h-full p-4 md:p-6 md:pb-0 overflow-hidden">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 w-full max-w-4xl mx-auto lg:pl-6">
         <h1 className="text-2xl font-bold">AI阅读</h1>
       </div>
 
       {!pdfFile ? (
-        <div className="flex flex-col h-full gap-6">
+        <div className="flex flex-col h-full gap-6 p-4 lg:p-6 overflow-hidden w-full max-w-4xl mx-auto">
           <div
             className={`
-              flex flex-col items-center justify-center
-              border-2 border-dashed rounded-lg
-              p-6 md:p-8
-              cursor-pointer
-              transition-colors
-              ${
-                isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-accent/50"
-              }
-              h-1/2
-            `}
+                flex flex-col items-center justify-center
+                border-2 border-dashed rounded-lg
+                p-6 md:p-8
+                cursor-pointer
+                transition-colors
+                ${
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 hover:bg-accent/50"
+                }
+                h-1/2
+              `}
             onClick={handleUploadClick}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -358,7 +352,7 @@ export function AIReading() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleClearFile}
+              onClick={handleReturnFile}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
