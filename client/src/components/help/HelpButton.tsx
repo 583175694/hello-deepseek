@@ -89,6 +89,18 @@ export function HelpButton() {
                     <li className="list-disc">一键生成精美演示幻灯片</li>
                   </ul>
                 </li>
+                <li className="space-y-2 p-4 rounded-lg bg-muted/30">
+                  <span className="font-medium text-base inline-flex items-center gap-2">
+                    ⭐️ AI 阅读
+                  </span>
+                  <ul className="pl-4 space-y-1.5 text-sm text-muted-foreground">
+                    <li className="list-disc">DeepSeek 模型驱动的文档理解</li>
+                    <li className="list-disc">一键生成文章摘要与精读分析</li>
+                    <li className="list-disc">智能脑图可视化知识结构</li>
+                    <li className="list-disc">支持 PDF 文档在线预览</li>
+                    <li className="list-disc">历史文档管理与快速访问</li>
+                  </ul>
+                </li>
               </ul>
             </div>
             <div className="space-y-4 pt-4 border-t">
