@@ -1,4 +1,3 @@
-git pull
 # 解压客户端文件
 cd ./client
 rm -rf .next node_modules package.json package-lock.json

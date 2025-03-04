@@ -6,8 +6,8 @@ import { HelpButton } from "@/components/help/HelpButton";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "量子皮皮虾 - QUANTUM SHRIMP",
-  description: "量子皮皮虾 - QUANTUM SHRIMP",
+  title: "量子皮皮虾 - PIPI SHRIMP",
+  description: "量子皮皮虾 - PIPI SHRIMP",
 };
 
 export default function RootLayout({
