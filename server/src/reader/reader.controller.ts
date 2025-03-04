@@ -110,6 +110,8 @@ export class ReaderController {
           filePath,
           (response) => subscriber.next({ data: response }),
           modelId,
+          filename,
+          clientId,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });
@@ -221,6 +223,8 @@ export class ReaderController {
           filePath,
           (response) => subscriber.next({ data: response }),
           modelId,
+          filename,
+          clientId,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });
@@ -251,6 +255,8 @@ export class ReaderController {
           filePath,
           (response) => subscriber.next({ data: response }),
           modelId,
+          filename,
+          clientId,
         )
         .then(() => {
           subscriber.next({ data: '[DONE]' });

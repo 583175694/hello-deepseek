@@ -1,5 +1,5 @@
 # 解压客户端文件
-cd ./client
+cd client
 rm -rf .next node_modules package.json package-lock.json
 mv ../client-dist.tar.gz .
 tar -xzf client-dist.tar.gz
@@ -10,7 +10,8 @@ pm2 start npm --name chat-client -- start
 rm -rf client-dist.tar.gz
 
 # 解压服务端文件
-cd ../server
+cd ..
+cd server
 rm -rf dist node_modules package.json package-lock.json
 mv ../server-dist.tar.gz .
 tar -xzf server-dist.tar.gz

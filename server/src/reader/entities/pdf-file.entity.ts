@@ -24,6 +24,15 @@ export class PDFFile {
   @Column()
   clientId: string;
 
+  @Column({ type: 'text', nullable: true })
+  summary: string;
+
+  @Column({ type: 'text', nullable: true })
+  deepReading: string;
+
+  @Column({ type: 'text', nullable: true })
+  mindMap: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

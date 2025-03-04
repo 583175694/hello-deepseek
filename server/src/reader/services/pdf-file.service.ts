@@ -88,4 +88,97 @@ export class PDFFileService {
       throw error;
     }
   }
+
+  // 保存文件摘要
+  async saveSummary(
+    filename: string,
+    clientId: string,
+    summary: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(`保存文件 ${filename} 的摘要`);
+      await this.pdfFileRepository.update({ filename, clientId }, { summary });
+    } catch (error) {
+      this.logger.error('保存文件摘要失败:', error);
+      throw error;
+    }
+  }
+
+  // 保存文件精读分析
+  async saveDeepReading(
+    filename: string,
+    clientId: string,
+    deepReading: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(`保存文件 ${filename} 的精读分析`);
+      await this.pdfFileRepository.update(
+        { filename, clientId },
+        { deepReading },
+      );
+    } catch (error) {
+      this.logger.error('保存文件精读分析失败:', error);
+      throw error;
+    }
+  }
+
+  // 保存文件脑图
+  async saveMindMap(
+    filename: string,
+    clientId: string,
+    mindMap: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(`保存文件 ${filename} 的脑图`);
+      await this.pdfFileRepository.update({ filename, clientId }, { mindMap });
+    } catch (error) {
+      this.logger.error('保存文件脑图失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取文件摘要
+  async getSummary(filename: string, clientId: string): Promise<string | null> {
+    try {
+      const file = await this.pdfFileRepository.findOne({
+        where: { filename, clientId },
+        select: ['summary'],
+      });
+      return file?.summary || null;
+    } catch (error) {
+      this.logger.error('获取文件摘要失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取文件精读分析
+  async getDeepReading(
+    filename: string,
+    clientId: string,
+  ): Promise<string | null> {
+    try {
+      const file = await this.pdfFileRepository.findOne({
+        where: { filename, clientId },
+        select: ['deepReading'],
+      });
+      return file?.deepReading || null;
+    } catch (error) {
+      this.logger.error('获取文件精读分析失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取文件脑图
+  async getMindMap(filename: string, clientId: string): Promise<string | null> {
+    try {
+      const file = await this.pdfFileRepository.findOne({
+        where: { filename, clientId },
+        select: ['mindMap'],
+      });
+      return file?.mindMap || null;
+    } catch (error) {
+      this.logger.error('获取文件脑图失败:', error);
+      throw error;
+    }
+  }
 }

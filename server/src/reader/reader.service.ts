@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ChatDeepSeek } from '@langchain/deepseek';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { models } from 'src/configs/models';
+import { PDFFileService } from './services/pdf-file.service';
 
 @Injectable()
 export class ReaderService {
   private readonly logger = new Logger(ReaderService.name);
   private modelInstances: Record<string, ChatDeepSeek> = {}; // 存储所有模型实例
 
-  constructor() {
+  constructor(private readonly pdfFileService: PDFFileService) {
     this.logger.log('正在初始化Reader服务...');
     this.initializeAllModels();
   }
@@ -68,9 +69,24 @@ export class ReaderService {
     filePath: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    filename: string = '',
+    clientId: string = '',
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filePath} 生成摘要`);
+
+      // 如果提供了filename和clientId，先检查数据库中是否已有摘要
+      if (filename && clientId) {
+        const existingSummary = await this.pdfFileService.getSummary(
+          filename,
+          clientId,
+        );
+        if (existingSummary) {
+          this.logger.log(`使用数据库中已有的摘要内容`);
+          onToken({ content: existingSummary });
+          return;
+        }
+      }
 
       // 提取PDF文本
       const text = await this.extractTextFromPDF(filePath);
@@ -94,14 +110,25 @@ export class ReaderService {
 ${text}
 `;
 
+      // 用于收集完整的摘要内容
+      let fullSummary = '';
+
       // 调用模型生成摘要
       const stream = await model.stream(prompt);
 
       // 处理流式响应
       for await (const chunk of stream) {
         if (chunk.content) {
-          onToken({ content: chunk.content.toString() });
+          const content = chunk.content.toString();
+          fullSummary += content;
+          onToken({ content });
         }
+      }
+
+      // 如果提供了filename和clientId，将摘要保存到数据库
+      if (filename && clientId && fullSummary) {
+        await this.pdfFileService.saveSummary(filename, clientId, fullSummary);
+        this.logger.log(`已将摘要保存到数据库`);
       }
 
       this.logger.log(`成功完成文件 ${filePath} 的摘要生成`);
@@ -116,9 +143,24 @@ ${text}
     filePath: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    filename: string = '',
+    clientId: string = '',
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filePath} 生成逐页精读分析`);
+
+      // 如果提供了filename和clientId，先检查数据库中是否已有精读分析
+      if (filename && clientId) {
+        const existingDeepReading = await this.pdfFileService.getDeepReading(
+          filename,
+          clientId,
+        );
+        if (existingDeepReading) {
+          this.logger.log(`使用数据库中已有的精读分析内容`);
+          onToken({ content: existingDeepReading });
+          return;
+        }
+      }
 
       // 加载PDF文档，获取所有页面
       const loader = new PDFLoader(filePath);
@@ -126,6 +168,9 @@ ${text}
 
       // 获取模型实例
       const model = this.getModel(modelId);
+
+      // 用于收集完整的精读内容
+      let fullDeepReading = '';
 
       // 逐页处理
       for (let i = 0; i < docs.length; i++) {
@@ -138,12 +183,15 @@ ${text}
         const prompt = `
 你是一个专业的文章精读分析专家。这是一篇PDF文档的第${pageNum}页内容。
 
-首先，请判断本页的内容类型（封面、目录、正文、参考文献、附录等）。
+首先，请判断本页的内容类型（封面、目录、正文、参考文献、附录等）和内容丰富程度。
 
 如果本页是封面、目录、参考文献列表、附录等辅助性内容：
-- 简要说明本页的类型和内容即可，不需要进行总结，不需要进行深入分析
+- 只需简要说明本页的类型和基本信息（1-2句话即可）
+- 不需要进行深入分析
 
-如果本页是正文内容，请进行深入分析，包括：
+如果本页是正文内容，请根据内容的丰富程度和复杂性进行适当深度的分析：
+
+对于内容丰富、信息量大的页面：
 1. 本页主要内容概述
    - 本页的核心主题
    - 在文章整体中的作用和地位
@@ -153,20 +201,14 @@ ${text}
    - 重要概念和术语解释
    - 论据和例证分析
 
-3. 逻辑结构分析
-   - 段落之间的逻辑关系
-   - 论证方式和思路
-
-4. 重点和难点
+3. 重点和难点
    - 本页最重要的信息
    - 需要特别关注的内容
-   - 可能需要补充理解的部分
 
-5. 与上下文的关联
-   - 与前文的衔接点
-   - 对后文的铺垫
+对于内容较少或简单的页面：
+- 简要概述本页内容（3-5句话）
 
-请根据页面类型选择合适的分析深度，以结构化的方式组织内容。对于正文部分，确保分析深入且有见地；对于辅助性内容，保持简明扼要。
+请根据页面内容的实际情况灵活调整分析的深度和广度，避免对内容简单的页面过度分析。分析应当与内容的丰富程度成正比。
 
 以下是第${pageNum}页的内容：
 
@@ -175,9 +217,14 @@ ${pageContent}
 
         // 添加页面分隔标记
         if (i > 0) {
-          onToken({ content: '\n\n-------------------\n' });
+          const separator = '\n\n-------------------\n';
+          fullDeepReading += separator;
+          onToken({ content: separator });
         }
-        onToken({ content: `\n## 第 ${pageNum} 页分析\n\n` });
+
+        const pageHeader = `\n## 第 ${pageNum} 页分析\n\n`;
+        fullDeepReading += pageHeader;
+        onToken({ content: pageHeader });
 
         // 调用模型生成当前页的精读分析
         const stream = await model.stream(prompt);
@@ -185,9 +232,21 @@ ${pageContent}
         // 处理流式响应
         for await (const chunk of stream) {
           if (chunk.content) {
-            onToken({ content: chunk.content.toString() });
+            const content = chunk.content.toString();
+            fullDeepReading += content;
+            onToken({ content });
           }
         }
+      }
+
+      // 如果提供了filename和clientId，将精读分析保存到数据库
+      if (filename && clientId && fullDeepReading) {
+        await this.pdfFileService.saveDeepReading(
+          filename,
+          clientId,
+          fullDeepReading,
+        );
+        this.logger.log(`已将精读分析保存到数据库`);
       }
 
       this.logger.log(`成功完成文件 ${filePath} 的逐页精读分析生成`);
@@ -202,9 +261,24 @@ ${pageContent}
     filePath: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    filename: string = '',
+    clientId: string = '',
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filePath} 生成脑图`);
+
+      // 如果提供了filename和clientId，先检查数据库中是否已有脑图
+      if (filename && clientId) {
+        const existingMindMap = await this.pdfFileService.getMindMap(
+          filename,
+          clientId,
+        );
+        if (existingMindMap) {
+          this.logger.log(`使用数据库中已有的脑图内容`);
+          onToken({ content: existingMindMap });
+          return;
+        }
+      }
 
       // 提取PDF文本
       const text = await this.extractTextFromPDF(filePath);
@@ -243,14 +317,25 @@ ${text}
 
 注意：请严格按照示例格式输出，只使用markdown标题语法(#)，不要使用其他任何markdown语法。每个标题都应该是简短的关键词或短语。`;
 
+      // 用于收集完整的脑图内容
+      let fullMindMap = '';
+
       // 调用模型生成脑图
       const stream = await model.stream(prompt);
 
       // 处理流式响应
       for await (const chunk of stream) {
         if (chunk.content) {
-          onToken({ content: chunk.content.toString() });
+          const content = chunk.content.toString();
+          fullMindMap += content;
+          onToken({ content });
         }
+      }
+
+      // 如果提供了filename和clientId，将脑图保存到数据库
+      if (filename && clientId && fullMindMap) {
+        await this.pdfFileService.saveMindMap(filename, clientId, fullMindMap);
+        this.logger.log(`已将脑图保存到数据库`);
       }
 
       this.logger.log(`成功完成文件 ${filePath} 的脑图生成`);
