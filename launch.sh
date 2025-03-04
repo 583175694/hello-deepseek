@@ -1,21 +1,25 @@
+git pull
 # 解压客户端文件
 cd ./client
 rm -rf .next node_modules package.json package-lock.json
+mv ../client-dist.tar.gz .
 tar -xzf client-dist.tar.gz
-rm -rf client-dist.tar.gz
 
+# 重启客户端
 pm2 delete chat-client
 pm2 start npm --name chat-client -- start
+rm -rf client-dist.tar.gz
 
 # 解压服务端文件
 cd ../server
 rm -rf dist node_modules package.json package-lock.json
+mv ../server-dist.tar.gz .
 tar -xzf server-dist.tar.gz
-rm -rf server-dist.tar.gz
 
 # 重启服务
 pm2 delete chat-server
 pm2 start npm --name chat-server -- start
+rm -rf server-dist.tar.gz
 
 # # 更新代码
 # git pull
