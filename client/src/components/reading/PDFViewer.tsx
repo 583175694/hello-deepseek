@@ -22,7 +22,7 @@ export const PDFViewer = React.memo(({ fileUrl }: PDFViewerProps) => {
   });
 
   return (
-    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
+    <Worker workerUrl="/js/pdf.worker.min.js">
       <div className="flex flex-row h-full">
         <div className="w-1/6">
           <thumbnailPluginInstance.Thumbnails

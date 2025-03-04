@@ -41,3 +41,6 @@ lerna-debug.log*
 /vector_store
 /temp
 /reader-uploads
+
+# 打包
+server-dist.tar.gz

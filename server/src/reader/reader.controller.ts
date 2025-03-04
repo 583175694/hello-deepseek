@@ -177,6 +177,13 @@ export class ReaderController {
         throw new HttpException('文件不存在', HttpStatus.NOT_FOUND);
       }
 
+      // 设置强缓存响应头
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 缓存一年
+      res.setHeader(
+        'Expires',
+        new Date(Date.now() + 31536000000).toUTCString(),
+      );
+
       // 设置响应头并发送文件
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
