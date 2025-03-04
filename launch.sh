@@ -34,10 +34,12 @@ rm -rf server-dist.tar.gz
 
 # # 服务端
 # cd ..
-# # 进入服务端目录
-# cd server
-# # 重新安装依赖
-# npm install --legacy-peer-deps
-# # 重新构建
-# npm run build
+# 进入服务端目录
+cd server
+# 重新安装依赖
+npm install
+# 重新构建
+npm run build
 
+pm2 delete chat-server
+pm2 start npm --name chat-server -- start

@@ -1,5 +1,5 @@
 import ReactMarkdown from "react-markdown";
-import { CodeBlock } from "../chat/ChatMessage";
+import { CodeBlock } from "../chat/CodeBlock";
 import remarkGfm from "remark-gfm";
 
 interface ArticleDeepReadingProps {

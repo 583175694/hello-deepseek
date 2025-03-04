@@ -20,14 +20,11 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
-  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { chatService } from "@/lib/api";
 import {
   AlertDialog,
@@ -39,14 +36,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import React from "react";
+import { CodeBlock } from "./CodeBlock";
+import mermaid from "mermaid";
 
 // 定义消息来源的接口
 interface Source {
@@ -60,6 +53,15 @@ interface ChatMessageProps {
   isStreaming?: boolean; // 是否正在流式传输消息
   onDelete?: (messageId: string) => void; // 添加删除回调
 }
+
+// 初始化 mermaid（移到组件外部）
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "default",
+  securityLevel: "loose",
+  fontFamily:
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+});
 
 // 消息操作按钮组件
 const MessageActions = React.memo(
@@ -280,99 +282,6 @@ const MessageSources = React.memo(({ sources }: { sources?: string }) => {
   }
 });
 MessageSources.displayName = "MessageSources";
-
-// 添加代码块组件
-export const CodeBlock = React.memo(
-  ({ children, language }: { children: string; language: string }) => {
-    const [isCopied, setIsCopied] = useState(false);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const code = String(children).replace(/\n$/, "");
-    const isHtml = language.toLowerCase() === "html";
-
-    const handleCopyCode = () => {
-      try {
-        const textarea = document.createElement("textarea");
-        textarea.value = code;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        setIsCopied(true);
-        toast.success("已复制到剪贴板");
-        setTimeout(() => setIsCopied(false), 1500);
-      } catch (err) {
-        console.error("Failed to copy code:", err);
-        toast.error("复制失败");
-      }
-    };
-
-    // HTML 预览弹窗
-    const HtmlPreviewDialog = () => {
-      if (!isHtml) return null;
-
-      return (
-        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-[800px] w-[90vw] max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>HTML 预览</DialogTitle>
-            </DialogHeader>
-            <div className="relative w-full h-[70vh] border rounded-md overflow-hidden">
-              <iframe
-                srcDoc={code}
-                className="absolute inset-0 w-full h-full"
-                sandbox="allow-scripts"
-                title="HTML Preview"
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      );
-    };
-
-    return (
-      <div className="relative group">
-        <div className="absolute right-2 top-2 flex gap-2">
-          <button
-            onClick={handleCopyCode}
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
-          >
-            {isCopied ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </button>
-          {isHtml && (
-            <button
-              onClick={() => setIsPreviewOpen(true)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-white/10 text-white/80 hover:text-white"
-            >
-              <Play className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="max-w-full overflow-x-auto">
-          <SyntaxHighlighter
-            language={language}
-            style={oneDark}
-            PreTag="div"
-            customStyle={{
-              margin: 0,
-              marginBottom: 0,
-              padding: "1rem",
-            }}
-          >
-            {code}
-          </SyntaxHighlighter>
-        </div>
-        <HtmlPreviewDialog />
-      </div>
-    );
-  }
-);
-CodeBlock.displayName = "CodeBlock";
 
 // AI消息内容组件
 const AIMessageContent = React.memo(
