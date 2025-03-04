@@ -39,7 +39,12 @@ export function MindMapViewer({ markdown, isLoading }: MindMapViewerProps) {
         if (scripts) loadJS(scripts, { getMarkmap: () => markmap });
 
         // 保存新实例
-        mmRef.current = Markmap.create(svgRef.current, option.current, root);
+        if (!svgRef.current) return;
+        mmRef.current = Markmap.create(
+          svgRef.current as SVGElement,
+          option.current,
+          root
+        );
       } catch (error) {
         console.error("Mindmap rendering error:", error);
         // 如果渲染失败，尝试重新渲染一次

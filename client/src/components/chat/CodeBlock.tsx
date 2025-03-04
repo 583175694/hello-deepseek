@@ -17,6 +17,15 @@ interface CodeBlockProps {
   language: string;
 }
 
+// 初始化 mermaid 配置
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "default",
+  securityLevel: "loose",
+  deterministicIds: true,
+  fontFamily: "sans-serif",
+});
+
 export const CodeBlock = ({ children, language }: CodeBlockProps) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -183,6 +192,15 @@ export const CodeBlock = ({ children, language }: CodeBlockProps) => {
         console.log("Starting mermaid render with code:", code);
         const ref = mermaidRef.current;
 
+        // 首先尝试解析代码
+        try {
+          await mermaid.parse(code);
+        } catch (parseError: any) {
+          throw new Error(
+            `语法错误: ${parseError?.message || "请检查图表语法"}`
+          );
+        }
+
         // 生成唯一 ID
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
         console.log("Generated mermaid container ID:", id);
@@ -232,11 +250,17 @@ export const CodeBlock = ({ children, language }: CodeBlockProps) => {
         ref.appendChild(svgContainer);
         console.log("SVG rendered and inserted successfully");
       } catch (err) {
-        console.error("Failed to render mermaid:", err);
+        console.log("Failed to render mermaid:", err);
         if (mermaidRef.current) {
-          mermaidRef.current.innerHTML = `<pre class="text-red-500 p-4">Mermaid 图表渲染失败: ${
-            err instanceof Error ? err.message : "未知错误"
-          }</pre>`;
+          mermaidRef.current.innerHTML = `
+            <div class="p-4 border border-red-200 bg-red-50 dark:bg-red-900/10">
+              <p class="text-red-600 dark:text-red-400 mb-2">Mermaid 图表渲染失败: ${
+                err instanceof Error ? err.message : "未知错误"
+              }</p>
+              <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm overflow-x-auto">${code}</pre>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">提示：请检查语法是否正确，确保图表定义完整</p>
+            </div>
+          `;
         }
         toast.error("Mermaid 图表渲染失败");
       }

@@ -10,16 +10,16 @@ pm2 start npm --name chat-client -- start
 rm -rf client-dist.tar.gz
 
 # 解压服务端文件
-cd ..
-cd server
-rm -rf dist node_modules package.json package-lock.json
-mv ../server-dist.tar.gz .
-tar -xzf server-dist.tar.gz
+# cd ..
+# cd server
+# rm -rf dist node_modules package.json package-lock.json
+# mv ../server-dist.tar.gz .
+# tar -xzf server-dist.tar.gz
 
-# 重启服务
-pm2 delete chat-server
-pm2 start npm --name chat-server -- start
-rm -rf server-dist.tar.gz
+# # 重启服务
+# pm2 delete chat-server
+# pm2 start npm --name chat-server -- start
+# rm -rf server-dist.tar.gz
 
 # # 更新代码
 # git pull
@@ -33,7 +33,7 @@ rm -rf server-dist.tar.gz
 
 
 # # 服务端
-# cd ..
+cd ..
 # 进入服务端目录
 cd server
 # 重新安装依赖
