@@ -110,6 +110,19 @@ export function Layout() {
         <Button
           variant="ghost"
           className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
+            isReading ? "bg-accent" : "hover:bg-accent/50"
+          }`}
+          onClick={() => {
+            router.push("/reading");
+            setIsMobileMenuOpen(false);
+          }}
+        >
+          <FileText className="w-5 h-5" />
+          <span>AI 阅读</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
             isPPT ? "bg-accent" : "hover:bg-accent/50"
           }`}
           onClick={() => {
@@ -132,19 +145,6 @@ export function Layout() {
         >
           <Bot className="w-5 h-5" />
           <span>智能体</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className={`w-32 h-12 rounded-xl flex items-center gap-2 ${
-            isReading ? "bg-accent" : "hover:bg-accent/50"
-          }`}
-          onClick={() => {
-            router.push("/reading");
-            setIsMobileMenuOpen(false);
-          }}
-        >
-          <FileText className="w-5 h-5" />
-          <span>AI阅读</span>
         </Button>
       </div>
 
