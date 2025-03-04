@@ -118,58 +118,79 @@ ${text}
     modelId: string = 'bytedance_deepseek_v3',
   ): Promise<void> {
     try {
-      this.logger.log(`开始为文件 ${filePath} 生成精读分析`);
+      this.logger.log(`开始为文件 ${filePath} 生成逐页精读分析`);
 
-      // 提取PDF文本
-      const text = await this.extractTextFromPDF(filePath);
+      // 加载PDF文档，获取所有页面
+      const loader = new PDFLoader(filePath);
+      const docs = await loader.load();
 
       // 获取模型实例
       const model = this.getModel(modelId);
 
-      // 构建提示词
-      const prompt = `
-你是一个专业的文章精读分析专家。请对以下文章内容进行深入分析，包括：
+      // 逐页处理
+      for (let i = 0; i < docs.length; i++) {
+        const pageContent = docs[i].pageContent;
+        const pageNum = i + 1;
 
-1. 文章结构分析
-   - 文章的组织方式和逻辑框架
-   - 各部分内容的衔接和过渡
+        this.logger.log(`正在分析第 ${pageNum} 页`);
 
-2. 核心内容解析
-   - 主要观点的详细阐述
-   - 论据的有效性和说服力分析
-   - 重要概念和术语的解释
+        // 为每页内容构建提示词
+        const prompt = `
+你是一个专业的文章精读分析专家。这是一篇PDF文档的第${pageNum}页内容。
 
-3. 创新点和亮点
-   - 独特的研究方法或视角
-   - 新颖的发现或见解
+首先，请判断本页的内容类型（封面、目录、正文、参考文献、附录等）。
 
-4. 应用价值
-   - 理论意义和实践价值
-   - 潜在的应用场景和影响
+如果本页是封面、目录、参考文献列表、附录等辅助性内容：
+- 简要说明本页的类型和内容即可，不需要进行总结，不需要进行深入分析
 
-5. 批判性思考
-   - 论证的完整性和严密性
-   - 可能存在的局限或不足
-   - 未来研究的方向建议
+如果本页是正文内容，请进行深入分析，包括：
+1. 本页主要内容概述
+   - 本页的核心主题
+   - 在文章整体中的作用和地位
 
-请以结构化的方式组织分析内容，包括适当的标题、列表和强调。确保分析深入且有见地，帮助读者更好地理解和把握文章的精髓。
+2. 重要内容解析
+   - 关键论点和观点
+   - 重要概念和术语解释
+   - 论据和例证分析
 
-以下是文章内容：
+3. 逻辑结构分析
+   - 段落之间的逻辑关系
+   - 论证方式和思路
 
-${text}
+4. 重点和难点
+   - 本页最重要的信息
+   - 需要特别关注的内容
+   - 可能需要补充理解的部分
+
+5. 与上下文的关联
+   - 与前文的衔接点
+   - 对后文的铺垫
+
+请根据页面类型选择合适的分析深度，以结构化的方式组织内容。对于正文部分，确保分析深入且有见地；对于辅助性内容，保持简明扼要。
+
+以下是第${pageNum}页的内容：
+
+${pageContent}
 `;
 
-      // 调用模型生成精读分析
-      const stream = await model.stream(prompt);
+        // 添加页面分隔标记
+        if (i > 0) {
+          onToken({ content: '\n\n-------------------\n' });
+        }
+        onToken({ content: `\n## 第 ${pageNum} 页分析\n\n` });
 
-      // 处理流式响应
-      for await (const chunk of stream) {
-        if (chunk.content) {
-          onToken({ content: chunk.content.toString() });
+        // 调用模型生成当前页的精读分析
+        const stream = await model.stream(prompt);
+
+        // 处理流式响应
+        for await (const chunk of stream) {
+          if (chunk.content) {
+            onToken({ content: chunk.content.toString() });
+          }
         }
       }
 
-      this.logger.log(`成功完成文件 ${filePath} 的精读分析生成`);
+      this.logger.log(`成功完成文件 ${filePath} 的逐页精读分析生成`);
     } catch (error) {
       this.logger.error(`生成精读分析失败:`, error);
       throw error;
