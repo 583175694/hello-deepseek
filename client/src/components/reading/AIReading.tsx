@@ -18,17 +18,37 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { ArticleAnalysis } from "./ArticleAnalysis";
 
+type SupportedMimeTypes =
+  | "application/pdf"
+  | "application/msword"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+type FileTypes = "pdf" | "doc" | "docx";
+
+const SUPPORTED_FILE_TYPES: Record<SupportedMimeTypes, FileTypes> = {
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "docx",
+};
+
 // 定义历史文件类型
 interface HistoryFile {
   filename: string;
   originalName?: string;
   size: number;
   uploadedAt: string;
+  fileType: string; // 添加文件类型字段
 }
 
 // 使用动态导入避免服务器端渲染问题
 const PDFViewer = dynamic(
   () => import("./PDFViewer").then((mod) => mod.PDFViewer),
+  { ssr: false }
+);
+
+const DocumentViewer = dynamic(
+  () => import("./DocViewer").then((mod) => mod.DocumentViewer),
   { ssr: false }
 );
 
@@ -42,6 +62,7 @@ export function AIReading() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [fileType, setFileType] = useState<string>("pdf");
 
   // 使用 AI 阅读 hook
   const {
@@ -81,13 +102,17 @@ export function AIReading() {
   // 处理文件上传
   const handleFileChange = async (file: File | null) => {
     if (file) {
-      // 检查文件类型
-      if (file.type !== "application/pdf") {
-        toast.error("请上传PDF文件");
+      const mimeType = file.type as SupportedMimeTypes;
+      const fileType = SUPPORTED_FILE_TYPES[mimeType];
+
+      if (!fileType) {
+        toast.error("不支持的文件类型，请上传 PDF、DOC 或 DOCX 文件");
         return;
       }
 
       setPdfFile(file);
+      setFileType(fileType);
+
       // 创建URL以供预览
       const fileUrl = URL.createObjectURL(file);
       setPdfUrl(fileUrl);
@@ -152,7 +177,7 @@ export function AIReading() {
   };
 
   // 处理历史文件点击
-  const handleHistoryFileClick = async (filename: string) => {
+  const handleHistoryFileClick = async (filename: string, fileType: string) => {
     try {
       // 使用API获取文件内容
       const fileBlob = await readerService.getPDFFile(filename);
@@ -160,10 +185,16 @@ export function AIReading() {
       // 创建URL以供预览
       const fileUrl = URL.createObjectURL(fileBlob);
       setPdfUrl(fileUrl);
+      setFileType(fileType as FileTypes);
 
-      // 设置一个临时的File对象
+      // 设置一个临时的File对象，确保使用正确的 MIME 类型
+      const mimeType =
+        Object.entries(SUPPORTED_FILE_TYPES).find(
+          ([, type]) => type === fileType
+        )?.[0] || "application/pdf";
+
       const tempFile = new File([fileBlob], filename, {
-        type: "application/pdf",
+        type: mimeType,
       });
       setPdfFile(tempFile);
 
@@ -249,6 +280,21 @@ export function AIReading() {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
+  // 修改渲染文档预览的部分
+  const renderDocumentViewer = () => {
+    if (!pdfUrl) return null;
+
+    switch (fileType) {
+      case "pdf":
+        return <PDFViewer fileUrl={pdfUrl} />;
+      case "doc":
+      case "docx":
+        return <DocumentViewer fileUrl={pdfUrl} fileType={fileType} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex flex-col h-full p-4 md:p-6 md:pb-0 overflow-hidden">
       <div className="flex items-center justify-between mb-6 w-full max-w-4xl mx-auto lg:pl-6">
@@ -280,13 +326,13 @@ export function AIReading() {
               type="file"
               ref={fileInputRef}
               onChange={handleInputChange}
-              accept="application/pdf"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
             />
             <Upload className="w-12 h-12 mb-3 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">上传PDF文件</h3>
+            <h3 className="text-lg font-medium mb-2">上传文档</h3>
             <p className="text-muted-foreground text-center text-sm mb-3">
-              拖放文件到此处，或点击上传
+              支持 PDF、DOC、DOCX 格式，拖放文件到此处，或点击上传
             </p>
             <Button size="sm" className="gap-2">
               <FileUp className="w-4 h-4" />
@@ -316,7 +362,9 @@ export function AIReading() {
                     <li
                       key={file.filename}
                       className="p-3 hover:bg-accent/50 cursor-pointer transition-colors"
-                      onClick={() => handleHistoryFileClick(file.filename)}
+                      onClick={() =>
+                        handleHistoryFileClick(file.filename, file.fileType)
+                      }
                     >
                       <div className="flex items-center">
                         <FileText className="w-5 h-5 text-muted-foreground mr-3" />
@@ -377,7 +425,7 @@ export function AIReading() {
                 <div className="truncate">{pdfFile.name}</div>
               </div>
               <div className="flex-1 overflow-hidden">
-                {pdfUrl && <PDFViewer fileUrl={pdfUrl} />}
+                {renderDocumentViewer()}
               </div>
             </div>
           </div>
