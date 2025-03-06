@@ -134,7 +134,7 @@ export class TempDocumentService {
     let finalFileName: string;
 
     // 设置文档长度阈值（字符数）
-    const SHORT_DOCUMENT_THRESHOLD = 12000; // 可以根据需要调整这个值
+    const SHORT_DOCUMENT_THRESHOLD = 60000; // 可以根据需要调整这个值
 
     try {
       const sessionPath = this.getSessionPath(sessionId, clientId);
