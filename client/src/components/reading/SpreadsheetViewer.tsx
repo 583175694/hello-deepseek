@@ -83,7 +83,7 @@ export function SpreadsheetViewer({
     <div className="h-full w-full bg-background">
       <ScrollArea className="h-full">
         <div className="p-6">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse overflow-x-auto">
             <thead>
               <tr>
                 {data[0]?.map((header, index) => (
