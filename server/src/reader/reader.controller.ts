@@ -141,12 +141,12 @@ export class ReaderController {
   async streamDeepReading(
     @Query('filename') filename: string,
     @Query('modelId') modelId: string = 'bytedance_deepseek_v3',
-  ): Promise<Observable<{ data: string | Object }>> {
+  ): Promise<Observable<{ data: string | object }>> {
     if (!filename) {
       throw new HttpException('文件名是必需的', HttpStatus.BAD_REQUEST);
     }
 
-    return new Observable<{ data: string | Object }>((subscriber) => {
+    return new Observable<{ data: string | object }>((subscriber) => {
       this.readerService
         .streamDeepReading(
           filename,
@@ -168,12 +168,12 @@ export class ReaderController {
   async streamMindMap(
     @Query('filename') filename: string,
     @Query('modelId') modelId: string = 'bytedance_deepseek_v3',
-  ): Promise<Observable<{ data: string | Object }>> {
+  ): Promise<Observable<{ data: string | object }>> {
     if (!filename) {
       throw new HttpException('文件名是必需的', HttpStatus.BAD_REQUEST);
     }
 
-    return new Observable<{ data: string | Object }>((subscriber) => {
+    return new Observable<{ data: string | object }>((subscriber) => {
       this.readerService
         .streamMindMap(
           filename,

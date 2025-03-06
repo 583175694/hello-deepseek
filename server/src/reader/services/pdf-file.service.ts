@@ -16,7 +16,6 @@ export class PDFFileService {
   // 保存PDF文件记录
   async savePDFFile(
     filename: string,
-    originalFilename: string,
     size: number,
     clientId: string,
   ): Promise<PDFFile> {
