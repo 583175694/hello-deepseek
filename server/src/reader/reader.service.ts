@@ -62,6 +62,7 @@ export class ReaderService {
 
   async uploadFile(
     file: Express.Multer.File,
+    clientId: string,
   ): Promise<{ filename: string; fileType: string }> {
     try {
       // 确保文件名是 UTF-8 编码
@@ -81,11 +82,7 @@ export class ReaderService {
       const fileType = this.documentService.getFileType(filename);
 
       // 保存到数据库
-      await this.pdfFileService.savePDFFile(
-        filename,
-        file.size,
-        'default', // 这里可以传入实际的 clientId
-      );
+      await this.pdfFileService.savePDFFile(filename, file.size, clientId);
 
       return { filename, fileType };
     } catch (error) {
@@ -94,8 +91,17 @@ export class ReaderService {
     }
   }
 
-  async getFile(filename: string): Promise<Buffer> {
+  async getFile(filename: string, clientId: string): Promise<Buffer> {
     try {
+      // 验证文件是否属于该客户端
+      const exists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!exists) {
+        throw new Error('File not found or access denied');
+      }
+
       const filePath = path.join(this.uploadDir, filename);
       return this.documentService.getFileContent(filePath);
     } catch (error) {
@@ -104,7 +110,7 @@ export class ReaderService {
     }
   }
 
-  async getUploadedFiles(): Promise<
+  async getUploadedFiles(clientId: string): Promise<
     Array<{
       filename: string;
       originalName?: string;
@@ -114,49 +120,37 @@ export class ReaderService {
     }>
   > {
     try {
-      const files = await fs.promises.readdir(this.uploadDir);
-      const filePromises = files
-        .map((filename) => {
-          const fileType = this.documentService.getFileType(filename);
-          if (!fileType) {
-            return null;
-          }
-          return { filename, fileType };
-        })
-        .filter(
-          (file): file is { filename: string; fileType: string } =>
-            file !== null,
-        )
-        .map(async ({ filename, fileType }) => {
-          const filePath = path.join(this.uploadDir, filename);
-          try {
-            const stats = await fs.promises.stat(filePath);
-            return {
-              filename,
-              size: stats.size,
-              uploadedAt: stats.mtime.toISOString(),
-              fileType,
-            };
-          } catch (error) {
-            this.logger.warn(`无法获取文件信息: ${filename}`);
-            return null;
-          }
-        });
-
-      const fileDetails = await Promise.all(filePromises);
-      return fileDetails.filter(
-        (file): file is NonNullable<typeof file> => file !== null,
-      );
+      // 从数据库获取该客户端的文件列表
+      const dbFiles = await this.pdfFileService.getPDFFiles(clientId);
+      return dbFiles.map((file) => ({
+        filename: file.filename,
+        size: file.size,
+        uploadedAt: file.createdAt.toISOString(),
+        fileType: this.documentService.getFileType(file.filename) || 'unknown',
+      }));
     } catch (error) {
       this.logger.error('Error getting uploaded files:', error);
       throw error;
     }
   }
 
-  async deleteFile(filename: string): Promise<void> {
+  async deleteFile(filename: string, clientId: string): Promise<void> {
     try {
+      // 验证文件是否属于该客户端
+      const exists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!exists) {
+        throw new Error('File not found or access denied');
+      }
+
+      // 删除物理文件
       const filePath = path.join(this.uploadDir, filename);
       await fs.promises.unlink(filePath);
+
+      // 删除数据库记录
+      await this.pdfFileService.deletePDFFile(filename, clientId);
     } catch (error) {
       this.logger.error(`Error deleting file ${filename}:`, error);
       throw error;
@@ -178,14 +172,24 @@ export class ReaderService {
     filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    clientId: string,
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filename} 生成摘要`);
 
+      // 验证文件是否属于该客户端
+      const exists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!exists) {
+        throw new Error('File not found or access denied');
+      }
+
       // 先检查数据库中是否已存在摘要
       const existingSummary = await this.pdfFileService.getSummary(
         filename,
-        'default',
+        clientId,
       );
       if (existingSummary) {
         this.logger.log(`找到文件 ${filename} 的已有摘要，直接返回`);
@@ -233,7 +237,7 @@ ${text}
       }
 
       // 保存摘要到数据库
-      await this.pdfFileService.saveSummary(filename, 'default', fullSummary);
+      await this.pdfFileService.saveSummary(filename, clientId, fullSummary);
 
       this.logger.log(`成功完成文件 ${filename} 的摘要生成`);
     } catch (error) {
@@ -247,14 +251,24 @@ ${text}
     filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    clientId: string,
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filename} 生成逐页精读分析`);
 
+      // 验证文件是否属于该客户端
+      const exists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!exists) {
+        throw new Error('File not found or access denied');
+      }
+
       // 先检查数据库中是否已存在精读分析
       const existingDeepReading = await this.pdfFileService.getDeepReading(
         filename,
-        'default',
+        clientId,
       );
       if (existingDeepReading) {
         this.logger.log(`找到文件 ${filename} 的已有精读分析，直接返回`);
@@ -340,7 +354,7 @@ ${pageContent}
       // 保存精读分析到数据库
       await this.pdfFileService.saveDeepReading(
         filename,
-        'default',
+        clientId,
         fullDeepReading,
       );
 
@@ -356,14 +370,24 @@ ${pageContent}
     filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
+    clientId: string,
   ): Promise<void> {
     try {
       this.logger.log(`开始为文件 ${filename} 生成脑图`);
 
+      // 验证文件是否属于该客户端
+      const exists = await this.pdfFileService.checkFileExists(
+        filename,
+        clientId,
+      );
+      if (!exists) {
+        throw new Error('File not found or access denied');
+      }
+
       // 先检查数据库中是否已存在脑图
       const existingMindMap = await this.pdfFileService.getMindMap(
         filename,
-        'default',
+        clientId,
       );
       if (existingMindMap) {
         this.logger.log(`找到文件 ${filename} 的已有脑图，直接返回`);
@@ -424,7 +448,7 @@ ${text}
       }
 
       // 保存脑图到数据库
-      await this.pdfFileService.saveMindMap(filename, 'default', fullMindMap);
+      await this.pdfFileService.saveMindMap(filename, clientId, fullMindMap);
 
       this.logger.log(`成功完成文件 ${filename} 的脑图生成`);
     } catch (error) {

@@ -1,9 +1,12 @@
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { Document } from '@langchain/core/documents';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
 import * as WordExtractor from 'word-extractor';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as XLSX from 'xlsx';
 
 export class DocumentService {
   private readonly uploadDir: string;
@@ -24,6 +27,14 @@ export class DocumentService {
         return this.loadDOCX(filePath);
       case '.doc':
         return this.loadDOC(filePath);
+      case '.txt':
+      case '.md':
+        return this.loadText(filePath);
+      case '.csv':
+        return this.loadCSV(filePath);
+      case '.xlsx':
+      case '.xls':
+        return this.loadExcel(filePath);
       default:
         throw new Error(`Unsupported file type: ${ext}`);
     }
@@ -57,6 +68,65 @@ export class DocumentService {
     ];
   }
 
+  private async loadText(filePath: string): Promise<Document[]> {
+    const loader = new TextLoader(filePath);
+    return loader.load();
+  }
+
+  private async loadCSV(filePath: string): Promise<Document[]> {
+    const loader = new CSVLoader(filePath);
+    return loader.load();
+  }
+
+  private async loadExcel(filePath: string): Promise<Document[]> {
+    const buffer = await fs.promises.readFile(filePath);
+    const workbook = XLSX.read(buffer, {
+      type: 'buffer',
+      cellDates: true,
+      cellNF: false,
+      cellText: false,
+    });
+
+    return workbook.SheetNames.map((sheetName) => {
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json<string[]>(sheet, {
+        raw: false,
+        defval: '',
+        header: 1,
+        blankrows: false,
+      });
+
+      const headers = (jsonData[0] || []) as string[];
+      const dataRows = jsonData.slice(1) as string[][];
+
+      const textContent = dataRows
+        .map((row: any[]) => {
+          return row
+            .map((cell, index) => {
+              const header = headers[index] || `Column${index + 1}`;
+              const value =
+                cell === null || cell === undefined ? '' : String(cell).trim();
+              return `${header}: ${value}`;
+            })
+            .filter((item) => !item.endsWith(': '))
+            .join(' | ');
+        })
+        .filter((line) => line.length > 0)
+        .join('\n');
+
+      return new Document({
+        pageContent: textContent || '空白表格',
+        metadata: {
+          source: filePath,
+          sheet: sheetName,
+          format: path.extname(filePath).slice(1),
+          rowCount: dataRows.length,
+          columnCount: headers.length,
+        },
+      });
+    });
+  }
+
   getFileType(filename: string): string | null {
     // 忽略以点开头的隐藏文件
     if (filename.startsWith('.')) {
@@ -75,6 +145,15 @@ export class DocumentService {
         return 'docx';
       case '.doc':
         return 'doc';
+      case '.txt':
+        return 'txt';
+      case '.md':
+        return 'md';
+      case '.csv':
+        return 'csv';
+      case '.xlsx':
+      case '.xls':
+        return 'excel';
       default:
         return null;
     }
