@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import mammoth from "mammoth";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
 
-interface DocumentViewerProps {
+interface TextViewerProps {
   fileUrl: string;
-  fileType: "doc" | "docx";
+  fileType: "txt" | "md";
 }
 
 const ErrorComponent = () => (
@@ -23,7 +23,7 @@ const LoadingComponent = () => (
   </div>
 );
 
-export function DocumentViewer({ fileUrl }: DocumentViewerProps) {
+export function TextViewer({ fileUrl, fileType }: TextViewerProps) {
   const [content, setContent] = useState<string>("");
   const [error, setError] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,10 +35,8 @@ export function DocumentViewer({ fileUrl }: DocumentViewerProps) {
         setError(false);
 
         const response = await fetch(fileUrl);
-        const arrayBuffer = await response.arrayBuffer();
-
-        const result = await mammoth.convertToHtml({ arrayBuffer });
-        setContent(result.value);
+        const text = await response.text();
+        setContent(text);
       } catch (err) {
         console.error("Error loading document:", err);
         setError(true);
@@ -60,14 +58,17 @@ export function DocumentViewer({ fileUrl }: DocumentViewerProps) {
 
   return (
     <div className="h-full w-full bg-background">
-      <ScrollArea className="h-full scrollbar-none">
-        <div
-          className="p-6 prose prose-sm max-w-none dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
+      <ScrollArea className="h-full">
+        <div className="p-6 prose prose-sm max-w-none dark:prose-invert scrollbar-none">
+          {fileType === "md" ? (
+            <ReactMarkdown>{content}</ReactMarkdown>
+          ) : (
+            <pre className="whitespace-pre-wrap font-mono text-sm">
+              {content}
+            </pre>
+          )}
+        </div>
       </ScrollArea>
     </div>
   );
 }
-
-export default DocumentViewer;

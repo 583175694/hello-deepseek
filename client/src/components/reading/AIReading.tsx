@@ -21,15 +21,25 @@ import { ArticleAnalysis } from "./ArticleAnalysis";
 type SupportedMimeTypes =
   | "application/pdf"
   | "application/msword"
-  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "text/plain"
+  | "text/markdown"
+  | "text/csv"
+  | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  | "application/vnd.ms-excel";
 
-type FileTypes = "pdf" | "doc" | "docx";
+type FileTypes = "pdf" | "doc" | "docx" | "txt" | "md" | "csv" | "xlsx" | "xls";
 
 const SUPPORTED_FILE_TYPES: Record<SupportedMimeTypes, FileTypes> = {
   "application/pdf": "pdf",
   "application/msword": "doc",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     "docx",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "text/csv": "csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.ms-excel": "xls",
 };
 
 // 定义历史文件类型
@@ -49,6 +59,16 @@ const PDFViewer = dynamic(
 
 const DocumentViewer = dynamic(
   () => import("./DocViewer").then((mod) => mod.DocumentViewer),
+  { ssr: false }
+);
+
+const TextViewer = dynamic(
+  () => import("./TextViewer").then((mod) => mod.TextViewer),
+  { ssr: false }
+);
+
+const SpreadsheetViewer = dynamic(
+  () => import("./SpreadsheetViewer").then((mod) => mod.SpreadsheetViewer),
   { ssr: false }
 );
 
@@ -106,7 +126,9 @@ export function AIReading() {
       const fileType = SUPPORTED_FILE_TYPES[mimeType];
 
       if (!fileType) {
-        toast.error("不支持的文件类型，请上传 PDF、DOC 或 DOCX 文件");
+        toast.error(
+          "不支持的文件类型，请上传 PDF、DOC、DOCX、TXT、MD、CSV、XLSX、XLS 文件"
+        );
         return;
       }
 
@@ -290,6 +312,13 @@ export function AIReading() {
       case "doc":
       case "docx":
         return <DocumentViewer fileUrl={pdfUrl} fileType={fileType} />;
+      case "txt":
+      case "md":
+        return <TextViewer fileUrl={pdfUrl} fileType={fileType} />;
+      case "csv":
+      case "xlsx":
+      case "xls":
+        return <SpreadsheetViewer fileUrl={pdfUrl} fileType={fileType} />;
       default:
         return null;
     }
@@ -326,13 +355,14 @@ export function AIReading() {
               type="file"
               ref={fileInputRef}
               onChange={handleInputChange}
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.doc,.docx,.txt,.md,.csv,.xlsx,.xls,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="hidden"
             />
             <Upload className="w-12 h-12 mb-3 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2">上传文档</h3>
             <p className="text-muted-foreground text-center text-sm mb-3">
-              支持 PDF、DOC、DOCX 格式，拖放文件到此处，或点击上传
+              支持 PDF、DOC、DOCX、TXT、MD、CSV、XLSX、XLS
+              格式，拖放文件到此处，或点击上传
             </p>
             <Button size="sm" className="gap-2">
               <FileUp className="w-4 h-4" />
