@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@langchain/cohere": "^0.3.2",
-    "@langchain/community": "^0.3.29",
-    "@langchain/core": "^0.3.39",
+    "@langchain/community": "^0.3.34",
+    "@langchain/core": "^0.3.42",
     "@langchain/deepseek": "^0.0.1",
     "@langchain/exa": "^0.1.0",
     "@langchain/openai": "^0.4.2",
@@ -39,12 +39,14 @@
     "exa-js": "^1.4.10",
     "faiss-node": "^0.5.1",
     "langchain": "^0.3.15",
+    "mammoth": "^1.9.0",
     "mysql2": "^3.12.0",
     "pdf-parse": "^1.1.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20",
     "uuid": "^11.0.5",
+    "word-extractor": "^1.0.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

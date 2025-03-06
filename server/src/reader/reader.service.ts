@@ -1,16 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ChatDeepSeek } from '@langchain/deepseek';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
+import * as fs from 'fs';
+import * as path from 'path';
+import { DocumentService } from './services/document.service';
+import { Document } from '@langchain/core/documents';
 import { models } from 'src/configs/models';
-import { PDFFileService } from './services/pdf-file.service';
 
 @Injectable()
 export class ReaderService {
   private readonly logger = new Logger(ReaderService.name);
+  private readonly uploadDir: string;
+  private readonly documentService: DocumentService;
   private modelInstances: Record<string, ChatDeepSeek> = {}; // 存储所有模型实例
 
-  constructor(private readonly pdfFileService: PDFFileService) {
-    this.logger.log('正在初始化Reader服务...');
+  constructor(private configService: ConfigService) {
+    this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || 'uploads';
+    // 确保上传目录存在
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true });
+    }
+    this.documentService = new DocumentService(this.uploadDir);
     this.initializeAllModels();
   }
 
@@ -46,50 +56,120 @@ export class ReaderService {
     return this.modelInstances[modelId];
   }
 
-  // 从PDF文件中提取文本内容
-  async extractTextFromPDF(filePath: string): Promise<string> {
+  async uploadFile(
+    file: Express.Multer.File,
+  ): Promise<{ filename: string; fileType: string }> {
     try {
-      this.logger.log(`正在从PDF文件提取文本: ${filePath}`);
-      const loader = new PDFLoader(filePath);
-      const docs = await loader.load();
+      const fileExt = path.extname(file.originalname).toLowerCase();
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const filename = `${timestamp}-${randomString}${fileExt}`;
+      const filePath = path.join(this.uploadDir, filename);
 
-      // 合并所有页面的文本
-      const text = docs.map((doc) => doc.pageContent).join('\n\n');
-      this.logger.log(`成功从PDF提取了 ${text.length} 字符的文本`);
+      // 写入文件
+      await fs.promises.writeFile(filePath, file.buffer);
 
-      return text;
+      // 获取文件类型
+      const fileType = this.documentService.getFileType(filename);
+
+      return { filename, fileType };
     } catch (error) {
-      this.logger.error(`从PDF提取文本失败:`, error);
-      throw new Error(`无法从PDF文件提取文本: ${error.message}`);
+      this.logger.error('Error uploading file:', error);
+      throw error;
+    }
+  }
+
+  async getFile(filename: string): Promise<Buffer> {
+    try {
+      const filePath = path.join(this.uploadDir, filename);
+      return this.documentService.getFileContent(filePath);
+    } catch (error) {
+      this.logger.error(`Error getting file ${filename}:`, error);
+      throw error;
+    }
+  }
+
+  async getUploadedFiles(): Promise<
+    Array<{
+      filename: string;
+      originalName?: string;
+      size: number;
+      uploadedAt: string;
+      fileType: string;
+    }>
+  > {
+    try {
+      const files = await fs.promises.readdir(this.uploadDir);
+      const filePromises = files
+        .map((filename) => {
+          const fileType = this.documentService.getFileType(filename);
+          if (!fileType) {
+            return null;
+          }
+          return { filename, fileType };
+        })
+        .filter(
+          (file): file is { filename: string; fileType: string } =>
+            file !== null,
+        )
+        .map(async ({ filename, fileType }) => {
+          const filePath = path.join(this.uploadDir, filename);
+          try {
+            const stats = await fs.promises.stat(filePath);
+            return {
+              filename,
+              size: stats.size,
+              uploadedAt: stats.mtime.toISOString(),
+              fileType,
+            };
+          } catch (error) {
+            this.logger.warn(`无法获取文件信息: ${filename}`);
+            return null;
+          }
+        });
+
+      const fileDetails = await Promise.all(filePromises);
+      return fileDetails.filter(
+        (file): file is NonNullable<typeof file> => file !== null,
+      );
+    } catch (error) {
+      this.logger.error('Error getting uploaded files:', error);
+      throw error;
+    }
+  }
+
+  async deleteFile(filename: string): Promise<void> {
+    try {
+      const filePath = path.join(this.uploadDir, filename);
+      await fs.promises.unlink(filePath);
+    } catch (error) {
+      this.logger.error(`Error deleting file ${filename}:`, error);
+      throw error;
+    }
+  }
+
+  async loadDocument(filename: string): Promise<Document[]> {
+    try {
+      const filePath = path.join(this.uploadDir, filename);
+      return this.documentService.loadDocument(filePath);
+    } catch (error) {
+      this.logger.error(`Error loading document ${filename}:`, error);
+      throw error;
     }
   }
 
   // 生成文章摘要的流式处理
   async streamSummary(
-    filePath: string,
+    filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
-    filename: string = '',
-    clientId: string = '',
   ): Promise<void> {
     try {
-      this.logger.log(`开始为文件 ${filePath} 生成摘要`);
+      this.logger.log(`开始为文件 ${filename} 生成摘要`);
 
-      // 如果提供了filename和clientId，先检查数据库中是否已有摘要
-      if (filename && clientId) {
-        const existingSummary = await this.pdfFileService.getSummary(
-          filename,
-          clientId,
-        );
-        if (existingSummary) {
-          this.logger.log(`使用数据库中已有的摘要内容`);
-          onToken({ content: existingSummary });
-          return;
-        }
-      }
-
-      // 提取PDF文本
-      const text = await this.extractTextFromPDF(filePath);
+      // 加载文档并获取文本内容
+      const docs = await this.loadDocument(filename);
+      const text = docs.map((doc) => doc.pageContent).join('\n\n');
 
       // 获取模型实例
       const model = this.getModel(modelId);
@@ -110,28 +190,17 @@ export class ReaderService {
 ${text}
 `;
 
-      // 用于收集完整的摘要内容
-      let fullSummary = '';
-
       // 调用模型生成摘要
       const stream = await model.stream(prompt);
 
       // 处理流式响应
       for await (const chunk of stream) {
         if (chunk.content) {
-          const content = chunk.content.toString();
-          fullSummary += content;
-          onToken({ content });
+          onToken({ content: chunk.content.toString() });
         }
       }
 
-      // 如果提供了filename和clientId，将摘要保存到数据库
-      if (filename && clientId && fullSummary) {
-        await this.pdfFileService.saveSummary(filename, clientId, fullSummary);
-        this.logger.log(`已将摘要保存到数据库`);
-      }
-
-      this.logger.log(`成功完成文件 ${filePath} 的摘要生成`);
+      this.logger.log(`成功完成文件 ${filename} 的摘要生成`);
     } catch (error) {
       this.logger.error(`生成摘要失败:`, error);
       throw error;
@@ -140,37 +209,18 @@ ${text}
 
   // 生成文章精读的流式处理
   async streamDeepReading(
-    filePath: string,
+    filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
-    filename: string = '',
-    clientId: string = '',
   ): Promise<void> {
     try {
-      this.logger.log(`开始为文件 ${filePath} 生成逐页精读分析`);
+      this.logger.log(`开始为文件 ${filename} 生成逐页精读分析`);
 
-      // 如果提供了filename和clientId，先检查数据库中是否已有精读分析
-      if (filename && clientId) {
-        const existingDeepReading = await this.pdfFileService.getDeepReading(
-          filename,
-          clientId,
-        );
-        if (existingDeepReading) {
-          this.logger.log(`使用数据库中已有的精读分析内容`);
-          onToken({ content: existingDeepReading });
-          return;
-        }
-      }
-
-      // 加载PDF文档，获取所有页面
-      const loader = new PDFLoader(filePath);
-      const docs = await loader.load();
+      // 加载文档
+      const docs = await this.loadDocument(filename);
 
       // 获取模型实例
       const model = this.getModel(modelId);
-
-      // 用于收集完整的精读内容
-      let fullDeepReading = '';
 
       // 逐页处理
       for (let i = 0; i < docs.length; i++) {
@@ -181,7 +231,7 @@ ${text}
 
         // 为每页内容构建提示词
         const prompt = `
-你是一个专业的文章精读分析专家。这是一篇PDF文档的第${pageNum}页内容。
+你是一个专业的文章精读分析专家。这是一篇文档的第${pageNum}页内容。
 
 首先，请判断本页的内容类型（封面、目录、正文、参考文献、附录等）和内容丰富程度。
 
@@ -218,12 +268,10 @@ ${pageContent}
         // 添加页面分隔标记
         if (i > 0) {
           const separator = '\n\n-------------------\n';
-          fullDeepReading += separator;
           onToken({ content: separator });
         }
 
         const pageHeader = `\n## 第 ${pageNum} 页分析\n\n`;
-        fullDeepReading += pageHeader;
         onToken({ content: pageHeader });
 
         // 调用模型生成当前页的精读分析
@@ -232,24 +280,12 @@ ${pageContent}
         // 处理流式响应
         for await (const chunk of stream) {
           if (chunk.content) {
-            const content = chunk.content.toString();
-            fullDeepReading += content;
-            onToken({ content });
+            onToken({ content: chunk.content.toString() });
           }
         }
       }
 
-      // 如果提供了filename和clientId，将精读分析保存到数据库
-      if (filename && clientId && fullDeepReading) {
-        await this.pdfFileService.saveDeepReading(
-          filename,
-          clientId,
-          fullDeepReading,
-        );
-        this.logger.log(`已将精读分析保存到数据库`);
-      }
-
-      this.logger.log(`成功完成文件 ${filePath} 的逐页精读分析生成`);
+      this.logger.log(`成功完成文件 ${filename} 的逐页精读分析生成`);
     } catch (error) {
       this.logger.error(`生成精读分析失败:`, error);
       throw error;
@@ -258,30 +294,16 @@ ${pageContent}
 
   // 生成文章脑图的流式处理
   async streamMindMap(
-    filePath: string,
+    filename: string,
     onToken: (response: { content: string }) => void,
     modelId: string = 'bytedance_deepseek_v3',
-    filename: string = '',
-    clientId: string = '',
   ): Promise<void> {
     try {
-      this.logger.log(`开始为文件 ${filePath} 生成脑图`);
+      this.logger.log(`开始为文件 ${filename} 生成脑图`);
 
-      // 如果提供了filename和clientId，先检查数据库中是否已有脑图
-      if (filename && clientId) {
-        const existingMindMap = await this.pdfFileService.getMindMap(
-          filename,
-          clientId,
-        );
-        if (existingMindMap) {
-          this.logger.log(`使用数据库中已有的脑图内容`);
-          onToken({ content: existingMindMap });
-          return;
-        }
-      }
-
-      // 提取PDF文本
-      const text = await this.extractTextFromPDF(filePath);
+      // 加载文档并获取文本内容
+      const docs = await this.loadDocument(filename);
+      const text = docs.map((doc) => doc.pageContent).join('\n\n');
 
       // 获取模型实例
       const model = this.getModel(modelId);
@@ -317,28 +339,17 @@ ${text}
 
 注意：请严格按照示例格式输出，只使用markdown标题语法(#)，不要使用其他任何markdown语法。每个标题都应该是简短的关键词或短语。`;
 
-      // 用于收集完整的脑图内容
-      let fullMindMap = '';
-
       // 调用模型生成脑图
       const stream = await model.stream(prompt);
 
       // 处理流式响应
       for await (const chunk of stream) {
         if (chunk.content) {
-          const content = chunk.content.toString();
-          fullMindMap += content;
-          onToken({ content });
+          onToken({ content: chunk.content.toString() });
         }
       }
 
-      // 如果提供了filename和clientId，将脑图保存到数据库
-      if (filename && clientId && fullMindMap) {
-        await this.pdfFileService.saveMindMap(filename, clientId, fullMindMap);
-        this.logger.log(`已将脑图保存到数据库`);
-      }
-
-      this.logger.log(`成功完成文件 ${filePath} 的脑图生成`);
+      this.logger.log(`成功完成文件 ${filename} 的脑图生成`);
     } catch (error) {
       this.logger.error(`生成脑图失败:`, error);
       throw error;

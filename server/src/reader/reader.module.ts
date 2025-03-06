@@ -1,16 +1,14 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ReaderController } from './reader.controller';
 import { ReaderService } from './reader.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
-import { PDFFile } from './entities/pdf-file.entity';
-import { PDFFileService } from './services/pdf-file.service';
-import { FileStorageService } from './services/file-storage.service';
+import { DocumentService } from './services/document.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PDFFile]), MulterModule.register({})],
+  imports: [MulterModule.register({}), ConfigModule],
   controllers: [ReaderController],
-  providers: [ReaderService, PDFFileService, FileStorageService],
-  exports: [ReaderService, PDFFileService, FileStorageService],
+  providers: [ReaderService, DocumentService],
+  exports: [ReaderService],
 })
 export class ReaderModule {}
