@@ -14,7 +14,7 @@ export class MessageService {
     private messageRepository: Repository<Message>,
   ) {
     this.memory = new BufferWindowMemory({
-      k: 8,
+      k: 20,
       returnMessages: true,
       memoryKey: 'history',
       inputKey: 'input',
