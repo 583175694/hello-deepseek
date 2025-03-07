@@ -426,6 +426,18 @@ export class AIChatService {
           : undefined,
       );
 
+      // 如果使用了临时文档搜索，存储完成后清理临时文件
+      if (useTempDocSearch) {
+        this.logger.log('正在清理临时文件...');
+        try {
+          await this.tempDocumentService.cleanupSession(sessionId, clientId);
+          this.logger.log('临时文件清理完成');
+        } catch (error) {
+          this.logger.error('清理临时文件时出错:', error);
+          // 不抛出错误，因为这不应该影响主流程
+        }
+      }
+
       // 创建并执行聊天链
       const chain = this.prompt.pipe(this.getModel(modelId));
       const stream = await chain.stream({
@@ -483,18 +495,6 @@ export class AIChatService {
         },
       );
       this.logger.log('助手响应保存成功');
-
-      // 如果使用了临时文档搜索，在AI回复完成后清理临时文件
-      if (useTempDocSearch) {
-        this.logger.log('正在清理临时文件...');
-        try {
-          await this.tempDocumentService.cleanupSession(sessionId, clientId);
-          this.logger.log('临时文件清理完成');
-        } catch (error) {
-          this.logger.error('清理临时文件时出错:', error);
-          // 不抛出错误，因为这不应该影响主流程
-        }
-      }
     } catch (error) {
       this.logger.error('Stream chat error:', error);
       throw error;

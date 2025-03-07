@@ -19,6 +19,7 @@ interface ChatOptions {
   useWebSearch?: boolean;
   useVectorSearch?: boolean;
   useTempDocSearch?: boolean;
+  tempFiles?: string;
 }
 
 export function useAIChat() {
@@ -85,6 +86,7 @@ export function useAIChat() {
           role: "user",
           content,
           type: "content",
+          tempFiles: options.tempFiles,
         });
 
         // 添加 AI 消息占位

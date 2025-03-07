@@ -370,6 +370,7 @@ export function ChatMessage({
   isStreaming,
   onDelete,
 }: ChatMessageProps) {
+  console.log(message);
   const isAI = message.role === "assistant";
 
   // 解析临时文件信息

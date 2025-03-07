@@ -233,6 +233,31 @@ export function ChatHistory() {
     setMessageList(messages.filter((message) => message.id !== messageId));
   };
 
+  // 处理消息发送
+  const handleSendMessage = (content: string, options: any) => {
+    // 保存当前的临时文件信息
+    const currentTempFiles =
+      tempFiles.length > 0 ? JSON.stringify(tempFiles) : null;
+
+    // 发送消息后，清除顶部的临时文件显示
+    if (hasTempDocs) {
+      setTempFiles([]);
+      setHasTempDocs(false);
+    }
+
+    // 将临时文件信息添加到消息选项中
+    const messageOptions = {
+      ...options,
+      tempFiles: currentTempFiles,
+    };
+
+    // 发送消息
+    sendStreamMessage(content, currentSessionId!, messageOptions);
+    setTimeout(() => {
+      scrollToBottom();
+    }, 10);
+  };
+
   return (
     <div className="flex flex-row h-full">
       {/* 左侧列表区域 */}
@@ -371,12 +396,7 @@ export function ChatHistory() {
           <div className="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="max-w-3xl mx-auto">
               <ChatInput
-                onSend={(content, options) => {
-                  sendStreamMessage(content, currentSessionId, options);
-                  setTimeout(() => {
-                    scrollToBottom();
-                  }, 10);
-                }}
+                onSend={handleSendMessage}
                 disabled={!currentSessionId}
                 isLoading={isStreaming}
                 onAbort={abortStream}
