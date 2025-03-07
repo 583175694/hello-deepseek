@@ -51,7 +51,7 @@ export class SessionTempFile {
   @DeleteDateColumn()
   deletedAt: Date;
 
-  @ManyToOne(() => Session)
+  @ManyToOne(() => Session, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'sessionId', referencedColumnName: 'sessionId' })
   session: Session;
 }

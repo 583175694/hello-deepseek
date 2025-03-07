@@ -5,8 +5,7 @@ import { Session } from '../entities/session.entity';
 import { Message } from '../entities/message.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { TempDocumentService } from '../services/temp-document.service';
-import * as fs from 'fs';
+import { SessionTempFile } from '../entities/session-temp-file.entity';
 
 @Injectable()
 export class SessionService {
@@ -17,7 +16,8 @@ export class SessionService {
     private sessionRepository: Repository<Session>,
     @InjectRepository(Message)
     private messageRepository: Repository<Message>,
-    private tempDocumentService: TempDocumentService,
+    @InjectRepository(SessionTempFile)
+    private sessionTempFileRepository: Repository<SessionTempFile>,
   ) {}
 
   async createSession(
@@ -167,8 +167,8 @@ export class SessionService {
         throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
       }
 
-      // 1. 删除临时文件
-      await this.tempDocumentService.cleanupSession(sessionId, clientId);
+      // 1. 软删除临时文件记录
+      await this.sessionTempFileRepository.softDelete({ sessionId, clientId });
 
       // 2. 删除消息记录
       await this.messageRepository.delete({ sessionId, clientId });
@@ -179,8 +179,11 @@ export class SessionService {
       this.logger.log(`成功删除会话: ${sessionId}`);
       return { message: 'Session deleted successfully' };
     } catch (error) {
-      this.logger.error('Delete session error:', error);
-      throw error;
+      this.logger.error(`删除会话失败: ${sessionId}`, error);
+      throw new HttpException(
+        'Failed to delete session',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
