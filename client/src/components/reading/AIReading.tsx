@@ -17,6 +17,7 @@ import { readerService } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { ArticleAnalysis } from "./ArticleAnalysis";
+import { useLoading } from "@/contexts/LoadingContext";
 
 type SupportedMimeTypes =
   | "application/pdf"
@@ -83,6 +84,7 @@ export function AIReading() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [fileType, setFileType] = useState<string>("pdf");
+  const { showLoading, hideLoading } = useLoading();
 
   // 使用 AI 阅读 hook
   const {
@@ -201,6 +203,7 @@ export function AIReading() {
   // 处理历史文件点击
   const handleHistoryFileClick = async (filename: string, fileType: string) => {
     try {
+      showLoading();
       // 使用API获取文件内容
       const fileBlob = await readerService.getPDFFile(filename);
 
@@ -227,6 +230,8 @@ export function AIReading() {
     } catch (error) {
       console.error("加载历史文件失败:", error);
       toast.error("加载历史文件失败");
+    } finally {
+      hideLoading();
     }
   };
 
