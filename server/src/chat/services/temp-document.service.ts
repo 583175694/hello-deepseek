@@ -161,8 +161,11 @@ export class TempDocumentService {
         const storeKey = this.getStoreKey(sessionId, clientId);
         this.sessionVectorStores.delete(storeKey);
 
-        // 硬删除现有的临时文件记录
-        await this.sessionTempFileRepository.delete({ sessionId, clientId });
+        // 软删除现有的临时文件记录
+        await this.sessionTempFileRepository.softDelete({
+          sessionId,
+          clientId,
+        });
       }
 
       // 确保文件名是 UTF-8 编码
@@ -536,8 +539,8 @@ export class TempDocumentService {
    */
   async cleanupSession(sessionId: string, clientId: string): Promise<void> {
     try {
-      // 硬删除数据库记录
-      await this.sessionTempFileRepository.delete({ sessionId, clientId });
+      // 软删除数据库记录
+      await this.sessionTempFileRepository.softDelete({ sessionId, clientId });
 
       // 清理临时文件
       const sessionPath = this.getSessionPath(sessionId, clientId);
