@@ -80,8 +80,12 @@ export class MessageService {
       const userMsg = messages[i];
       const aiMsg = messages[i + 1];
       if (userMsg && aiMsg) {
+        const userContent = userMsg.searchContext
+          ? `${userMsg.content}\n\n相关上下文：\n${userMsg.searchContext}`
+          : userMsg.content;
+
         await this.memory.saveContext(
-          { input: userMsg.content },
+          { input: userContent },
           { output: aiMsg.content },
         );
       }
