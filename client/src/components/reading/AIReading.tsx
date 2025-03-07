@@ -206,6 +206,7 @@ export function AIReading() {
       showLoading();
       // 使用API获取文件内容
       const fileBlob = await readerService.getPDFFile(filename);
+      hideLoading();
 
       // 创建URL以供预览
       const fileUrl = URL.createObjectURL(fileBlob);
