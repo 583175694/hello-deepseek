@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  FileIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -236,6 +237,8 @@ const MessageSources = React.memo(({ sources }: { sources?: string }) => {
       new Set(sourcesData.map((source) => source.url))
     ).map((url) => sourcesData.find((source) => source.url === url)!);
 
+    if (uniqueSources.length === 0) return null;
+
     return (
       <div className="flex flex-col gap-2 ml-11 mt-2 mb-8">
         <div className="flex items-center gap-2">
@@ -369,6 +372,9 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const isAI = message.role === "assistant";
 
+  // 解析临时文件信息
+  const tempFiles = message.tempFiles ? JSON.parse(message.tempFiles) : null;
+
   return (
     <div className="flex flex-col space-y-2 mt-6">
       <div
@@ -403,7 +409,22 @@ export function ChatMessage({
               <UserMessageContent content={message.content} />
             )}
           </div>
-
+          {/* 渲染临时文件 - 只在用户消息上显示，且放在消息上方 */}
+          {!isAI && tempFiles && tempFiles.length > 0 && (
+            <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg mt-2">
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <FileIcon className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {tempFiles[0].filename}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {(tempFiles[0].size / 1024).toFixed(2)} KB
+                </div>
+              </div>
+            </div>
+          )}
           <MessageActions
             message={message}
             isStreaming={isStreaming}

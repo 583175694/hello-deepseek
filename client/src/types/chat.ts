@@ -3,7 +3,9 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   reasoning?: string;
+  searchContext?: string;
   sources?: string;
+  tempFiles?: string;
   status?: string;
   createdAt: string;
   type: "content" | "reasoning" | "sources" | "temp" | "status";
