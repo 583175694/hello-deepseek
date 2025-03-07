@@ -13,6 +13,7 @@ import { CreateSessionDialog } from "@/components/chat/CreateSessionDialog";
 import type { TempFile } from "@/types/api";
 import { toast } from "sonner";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import Link from "next/link";
 
 export function ChatHistory() {
   // 状态管理
@@ -444,6 +445,16 @@ export function ChatHistory() {
               <PlusIcon className="h-5 w-5" />
               创建新会话
             </Button>
+          </div>
+
+          <div className="fixed bottom-0 w-full py-2 text-center text-sm text-muted-foreground backdrop-blur-sm">
+            <Link
+              href="https://beian.miit.gov.cn/"
+              target="_blank"
+              className="hover:text-foreground transition-colors"
+            >
+              粤ICP备2025381895号
+            </Link>
           </div>
         </div>
       )}
