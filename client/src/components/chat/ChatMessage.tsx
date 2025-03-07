@@ -196,7 +196,12 @@ const MessageActions = React.memo(
             size="icon"
             className="h-7 w-7 text-foreground hover:text-foreground"
             onClick={() => setDeleteDialogOpen(true)}
-            disabled={isStreaming}
+            disabled={isStreaming || typeof message.id !== "number"}
+            title={
+              typeof message.id !== "number"
+                ? "消息尚未同步，无法删除"
+                : "删除消息"
+            }
           >
             <Trash2 className="h-4 w-4" />
           </Button>
