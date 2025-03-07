@@ -1,6 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { Document } from '@langchain/core/documents';
-import { FaissStore } from '@langchain/community/vectorstores/faiss';
+import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { ByteDanceDoubaoEmbeddings } from '@langchain/community/embeddings/bytedance_doubao';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,7 +13,7 @@ import * as path from 'path';
 export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
   // 存储每个客户端的向量存储实例
-  private vectorStores: Map<string, FaissStore> = new Map();
+  private vectorStores: Map<string, Chroma> = new Map();
   // 字节跳动的文本嵌入模型实例
   private embeddings: ByteDanceDoubaoEmbeddings;
   // 向量存储的基础路径
@@ -31,6 +31,8 @@ export class DocumentService {
       apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
       model: 'ep-20250215013011-6nd8j',
       verbose: true,
+      maxRetries: 3,
+      maxConcurrency: 1,
     });
   }
 
@@ -46,17 +48,15 @@ export class DocumentService {
   /**
    * 获取或创建客户端的向量存储实例
    * @param clientId 客户端ID
-   * @returns Promise<FaissStore> 向量存储实例
+   * @returns Promise<Chroma> 向量存储实例
    */
-  private async getVectorStore(clientId: string): Promise<FaissStore> {
+  private async getVectorStore(clientId: string): Promise<Chroma> {
     // 如果已存在，直接返回缓存的实例
     if (this.vectorStores.has(clientId)) {
       return this.vectorStores.get(clientId);
     }
 
     const vectorStorePath = this.getClientVectorStorePath(clientId);
-    const indexPath = path.join(vectorStorePath, 'faiss.index');
-    const docStorePath = path.join(vectorStorePath, 'docstore.json');
 
     try {
       // 确保向量存储目录存在
@@ -64,24 +64,14 @@ export class DocumentService {
         fs.mkdirSync(vectorStorePath, { recursive: true });
       }
 
-      let vectorStore: FaissStore;
-      // 如果存在现有的向量存储文件，则加载它
-      if (fs.existsSync(indexPath) && fs.existsSync(docStorePath)) {
-        vectorStore = await FaissStore.load(vectorStorePath, this.embeddings);
-      } else {
-        // 否则创建新的向量存储
-        const initialDocument = new Document({
-          pageContent: 'Initial document to initialize vector store',
-          metadata: { source: 'initialization', clientId },
-        });
-
-        vectorStore = await FaissStore.fromDocuments(
-          [initialDocument],
-          this.embeddings,
-        );
-
-        await vectorStore.save(vectorStorePath);
-      }
+      // 创建或加载 Chroma 实例
+      const vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
+        collectionName: `client_${clientId}`,
+        url: process.env.CHROMA_SERVER_URL || 'http://localhost:8000',
+        collectionMetadata: {
+          'hnsw:space': 'cosine',
+        },
+      });
 
       // 缓存向量存储实例
       this.vectorStores.set(clientId, vectorStore);
@@ -102,18 +92,55 @@ export class DocumentService {
    */
   async addDocuments(clientId: string, documents: Document[]): Promise<void> {
     try {
-      const vectorStore = await this.getVectorStore(clientId);
-      // 为每个文档添加客户端ID
+      this.logger.log(`Starting to add documents for client ${clientId}`);
+      this.logger.log(`Number of documents to add: ${documents.length}`);
+
+      // 为每个文档添加客户端ID和唯一ID
       const documentsWithClientId = documents.map((doc) => ({
         ...doc,
-        metadata: { ...doc.metadata, clientId },
+        metadata: {
+          ...doc.metadata,
+          clientId,
+          id:
+            doc.metadata?.id ||
+            `${clientId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        },
       }));
 
-      // 添加文档并保存向量存储
-      await vectorStore.addDocuments(documentsWithClientId);
-      await vectorStore.save(this.getClientVectorStorePath(clientId));
+      this.logger.log(
+        `Attempting to create Chroma collection: client_${clientId}`,
+      );
+
+      // 创建新的 Chroma 集合
+      const vectorStore = await Chroma.fromDocuments(
+        documentsWithClientId,
+        this.embeddings,
+        {
+          collectionName: `client_${clientId}`,
+          url: process.env.CHROMA_SERVER_URL || 'http://localhost:8000',
+          collectionMetadata: {
+            'hnsw:space': 'cosine',
+          },
+        },
+      );
+
+      this.logger.log(
+        `Successfully created Chroma collection and added documents`,
+      );
+
+      // 更新缓存
+      this.vectorStores.set(clientId, vectorStore);
+      this.logger.log(`Updated vector store cache for client ${clientId}`);
     } catch (error) {
       this.logger.error('Failed to add documents:', error);
+      if (error.response?.data) {
+        this.logger.error('API Error details:', error.response.data);
+      }
+      this.logger.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       throw new HttpException(
         `Failed to add documents: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -152,14 +179,29 @@ export class DocumentService {
    */
   async clearVectorStore(clientId: string): Promise<void> {
     try {
-      // 删除内存中的向量存储实例
-      this.vectorStores.delete(clientId);
+      this.logger.log(
+        `Attempting to clear vector store for client ${clientId}`,
+      );
 
-      // 删除文件系统中的向量存储
-      const vectorStorePath = this.getClientVectorStorePath(clientId);
-      if (fs.existsSync(vectorStorePath)) {
-        fs.rmSync(vectorStorePath, { recursive: true, force: true });
+      // 获取或创建向量存储实例
+      const vectorStore = await this.getVectorStore(clientId);
+
+      try {
+        // 删除所有文档
+        await vectorStore.delete({
+          ids: undefined, // 不指定 ids 会删除所有文档
+        });
+        this.logger.log(
+          `Successfully deleted all documents for client ${clientId}`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete documents for client ${clientId}, error: ${error.message}`,
+        );
       }
+
+      // 从缓存中移除向量存储实例
+      this.vectorStores.delete(clientId);
 
       this.logger.log(
         `Successfully cleared vector store for client ${clientId}`,
@@ -171,6 +213,44 @@ export class DocumentService {
       );
       throw new HttpException(
         'Failed to clear vector store',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * 删除特定文档
+   * @param clientId 客户端ID
+   * @param documentId 文档ID
+   */
+  async deleteDocument(clientId: string, documentId: string): Promise<void> {
+    try {
+      this.logger.log(
+        `Attempting to delete document ${documentId} for client ${clientId}`,
+      );
+      const vectorStore = await this.getVectorStore(clientId);
+
+      try {
+        // 删除指定 ID 的文档
+        await vectorStore.delete({
+          ids: [documentId],
+        });
+        this.logger.log(
+          `Successfully deleted document ${documentId} for client ${clientId}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to delete document ${documentId}, error: ${error.message}`,
+        );
+        throw error;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete document ${documentId} for client ${clientId}:`,
+        error,
+      );
+      throw new HttpException(
+        'Failed to delete document',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

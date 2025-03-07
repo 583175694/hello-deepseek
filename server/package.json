@@ -20,7 +20,6 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@langchain/cohere": "^0.3.2",
     "@langchain/community": "^0.3.34",
     "@langchain/core": "^0.3.42",
     "@langchain/deepseek": "^0.0.1",
@@ -35,7 +34,7 @@
     "@nestjs/typeorm": "^11.0.0",
     "@types/xlsx": "^0.0.35",
     "axios": "^1.7.9",
-    "cohere-ai": "^7.15.4",
+    "chromadb": "^1.10.5",
     "exa-js": "^1.4.10",
     "faiss-node": "^0.5.1",
     "langchain": "^0.3.15",

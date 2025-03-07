@@ -44,3 +44,4 @@ lerna-debug.log*
 
 # 打包
 server-dist.tar.gz
+chroma_data
