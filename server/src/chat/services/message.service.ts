@@ -28,6 +28,11 @@ export class MessageService {
     reasoning: string | null,
     sessionId: string,
     clientId: string,
+    additionalData?: {
+      searchContext?: string;
+      sources?: string;
+      tempFiles?: string;
+    },
   ): Promise<Message> {
     const message = this.messageRepository.create({
       role,
@@ -35,6 +40,7 @@ export class MessageService {
       reasoning,
       sessionId,
       clientId,
+      ...additionalData,
     });
     return await this.messageRepository.save(message);
   }
@@ -42,7 +48,16 @@ export class MessageService {
   async getSessionHistory(
     sessionId: string,
     clientId: string,
-  ): Promise<{ role: string; content: string; reasoning?: string }[]> {
+  ): Promise<
+    {
+      role: string;
+      content: string;
+      reasoning?: string;
+      searchContext?: string;
+      sources?: string;
+      tempFiles?: string;
+    }[]
+  > {
     const messages = await this.messageRepository.find({
       where: { sessionId, clientId },
       order: { createdAt: 'ASC' },
@@ -51,6 +66,9 @@ export class MessageService {
       role: msg.role,
       content: msg.content,
       reasoning: msg.reasoning,
+      searchContext: msg.searchContext,
+      sources: msg.sources,
+      tempFiles: msg.tempFiles,
     }));
   }
 

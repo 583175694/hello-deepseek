@@ -25,6 +25,15 @@ export class Message {
   @Column('text', { nullable: true })
   reasoning: string;
 
+  @Column('text', { nullable: true })
+  searchContext: string;
+
+  @Column('text', { nullable: true })
+  sources: string;
+
+  @Column('text', { nullable: true })
+  tempFiles: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

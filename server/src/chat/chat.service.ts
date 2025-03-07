@@ -413,6 +413,16 @@ export class AIChatService {
         null,
         sessionId,
         clientId,
+        useTempDocSearch
+          ? {
+              tempFiles: JSON.stringify(
+                await this.tempDocumentService.getSessionDocuments(
+                  sessionId,
+                  clientId,
+                ),
+              ),
+            }
+          : undefined,
       );
 
       // 创建并执行聊天链
@@ -467,6 +477,10 @@ export class AIChatService {
         fullReasoning || null,
         sessionId,
         clientId,
+        {
+          searchContext,
+          sources: JSON.stringify(sources),
+        },
       );
       this.logger.log('助手响应保存成功');
     } catch (error) {
