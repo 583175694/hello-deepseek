@@ -83,19 +83,6 @@ export class ChatController {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
     }
 
-    const shouldUseWebSearch =
-      useWebSearch === undefined
-        ? false
-        : useWebSearch.toLowerCase() === 'true';
-    const shouldUseVectorSearch =
-      useVectorSearch === undefined
-        ? false
-        : useVectorSearch.toLowerCase() === 'true';
-    const shouldUseTempDocSearch =
-      useTempDocSearch === undefined
-        ? false
-        : useTempDocSearch.toLowerCase() === 'true';
-
     return new Observable<MessageEvent>((subscriber) => {
       this.aiChatService
         .streamChat({
@@ -103,9 +90,9 @@ export class ChatController {
           clientId,
           sessionId,
           onToken: (response) => subscriber.next({ data: response }),
-          useWebSearch: shouldUseWebSearch,
-          useVectorSearch: shouldUseVectorSearch,
-          useTempDocSearch: shouldUseTempDocSearch,
+          useWebSearch: useWebSearch?.toLowerCase() === 'true',
+          useVectorSearch: useVectorSearch?.toLowerCase() === 'true',
+          useTempDocSearch: useTempDocSearch?.toLowerCase() === 'true',
           modelId,
           imageUrl,
         })
