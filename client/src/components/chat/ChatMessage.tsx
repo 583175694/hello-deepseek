@@ -414,7 +414,19 @@ export function ChatMessage({
               <UserMessageContent content={message.content} />
             )}
           </div>
-          {/* 渲染临时文件 - 只在用户消息上显示，且放在消息上方 */}
+
+          {/* 渲染图片 - 放在消息下方 */}
+          {message.imageUrl && (
+            <div className="w-[320px] mt-2 overflow-hidden rounded-lg">
+              <img
+                src={message.imageUrl}
+                alt="Uploaded"
+                className="w-full h-auto object-contain max-h-[320px]"
+              />
+            </div>
+          )}
+
+          {/* 渲染临时文件 - 只在用户消息上显示，且放在消息下方 */}
           {!isAI && tempFiles && tempFiles.length > 0 && (
             <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg mt-2">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">

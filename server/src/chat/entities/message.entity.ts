@@ -34,6 +34,9 @@ export class Message {
   @Column('text', { nullable: true })
   tempFiles: string;
 
+  @Column('text', { nullable: true })
+  imageUrl: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

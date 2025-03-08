@@ -587,8 +587,11 @@ export class AIChatService {
                 ),
               ),
               searchContext,
+              imageUrl: imageUrl || undefined,
             }
-          : undefined,
+          : imageUrl
+            ? { imageUrl }
+            : undefined,
       );
 
       // 如果使用了临时文档搜索，存储完成后清理临时文件

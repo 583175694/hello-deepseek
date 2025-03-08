@@ -32,6 +32,7 @@ export class MessageService {
       searchContext?: string;
       sources?: string;
       tempFiles?: string;
+      imageUrl?: string;
     },
   ): Promise<Message> {
     const message = this.messageRepository.create({
@@ -56,6 +57,7 @@ export class MessageService {
       searchContext?: string;
       sources?: string;
       tempFiles?: string;
+      imageUrl?: string;
     }[]
   > {
     const messages = await this.messageRepository.find({
@@ -69,6 +71,7 @@ export class MessageService {
       searchContext: msg.searchContext,
       sources: msg.sources,
       tempFiles: msg.tempFiles,
+      imageUrl: msg.imageUrl,
     }));
   }
 

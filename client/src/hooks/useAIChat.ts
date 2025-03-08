@@ -89,6 +89,7 @@ export function useAIChat() {
           content,
           type: "content",
           tempFiles: options.tempFiles,
+          imageUrl: options.imageUrl,
         });
 
         // 添加 AI 消息占位

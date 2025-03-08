@@ -6,6 +6,7 @@ export interface Message {
   searchContext?: string;
   sources?: string;
   tempFiles?: string;
+  imageUrl?: string;
   status?: string;
   createdAt: string;
   type: "content" | "reasoning" | "sources" | "temp" | "status";
