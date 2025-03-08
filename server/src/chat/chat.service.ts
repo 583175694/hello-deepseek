@@ -15,8 +15,42 @@ import { models } from 'src/configs/models';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SessionTempFile } from './entities/session-temp-file.entity';
+import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources/chat';
 
-// AI聊天服务类
+// 定义消息内容类型
+type MessageContent =
+  | {
+      type: 'text';
+      text: string;
+    }
+  | {
+      type: 'image_url';
+      image_url: {
+        url: string;
+      };
+    };
+
+// 定义流式聊天参数接口
+interface StreamChatServiceParams {
+  message: string;
+  clientId: string;
+  sessionId: string;
+  onToken: (response: {
+    type: 'content' | 'reasoning' | 'sources' | 'temp' | 'status';
+    content: string;
+  }) => void;
+  useWebSearch?: boolean;
+  useVectorSearch?: boolean;
+  useTempDocSearch?: boolean;
+  modelId?: string;
+  imageUrl?: string;
+}
+
+/**
+ * AI聊天服务类
+ * 提供AI聊天相关的功能,包括模型初始化、聊天处理、文档搜索等
+ */
 @Injectable()
 export class AIChatService {
   private readonly logger = new Logger(AIChatService.name);
@@ -39,7 +73,10 @@ export class AIChatService {
     this.initializeServices();
   }
 
-  // 初始化各项服务
+  /**
+   * 初始化各项服务
+   * 包括初始化DeepSeek模型、Exa客户端和检索器、聊天提示模板
+   */
   private initializeServices() {
     this.logger.log('正在初始化DeepSeek模型...');
     // 初始化所有可用的模型实例
@@ -66,7 +103,10 @@ export class AIChatService {
     this.logger.log('服务初始化完成');
   }
 
-  // 初始化所有模型
+  /**
+   * 初始化所有模型
+   * 根据配置初始化所有DeepSeek模型实例
+   */
   private initializeAllModels() {
     // 初始化所有配置中的模型
     Object.entries(models).forEach(([modelId, modelConfig]) => {
@@ -88,7 +128,12 @@ export class AIChatService {
     });
   }
 
-  // 获取指定模型实例
+  /**
+   * 获取指定模型实例
+   * @param modelId - 模型ID
+   * @returns 对应的ChatDeepSeek模型实例
+   * @throws Error 如果模型未找到
+   */
   private getModel(modelId: string): ChatDeepSeek {
     const model = this.modelInstances[modelId];
     if (!model) {
@@ -97,7 +142,12 @@ export class AIChatService {
     return model;
   }
 
-  // 生成系统提示词
+  /**
+   * 生成系统提示词
+   * @param roleName - 角色名称
+   * @param modelId - 模型ID,默认为'bytedance_deepseek_v3'
+   * @returns 生成的系统提示词
+   */
   async generateSystemPrompt(
     roleName: string,
     modelId: string = 'bytedance_deepseek_v3',
@@ -126,7 +176,11 @@ export class AIChatService {
     }
   }
 
-  // 执行Exa搜索
+  /**
+   * 执行Exa搜索
+   * @param query - 搜索查询
+   * @returns 搜索结果字符串
+   */
   private async performExaSearch(query: string): Promise<string> {
     this.logger.log(`正在使用查询执行Exa搜索: ${query}`);
     try {
@@ -141,7 +195,14 @@ export class AIChatService {
     }
   }
 
-  // 执行临时文档搜索
+  /**
+   * 执行临时文档搜索
+   * @param message - 搜索消息
+   * @param sessionId - 会话ID
+   * @param clientId - 客户端ID
+   * @param onToken - 处理token的回调函数
+   * @returns 搜索上下文和来源信息
+   */
   private async performTempDocSearch(
     message: string,
     sessionId: string,
@@ -231,7 +292,12 @@ export class AIChatService {
     return { searchContext, sources };
   }
 
-  // 执行网络搜索
+  /**
+   * 执行网络搜索
+   * @param message - 搜索消息
+   * @param onToken - 处理token的回调函数
+   * @returns 搜索上下文和来源信息
+   */
   private async performWebSearch(
     message: string,
     onToken: (response: { type: string; content: string }) => void,
@@ -270,7 +336,13 @@ export class AIChatService {
     return { searchContext, sources };
   }
 
-  // 执行向量数据库搜索
+  /**
+   * 执行向量数据库搜索
+   * @param message - 搜索消息
+   * @param clientId - 客户端ID
+   * @param onToken - 处理token的回调函数
+   * @returns 搜索上下文和来源信息
+   */
   private async performVectorSearch(
     message: string,
     clientId: string,
@@ -320,7 +392,10 @@ export class AIChatService {
     return { searchContext, sources };
   }
 
-  // 删除消息
+  /**
+   * 删除消息
+   * @param messageId - 消息ID
+   */
   async deleteMessage(messageId: string): Promise<void> {
     this.logger.log(`正在删除ID为 ${messageId} 的消息`);
     try {
@@ -332,21 +407,110 @@ export class AIChatService {
     }
   }
 
-  // 流式聊天处理
-  async streamChat(
+  /**
+   * 处理图片识别
+   * @param message - 用户消息
+   * @param imageUrl - 图片URL
+   * @param sessionId - 会话ID
+   * @param clientId - 客户端ID
+   * @param onToken - 处理token的回调函数
+   * @param sources - 来源信息
+   */
+  private async handleImageRecognition(
     message: string,
-    clientId: string,
+    imageUrl: string,
     sessionId: string,
+    clientId: string,
     onToken: (response: {
       type: 'content' | 'reasoning' | 'sources' | 'temp' | 'status';
       content: string;
     }) => void,
-    useWebSearch: boolean = false,
-    useVectorSearch: boolean = false,
-    useTempDocSearch: boolean = false,
-    modelId: string = 'bytedance_deepseek_r1',
-    imageUrl?: string,
+    sources: Array<{ type: 'web' | 'vector' | 'temp'; url: string }>,
   ) {
+    this.logger.log('检测到图片URL，使用图片识别模型...');
+
+    const openai = new OpenAI({
+      apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+      baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+    });
+
+    // 构建包含图片的消息
+    const messages: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: MessageContent[];
+    }> = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: message },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageUrl,
+            },
+          },
+        ],
+      },
+    ];
+
+    // 创建OpenAI聊天完成
+    const response = await openai.chat.completions.create({
+      model: 'ep-m-20250301032846-f7xkw', // 使用支持图片识别的模型
+      messages: messages as ChatCompletionMessageParam[],
+      stream: true,
+    });
+
+    // 处理流式响应
+    let fullResponse = '';
+    for await (const chunk of response) {
+      if (chunk.choices[0]?.delta?.content) {
+        const content = chunk.choices[0].delta.content;
+        fullResponse += content;
+        onToken({
+          type: 'content',
+          content,
+        });
+      }
+    }
+
+    // 保存AI助手的回复
+    this.logger.log('正在保存助手响应...');
+    await this.messageService.saveMessage(
+      'assistant',
+      fullResponse.startsWith('\n\n') ? fullResponse.slice(2) : fullResponse,
+      null,
+      sessionId,
+      clientId,
+      {
+        sources: JSON.stringify(sources),
+      },
+    );
+    this.logger.log('助手响应保存成功');
+  }
+
+  /**
+   * 流式聊天处理
+   * @param message - 用户消息
+   * @param clientId - 客户端ID
+   * @param sessionId - 会话ID
+   * @param onToken - 处理token的回调函数
+   * @param useWebSearch - 是否使用网络搜索
+   * @param useVectorSearch - 是否使用向量搜索
+   * @param useTempDocSearch - 是否使用临时文档搜索
+   * @param modelId - 模型ID
+   * @param imageUrl - 图片URL(可选)
+   */
+  async streamChat({
+    message,
+    clientId,
+    sessionId,
+    onToken,
+    useWebSearch = false,
+    useVectorSearch = false,
+    useTempDocSearch = false,
+    modelId = 'bytedance_deepseek_r1',
+    imageUrl,
+  }: StreamChatServiceParams) {
     this.logger.log(
       `正在为会话 ${sessionId} 和客户端 ${clientId} 使用模型 ${modelId} 启动流式聊天`,
     );
@@ -439,80 +603,22 @@ export class AIChatService {
         }
       }
 
-      // 创建并执行聊天链
-      let chain;
-      let stream;
-
-      // 如果有图片URL，使用OpenAI模型处理图片识别
+      // 如果有图片URL，使用图片识别模型处理
       if (imageUrl) {
-        this.logger.log('检测到图片URL，使用图片识别模型...');
-
-        // 使用OpenAI处理图片识别
-        const { OpenAI } = require('openai');
-
-        const openai = new OpenAI({
-          apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
-          baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-        });
-
-        // 构建包含图片的消息
-        const messages = [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: message },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl,
-                },
-              },
-            ],
-          },
-        ];
-
-        // 创建OpenAI聊天完成
-        const response = await openai.chat.completions.create({
-          model: 'ep-m-20250301032846-f7xkw', // 使用支持图片识别的模型
-          messages,
-          stream: true,
-        });
-
-        // 处理流式响应
-        let fullResponse = '';
-        for await (const chunk of response) {
-          if (chunk.choices[0]?.delta?.content) {
-            const content = chunk.choices[0].delta.content;
-            fullResponse += content;
-            onToken({
-              type: 'content',
-              content,
-            });
-          }
-        }
-
-        // 保存AI助手的回复
-        this.logger.log('正在保存助手响应...');
-        await this.messageService.saveMessage(
-          'assistant',
-          fullResponse.startsWith('\n\n')
-            ? fullResponse.slice(2)
-            : fullResponse,
-          null,
+        await this.handleImageRecognition(
+          message,
+          imageUrl,
           sessionId,
           clientId,
-          {
-            sources: JSON.stringify(sources),
-          },
+          onToken,
+          sources,
         );
-        this.logger.log('助手响应保存成功');
-
         return;
       }
 
       // 使用常规模型处理普通文本对话
-      chain = this.prompt.pipe(this.getModel(modelId));
-      stream = await chain.stream({
+      const chain = this.prompt.pipe(this.getModel(modelId));
+      const stream = await chain.stream({
         history: memoryVariables.history || [],
         input: message,
         searchContext: searchContext || '没有找到相关的搜索结果',

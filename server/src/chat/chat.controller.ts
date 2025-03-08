@@ -27,6 +27,17 @@ import { Express } from 'express';
 import { models } from 'src/configs/models';
 import { MessageService } from './services/message.service';
 
+// 定义流式聊天参数接口
+interface StreamChatParams {
+  message: string;
+  sessionId?: string;
+  useWebSearch?: string;
+  useVectorSearch?: string;
+  useTempDocSearch?: string;
+  modelId?: string;
+  imageUrl?: string;
+}
+
 // 定义聊天控制器
 @Controller('chat')
 export class ChatController {
@@ -56,14 +67,18 @@ export class ChatController {
   @Sse('stream')
   async streamChat(
     @Headers('x-client-id') clientId: string,
-    @Query('message') message: string,
-    @Query('sessionId') sessionId?: string,
-    @Query('useWebSearch') useWebSearch?: string,
-    @Query('useVectorSearch') useVectorSearch?: string,
-    @Query('useTempDocSearch') useTempDocSearch?: string,
-    @Query('modelId') modelId: string = 'bytedance_deepseek_r1',
-    @Query('imageUrl') imageUrl?: string,
+    @Query() params: StreamChatParams,
   ): Promise<Observable<MessageEvent>> {
+    const {
+      message,
+      sessionId,
+      useWebSearch,
+      useVectorSearch,
+      useTempDocSearch,
+      modelId = 'bytedance_deepseek_r1',
+      imageUrl,
+    } = params;
+
     if (!message) {
       throw new HttpException('Message is required', HttpStatus.BAD_REQUEST);
     }
@@ -83,17 +98,17 @@ export class ChatController {
 
     return new Observable<MessageEvent>((subscriber) => {
       this.aiChatService
-        .streamChat(
+        .streamChat({
           message,
           clientId,
           sessionId,
-          (response) => subscriber.next({ data: response }),
-          shouldUseWebSearch,
-          shouldUseVectorSearch,
-          shouldUseTempDocSearch,
+          onToken: (response) => subscriber.next({ data: response }),
+          useWebSearch: shouldUseWebSearch,
+          useVectorSearch: shouldUseVectorSearch,
+          useTempDocSearch: shouldUseTempDocSearch,
           modelId,
           imageUrl,
-        )
+        })
         .then(() => {
           subscriber.next({ data: '[DONE]' });
           subscriber.complete();
