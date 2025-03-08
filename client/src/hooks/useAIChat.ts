@@ -20,6 +20,8 @@ interface ChatOptions {
   useVectorSearch?: boolean;
   useTempDocSearch?: boolean;
   tempFiles?: string;
+  modelId?: string;
+  imageUrl?: string;
 }
 
 export function useAIChat() {

@@ -34,6 +34,7 @@ interface ChatInputProps {
       useVectorSearch?: boolean;
       useTempDocSearch?: boolean;
       modelId?: string;
+      imageUrl?: string;
     }
   ) => void;
   disabled?: boolean; // 是否禁用输入框
@@ -83,20 +84,13 @@ export function ChatInput({
     e.preventDefault();
     if ((!input.trim() && !imageUrl) || disabled || isLoading) return;
 
-    // 如果有图片URL，添加到消息中
-    let message = input;
-    if (imageUrl) {
-      message = message
-        ? `${message}\n\n![image](${imageUrl})`
-        : `![image](${imageUrl})`;
-    }
-
-    // 发送消息，包含搜索选项
-    onSend(message, {
+    // 发送消息，包含搜索选项和图片URL（如果有）
+    onSend(input, {
       useWebSearch,
       useVectorSearch,
       useTempDocSearch: hasTempDocs,
       modelId: selectedModelId,
+      imageUrl: imageUrl || undefined, // 将null转换为undefined
     });
     setInput(""); // 清空输入框
     setImageUrl(null); // 清空图片URL
@@ -161,7 +155,6 @@ export function ChatInput({
         file.type
       );
 
-
       if (!credentialsResponse.success) {
         throw new Error("获取上传凭证失败");
       }
@@ -171,7 +164,6 @@ export function ChatInput({
         file,
         credentialsResponse.data
       );
-
 
       if (!uploadResponse.success) {
         throw new Error("上传图片失败");

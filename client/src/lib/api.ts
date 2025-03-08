@@ -109,7 +109,8 @@ export const chatService = {
     useWebSearch?: boolean,
     useVectorSearch?: boolean,
     useTempDocSearch?: boolean,
-    modelId: string = "bytedance_deepseek_r1"
+    modelId: string = "bytedance_deepseek_r1",
+    imageUrl?: string
   ) {
     const params = new URLSearchParams();
     params.append("message", message);
@@ -126,6 +127,9 @@ export const chatService = {
       params.append("useTempDocSearch", "true");
     }
     params.append("modelId", modelId);
+    if (imageUrl) {
+      params.append("imageUrl", imageUrl);
+    }
 
     const response = await api.get("/chat/stream", {
       params,

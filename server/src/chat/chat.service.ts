@@ -345,6 +345,7 @@ export class AIChatService {
     useVectorSearch: boolean = false,
     useTempDocSearch: boolean = false,
     modelId: string = 'bytedance_deepseek_r1',
+    imageUrl?: string,
   ) {
     this.logger.log(
       `正在为会话 ${sessionId} 和客户端 ${clientId} 使用模型 ${modelId} 启动流式聊天`,
@@ -439,8 +440,79 @@ export class AIChatService {
       }
 
       // 创建并执行聊天链
-      const chain = this.prompt.pipe(this.getModel(modelId));
-      const stream = await chain.stream({
+      let chain;
+      let stream;
+
+      // 如果有图片URL，使用OpenAI模型处理图片识别
+      if (imageUrl) {
+        this.logger.log('检测到图片URL，使用图片识别模型...');
+
+        // 使用OpenAI处理图片识别
+        const { OpenAI } = require('openai');
+
+        const openai = new OpenAI({
+          apiKey: process.env.BYTEDANCE_DOUBAO_API_KEY,
+          baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+        });
+
+        // 构建包含图片的消息
+        const messages = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: message },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageUrl,
+                },
+              },
+            ],
+          },
+        ];
+
+        // 创建OpenAI聊天完成
+        const response = await openai.chat.completions.create({
+          model: 'ep-m-20250301032846-f7xkw', // 使用支持图片识别的模型
+          messages,
+          stream: true,
+        });
+
+        // 处理流式响应
+        let fullResponse = '';
+        for await (const chunk of response) {
+          if (chunk.choices[0]?.delta?.content) {
+            const content = chunk.choices[0].delta.content;
+            fullResponse += content;
+            onToken({
+              type: 'content',
+              content,
+            });
+          }
+        }
+
+        // 保存AI助手的回复
+        this.logger.log('正在保存助手响应...');
+        await this.messageService.saveMessage(
+          'assistant',
+          fullResponse.startsWith('\n\n')
+            ? fullResponse.slice(2)
+            : fullResponse,
+          null,
+          sessionId,
+          clientId,
+          {
+            sources: JSON.stringify(sources),
+          },
+        );
+        this.logger.log('助手响应保存成功');
+
+        return;
+      }
+
+      // 使用常规模型处理普通文本对话
+      chain = this.prompt.pipe(this.getModel(modelId));
+      stream = await chain.stream({
         history: memoryVariables.history || [],
         input: message,
         searchContext: searchContext || '没有找到相关的搜索结果',
