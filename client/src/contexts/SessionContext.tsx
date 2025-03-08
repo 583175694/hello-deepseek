@@ -51,7 +51,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const createNewSession = useCallback(
     async (params?: { roleName: string; systemPrompt: string }) => {
       try {
-        console.log("创建新会话", params);
         const session = await chatService.createSession(params);
         setSessions((prev) => [session, ...prev]);
         setCurrentSessionId(session.sessionId);

@@ -189,7 +189,6 @@ export const CodeBlock = ({ children, language }: CodeBlockProps) => {
       }
 
       try {
-        console.log("Starting mermaid render with code:", code);
         const ref = mermaidRef.current;
 
         // 首先尝试解析代码
@@ -203,7 +202,6 @@ export const CodeBlock = ({ children, language }: CodeBlockProps) => {
 
         // 生成唯一 ID
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-        console.log("Generated mermaid container ID:", id);
 
         // 创建一个新的容器并设置样式
         const container = document.createElement("div");
@@ -248,9 +246,7 @@ export const CodeBlock = ({ children, language }: CodeBlockProps) => {
         // 替换原始内容
         ref.innerHTML = "";
         ref.appendChild(svgContainer);
-        console.log("SVG rendered and inserted successfully");
       } catch (err) {
-        console.log("Failed to render mermaid:", err);
         if (mermaidRef.current) {
           mermaidRef.current.innerHTML = `
             <div class="p-4 border border-red-200 bg-red-50 dark:bg-red-900/10">

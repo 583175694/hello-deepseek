@@ -48,7 +48,6 @@ export function AgentMarket() {
   const handleCategoryClick = (categoryId: string) => {
     setActiveCategory(categoryId);
     // TODO: 这里可以添加按分类筛选智能体的逻辑
-    console.log("Selected category:", categoryId);
   };
 
   return (

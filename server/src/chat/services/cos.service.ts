@@ -64,6 +64,40 @@ export class CosService {
   }
 
   /**
+   * 通过服务端上传图片到 COS
+   * @param file 上传的文件
+   * @returns 上传结果
+   */
+  async uploadImageToCOS(file: Express.Multer.File) {
+    try {
+      // 从环境变量中直接获取配置
+      const Bucket = this.configService.get<string>('COS_BUCKET');
+      const Region = this.configService.get<string>('COS_REGION');
+
+      if (!Bucket || !Region) {
+        throw new Error('COS_BUCKET or COS_REGION not configured');
+      }
+
+      // 生成唯一的文件路径
+      const key = `images/${Date.now()}-${file.originalname}`;
+
+      // 上传到 COS
+      await this.uploadToCOS(Bucket, Region, key, file.buffer);
+
+      // 生成带签名的临时访问 URL
+      const fileUrl = await this.getPresignedUrl('GET', key, Bucket, Region);
+
+      return {
+        key,
+        fileUrl,
+      };
+    } catch (error) {
+      this.logger.error('Failed to upload image to COS:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取预签名URL
    * @param method HTTP方法
    * @param key 对象键
@@ -94,6 +128,40 @@ export class CosService {
             return;
           }
           resolve(data.Url);
+        },
+      );
+    });
+  }
+
+  /**
+   * 上传文件到 COS
+   * @param bucket 存储桶名称
+   * @param region 地域
+   * @param key 对象键
+   * @param body 文件内容
+   * @returns 上传结果
+   */
+  private uploadToCOS(
+    bucket: string,
+    region: string,
+    key: string,
+    body: Buffer,
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.cos.putObject(
+        {
+          Bucket: bucket,
+          Region: region,
+          Key: key,
+          Body: body,
+        },
+        (err: any, data: any) => {
+          if (err) {
+            this.logger.error('Failed to upload to COS:', err);
+            reject(err);
+            return;
+          }
+          resolve(data);
         },
       );
     });

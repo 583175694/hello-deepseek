@@ -25,11 +25,9 @@ interface ParsedSlide {
 
 function parseMarkdownSlides(markdown: string): ParsedSlide[] {
   const slides: ParsedSlide[] = [];
-  console.log("开始解析 markdown:", markdown.substring(0, 100) + "...");
 
   // 首先尝试提取主标题部分
   const mainSections = markdown.split(/# /).filter(Boolean);
-  console.log("主标题部分数量:", mainSections.length);
 
   let pageNumber = 1;
 
@@ -39,7 +37,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
 
     // 第一行是主标题
     const mainTitle = lines[0].trim();
-    console.log(`处理主标题: ${mainTitle}`);
 
     // 收集所有层级的要点
     const allPoints: string[] = [];
@@ -53,8 +50,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
         allPoints.push(point);
       }
     });
-
-    console.log(`提取的要点数量: ${allPoints.length}`);
 
     // 如果找到要点，创建一个幻灯片
     if (allPoints.length > 0) {
@@ -74,7 +69,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
 
       // 第一行是二级标题
       const subTitle = subLines[0].trim();
-      console.log(`处理二级标题: ${subTitle}`);
 
       // 收集该二级标题下的所有要点
       const subPoints: string[] = [];
@@ -101,8 +95,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
 
   // 如果没有解析出任何幻灯片，尝试使用原来的方法
   if (slides.length === 0) {
-    console.log("尝试使用原始方法解析幻灯片");
-
     // 使用正则表达式匹配每个幻灯片部分
     // 匹配格式: # 第X页：标题
     const slidePattern =
@@ -113,8 +105,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
       const pageNumber = parseInt(match[1]);
       const title = match[2].trim();
       const content = match[3].trim();
-
-      console.log(`找到第 ${pageNumber} 页:`, title);
 
       // 提取要点列表
       const contentItems = content
@@ -129,8 +119,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
           return point;
         });
 
-      console.log("提取的要点:", contentItems);
-
       slides.push({
         pageNumber,
         title,
@@ -140,11 +128,8 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
 
     // 如果仍然没有解析出幻灯片，使用最简单的方法
     if (slides.length === 0) {
-      console.log("使用最简单的方法解析幻灯片");
-
       // 直接按 # 分割内容
       const sections = markdown.split("#").filter(Boolean);
-      console.log("简单分割后的部分数量:", sections.length);
 
       sections.forEach((section) => {
         // 尝试提取标题和内容
@@ -179,7 +164,6 @@ function parseMarkdownSlides(markdown: string): ParsedSlide[] {
     }
   }
 
-  console.log("解析出的幻灯片数量:", slides.length);
   return slides;
 }
 
@@ -294,11 +278,9 @@ export function PPTGenerator() {
       const content = await pptService.generateContent(title, outline);
       setContent(content);
       // 调试输出
-      console.log("接收到的 markdown 内容:", content);
 
       // 解析 markdown 内容为幻灯片数组
       const parsedSlides = parseMarkdownSlides(content);
-      console.log("解析后的幻灯片:", parsedSlides);
 
       setSlides(parsedSlides);
       setProgress(100);
@@ -353,11 +335,9 @@ export function PPTGenerator() {
           },
         },
         onMessage(eventType, data) {
-          console.log("AIPPT Event:", eventType, data);
           switch (eventType) {
             case "success":
               // 处理成功事件
-              console.log("PPT生成成功");
               break;
             case "error":
               // 处理错误事件

@@ -161,7 +161,6 @@ export function ChatInput({
         file.type
       );
 
-      console.log("获取到的上传凭证:", credentialsResponse);
 
       if (!credentialsResponse.success) {
         throw new Error("获取上传凭证失败");
@@ -173,7 +172,6 @@ export function ChatInput({
         credentialsResponse.data
       );
 
-      console.log("上传结果:", uploadResponse);
 
       if (!uploadResponse.success) {
         throw new Error("上传图片失败");

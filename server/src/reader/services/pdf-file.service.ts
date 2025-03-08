@@ -77,7 +77,6 @@ export class PDFFileService {
   // 检查文件是否存在且属于指定客户端
   async checkFileExists(filename: string, clientId: string): Promise<boolean> {
     try {
-      console.log(filename, clientId);
       const file = await this.pdfFileRepository.findOne({
         where: { filename, clientId },
       });
