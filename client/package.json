@@ -32,6 +32,7 @@
     "date-fns": "^4.1.0",
     "event-source-polyfill": "^1.0.31",
     "lucide-react": "^0.474.0",
+    "mammoth": "^1.9.0",
     "markmap-common": "^0.18.9",
     "markmap-lib": "^0.18.11",
     "markmap-view": "^0.18.10",
