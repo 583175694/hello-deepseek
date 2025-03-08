@@ -401,7 +401,7 @@ export function ChatMessage({
               "rounded-2xl px-4 prose-sm py-2.5 max-w-[calc(100vw-5rem)] md:max-w-[45rem]",
               isAI
                 ? "bg-muted dark:prose-invert prose-p:my-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto"
-                : "bg-primary text-primary-foreground"
+                : "bg-primary text-primary-foreground ml-auto w-fit"
             )}
           >
             {isAI ? (
