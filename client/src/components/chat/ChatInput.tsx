@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 import { toast } from "sonner";
 import { cosService } from "@/lib/api";
+import Image from "next/image";
 
 // 定义临时文件类型
 interface TempFile {
@@ -259,10 +260,12 @@ export function ChatInput({
       {imageUrl && (
         <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
           <div className="flex-shrink-0 w-10 h-10 overflow-hidden rounded-lg">
-            <img
+            <Image
               src={imageUrl}
               alt="Uploaded"
               className="w-full h-full object-cover"
+              width={180}
+              height={180}
             />
           </div>
           <div className="flex-1 min-w-0">

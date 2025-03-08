@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
     //   logLevel: "error",
     // },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+    domains: ["pipishrimp-1258195920.cos.ap-guangzhou.myqcloud.com"],
+  },
 };
 
 export default nextConfig;

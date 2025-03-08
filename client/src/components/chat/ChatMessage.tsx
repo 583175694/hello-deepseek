@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import React from "react";
 import { CodeBlock } from "./CodeBlock";
 import mermaid from "mermaid";
+import Image from "next/image";
 
 // 定义消息来源的接口
 interface Source {
@@ -417,11 +418,13 @@ export function ChatMessage({
 
           {/* 渲染图片 - 放在消息下方 */}
           {message.imageUrl && (
-            <div className="w-[320px] mt-2 overflow-hidden rounded-lg">
-              <img
+            <div className="w-[180px] mt-2 overflow-hidden rounded-lg">
+              <Image
                 src={message.imageUrl}
                 alt="Uploaded"
-                className="w-full h-auto object-contain max-h-[320px]"
+                className="w-full h-auto object-contain max-h-[320px] object-right"
+                width={180}
+                height={180}
               />
             </div>
           )}

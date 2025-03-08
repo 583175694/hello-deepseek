@@ -119,6 +119,7 @@ export class SessionService {
           'searchContext',
           'sources',
           'tempFiles',
+          'imageUrl',
           'createdAt',
         ],
       });
