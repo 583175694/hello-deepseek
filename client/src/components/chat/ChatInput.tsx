@@ -83,7 +83,7 @@ export function ChatInput({
   // 处理消息发送
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && !imageUrl) || disabled || isLoading) return;
+    if (!input.trim() || disabled || isLoading || isUploadingImage) return;
 
     // 发送消息，包含搜索选项和图片URL（如果有）
     onSend(input, {
@@ -306,8 +306,14 @@ export function ChatInput({
             onChange={(e) => setInput(e.target.value.slice(0, 1200))}
             onKeyDown={handleKeyDown}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px] scrollbar-thin scrollbar-thumb-border/40 hover:scrollbar-thumb-border/60 scrollbar-track-transparent"
-            placeholder={isLoading ? "AI 正在回复中..." : "发送消息..."}
-            disabled={disabled || isLoading}
+            placeholder={
+              isLoading
+                ? "AI 正在回复中..."
+                : isUploadingImage
+                ? "图片上传中..."
+                : "发送消息..."
+            }
+            disabled={disabled || isLoading || isUploadingImage}
             rows={1}
             maxLength={1200}
           />
@@ -346,14 +352,14 @@ export function ChatInput({
           className="hidden"
           onChange={handleImageUpload}
           accept="image/jpeg,image/png,image/gif,image/webp"
-          disabled={disabled || isLoading}
+          disabled={disabled || isLoading || isUploadingImage}
         />
         <Button
           type="button"
           size="icon"
           variant="ghost"
           onClick={() => document.getElementById("image-upload")?.click()}
-          disabled={disabled || isLoading}
+          disabled={disabled || isLoading || isUploadingImage}
           title="上传图片"
           className="hidden lg:inline-flex"
         >
@@ -365,7 +371,11 @@ export function ChatInput({
             <span className="w-4 h-4">×</span>
           </Button>
         ) : (
-          <Button type="submit" size="icon" disabled={disabled || isLoading}>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={disabled || isLoading || isUploadingImage}
+          >
             <Send className="w-4 h-4" />
           </Button>
         )}
