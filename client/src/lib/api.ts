@@ -272,3 +272,37 @@ export const readerService = {
     return response.data;
   },
 };
+
+export const cosService = {
+  // 获取上传凭证
+  async getUploadCredentials(filename: string, fileType: string) {
+    const response = await api.post("/cos/upload-credentials", {
+      filename,
+      fileType,
+    });
+    return response.data;
+  },
+
+  // 上传图片到腾讯云 COS
+  async uploadImageToCOS(file: File, credentials: any) {
+    try {
+      // 使用预签名URL直接上传
+      const response = await fetch(credentials.url, {
+        method: "PUT",
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+
+      return {
+        success: true,
+        url: credentials.fileUrl,
+      };
+    } catch (error) {
+      console.error("Error uploading to COS:", error);
+      throw error;
+    }
+  },
+};

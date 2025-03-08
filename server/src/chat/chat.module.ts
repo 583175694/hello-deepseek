@@ -12,10 +12,12 @@ import { AIChatService } from './chat.service';
 import { FileService } from './services/file.service';
 import { TempDocumentService } from './services/temp-document.service';
 import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
+import { CosService } from './services/cos.service';
+import { CosController } from './controllers/cos.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Session, Message, SessionTempFile])],
-  controllers: [ChatController],
+  controllers: [ChatController, CosController],
   providers: [
     SessionService,
     MessageService,
@@ -23,6 +25,7 @@ import { ClientIdInterceptor } from './interceptors/client-id.interceptor';
     AIChatService,
     FileService,
     TempDocumentService,
+    CosService,
     {
       provide: APP_INTERCEPTOR,
       useClass: ClientIdInterceptor,

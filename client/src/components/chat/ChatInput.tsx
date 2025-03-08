@@ -10,10 +10,12 @@ import {
   X,
   FileIcon,
   Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModelSelector } from "./ModelSelector";
 import { toast } from "sonner";
+import { cosService } from "@/lib/api";
 
 // 定义临时文件类型
 interface TempFile {
@@ -64,6 +66,8 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null); // 文本框引用，用于调整高度
   const [tempFiles, setTempFiles] = useState<TempFile[]>([]); // 添加临时文件状态
   const [isUploading, setIsUploading] = useState(false); // 添加上传状态
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // 添加图片上传状态
+  const [imageUrl, setImageUrl] = useState<string | null>(null); // 添加图片URL状态
 
   // 监听输入内容变化，自动调整文本框高度
   useEffect(() => {
@@ -77,16 +81,25 @@ export function ChatInput({
   // 处理消息发送
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || disabled || isLoading) return;
+    if ((!input.trim() && !imageUrl) || disabled || isLoading) return;
+
+    // 如果有图片URL，添加到消息中
+    let message = input;
+    if (imageUrl) {
+      message = message
+        ? `${message}\n\n![image](${imageUrl})`
+        : `![image](${imageUrl})`;
+    }
 
     // 发送消息，包含搜索选项
-    onSend(input, {
+    onSend(message, {
       useWebSearch,
       useVectorSearch,
       useTempDocSearch: hasTempDocs,
       modelId: selectedModelId,
     });
     setInput(""); // 清空输入框
+    setImageUrl(null); // 清空图片URL
   };
 
   // 处理快捷键：Enter 发送，Shift + Enter 换行
@@ -124,6 +137,60 @@ export function ChatInput({
     e.target.value = "";
   };
 
+  // 处理图片上传
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      e.target.value = "";
+      return;
+    }
+
+    // 验证文件类型
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("只支持 JPG、PNG、GIF 和 WebP 格式的图片");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      // 1. 从服务器获取上传凭证
+      const credentialsResponse = await cosService.getUploadCredentials(
+        file.name,
+        file.type
+      );
+
+      console.log("获取到的上传凭证:", credentialsResponse);
+
+      if (!credentialsResponse.success) {
+        throw new Error("获取上传凭证失败");
+      }
+
+      // 2. 使用凭证上传图片到 COS
+      const uploadResponse = await cosService.uploadImageToCOS(
+        file,
+        credentialsResponse.data
+      );
+
+      console.log("上传结果:", uploadResponse);
+
+      if (!uploadResponse.success) {
+        throw new Error("上传图片失败");
+      }
+
+      // 3. 设置图片 URL
+      setImageUrl(uploadResponse.url);
+      toast.success("图片上传成功");
+    } catch (error: any) {
+      console.error("图片上传失败:", error);
+      toast.error(`图片上传失败: ${error.message || "未知错误"}`);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = "";
+    }
+  };
+
   // 处理文件删除
   const handleFileRemove = async () => {
     if (onFileRemove) {
@@ -142,6 +209,11 @@ export function ChatInput({
         toast.error("文件删除失败");
       }
     }
+  };
+
+  // 处理图片删除
+  const handleImageRemove = () => {
+    setImageUrl(null);
   };
 
   useEffect(() => {
@@ -193,6 +265,45 @@ export function ChatInput({
         </div>
       )}
 
+      {/* 显示已上传的图片 */}
+      {imageUrl && (
+        <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
+          <div className="flex-shrink-0 w-10 h-10 overflow-hidden rounded-lg">
+            <img
+              src={imageUrl}
+              alt="Uploaded"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">已上传图片</div>
+            <div className="text-xs text-muted-foreground">将在消息中显示</div>
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
+            onClick={handleImageRemove}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* 显示图片上传状态 */}
+      {isUploadingImage && (
+        <div className="w-[320px] flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg animate-pulse">
+          <div className="flex-shrink-0 w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+            <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="h-5 bg-muted-foreground/20 rounded w-3/4 mb-1"></div>
+            <div className="h-4 bg-muted-foreground/20 rounded w-1/4"></div>
+          </div>
+        </div>
+      )}
+
       {/* 输入框表单 */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="flex-1 relative">
@@ -233,6 +344,27 @@ export function ChatInput({
           className="hidden lg:inline-flex"
         >
           <Paperclip className="w-4 h-4" />
+        </Button>
+
+        {/* 添加图片上传按钮 */}
+        <input
+          type="file"
+          id="image-upload"
+          className="hidden"
+          onChange={handleImageUpload}
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          disabled={disabled || isLoading}
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={() => document.getElementById("image-upload")?.click()}
+          disabled={disabled || isLoading}
+          title="上传图片"
+          className="hidden lg:inline-flex"
+        >
+          <ImageIcon className="w-4 h-4" />
         </Button>
 
         {isLoading ? (
@@ -310,6 +442,19 @@ export function ChatInput({
           >
             <Paperclip className="w-3 h-3" />
             上传文件
+          </Button>
+
+          {/* 移动端图片上传按钮 */}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 gap-1 text-xs lg:hidden"
+            onClick={() => document.getElementById("image-upload")?.click()}
+            disabled={disabled || isLoading}
+          >
+            <ImageIcon className="w-3 h-3" />
+            上传图片
           </Button>
         </div>
       </div>
