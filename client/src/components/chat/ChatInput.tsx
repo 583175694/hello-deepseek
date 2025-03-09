@@ -303,7 +303,7 @@ export function ChatInput({
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value.slice(0, 1200))}
+            onChange={(e) => setInput(e.target.value.slice(0, 2000))}
             onKeyDown={handleKeyDown}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 resize-none min-h-[40px] max-h-[200px] scrollbar-thin scrollbar-thumb-border/40 hover:scrollbar-thumb-border/60 scrollbar-track-transparent"
             placeholder={
@@ -315,11 +315,11 @@ export function ChatInput({
             }
             disabled={disabled || isLoading || isUploadingImage}
             rows={1}
-            maxLength={1200}
+            maxLength={2000}
           />
           {input.length > 0 && (
             <div className="absolute bottom-3 right-4 text-xs text-muted-foreground">
-              {input.length}/1200
+              {input.length}/2000
             </div>
           )}
         </div>
